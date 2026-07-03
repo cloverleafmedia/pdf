@@ -12,6 +12,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Anheften ("Pin") einzelner Dokument-Werkzeuge direkt in die Hauptleiste
 - Befehlspalette (Strg+K) mit durchsuchbarer Liste aller Aktionen
 - Übersicht der Tastenkombinationen (Taste `?`)
+- Automatische Erkennung von IBAN/E-Mail/Telefonnummer als Schwärzungs-Vorschläge (Werkzeug "Schwärzen" → "IBAN/E-Mail/Telefon erkennen")
 
 ### Behoben
 - Drucken tat bei fehlendem Windows-Standarddrucker nichts – zeigt jetzt eine verständliche Fehlermeldung

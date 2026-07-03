@@ -124,7 +124,7 @@ export default function Toolbar() {
     ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`
 
   // Redaction bar shown when redact tool active and pending redactions exist
-  const showRedactBar = activeTool === 'redact' && pendingRedactions.length > 0
+  const showRedactBar = activeTool === 'redact'
 
   const isAnnotateColorTool = ['highlight', 'underline', 'strikethrough', 'draw', 'note', 'text'].includes(activeTool)
 
@@ -344,17 +344,30 @@ export default function Toolbar() {
           <div className={`flex items-center gap-3 px-4 py-1.5 text-xs border-b
             ${isDark ? 'bg-red-950/40 border-red-900/50 text-red-300' : 'bg-red-50 border-red-100 text-red-700'}`}>
             <AlertTriangle size={13}/>
-            <span>{pendingRedactions.length} Schwärzung(en) ausstehend — Schwärzung ist permanent!</span>
+            <span>
+              {pendingRedactions.length > 0
+                ? `${pendingRedactions.length} Schwärzung(en) ausstehend — Schwärzung ist permanent!`
+                : 'Bereiche zum Schwärzen aufziehen, oder automatisch nach Mustern suchen.'}
+            </span>
             <div className="flex-1"/>
-            <button onClick={clearRedactions}
-              className={`px-3 py-0.5 rounded text-xs transition-colors
+            <button onClick={() => window._autoDetectPII?.()}
+              className={`flex items-center gap-1.5 px-3 py-0.5 rounded text-xs transition-colors
                 ${isDark ? 'hover:bg-red-900/40' : 'hover:bg-red-100'}`}>
-              Zurücksetzen
+              <Search size={12}/> IBAN/E-Mail/Telefon erkennen
             </button>
-            <button onClick={() => window._applyRedactions?.()}
-              className="flex items-center gap-1.5 px-3 py-0.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white transition-colors">
-              <CheckCheck size={12}/> Anwenden
-            </button>
+            {pendingRedactions.length > 0 && (
+              <>
+                <button onClick={clearRedactions}
+                  className={`px-3 py-0.5 rounded text-xs transition-colors
+                    ${isDark ? 'hover:bg-red-900/40' : 'hover:bg-red-100'}`}>
+                  Zurücksetzen
+                </button>
+                <button onClick={() => window._applyRedactions?.()}
+                  className="flex items-center gap-1.5 px-3 py-0.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white transition-colors">
+                  <CheckCheck size={12}/> Anwenden
+                </button>
+              </>
+            )}
           </div>
         )}
       </>

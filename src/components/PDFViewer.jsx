@@ -86,6 +86,60 @@ async function flattenAnnotations(pdfBytes, annotations, formValues = {}) {
   return doc.save()
 }
 
+// ── Scan every page's text for IBAN / E-Mail / Telefonnummer patterns ──────
+// Matching is per text-item (pdf.js groups contiguous same-line runs into one
+// item in most machine-generated PDFs) — patterns split across separate items
+// won't be caught, which is an acceptable trade-off for a suggestion feature
+// the user reviews before applying.
+const PII_PATTERNS = [
+  { label: 'IBAN',           re: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/g },
+  { label: 'E-Mail',         re: /\b[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}\b/g },
+  { label: 'Telefonnummer',  re: /(?:\+49[\s\-/]?|\b0)[1-9][0-9\s\-/()]{5,14}[0-9]\b/g },
+]
+
+async function findPIIRedactions(pdfDoc, pageRotations) {
+  const found = []
+  for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+    const page = await pdfDoc.getPage(pageNum)
+    const vp = page.getViewport({ scale: 1, rotation: pageRotations[pageNum] || 0 })
+    const textContent = await page.getTextContent()
+
+    for (const item of textContent.items) {
+      const str = item.str
+      if (!str || !str.trim() || !item.width) continue
+
+      for (const pattern of PII_PATTERNS) {
+        pattern.re.lastIndex = 0
+        let m
+        while ((m = pattern.re.exec(str))) {
+          const matched = m[0]
+          if (pattern.label === 'Telefonnummer' && (matched.match(/\d/g) || []).length < 7) continue
+
+          // Equal-width char estimate is imprecise for proportional fonts — pad
+          // outward a bit rather than risk leaving a sliver of the match exposed.
+          const charW = item.width / str.length
+          const pad = charW * 0.6
+          const x0 = item.transform[4] + charW * m.index - pad
+          const x1 = item.transform[4] + charW * (m.index + matched.length) + pad
+          const y0 = item.transform[5]
+          const y1 = item.transform[5] + (item.height || 10)
+          const [vx0, vy0] = vp.convertToViewportPoint(x0, y0)
+          const [vx1, vy1] = vp.convertToViewportPoint(x1, y1)
+
+          found.push({
+            pageNum,
+            x: Math.min(vx0, vx1), y: Math.min(vy0, vy1),
+            w: Math.abs(vx1 - vx0), h: Math.abs(vy1 - vy0),
+            logicalW: vp.width, logicalH: vp.height,
+            label: pattern.label, text: matched,
+          })
+        }
+      }
+    }
+  }
+  return found
+}
+
 export default function PDFViewer() {
   const {
     pdfDoc, pdfBytes, filePath, fileName, totalPages, zoom, pageRotations, theme, twoPageView,
@@ -202,6 +256,23 @@ export default function PDFViewer() {
         openDocument(reloaded, newB, fp, fn, newB.byteLength)
         clearRedactions()
         setStatus('Schwärzung angewendet')
+      } catch (e) { setStatus('Fehler: ' + e.message) }
+    }
+  }, [])
+
+  // ── Auto-detect PII (IBAN / E-Mail / Telefonnummer) as redaction suggestions ──
+  useEffect(() => {
+    window._autoDetectPII = async () => {
+      const { pdfDoc: doc, pageRotations: rot, addRedaction: addRect } = useStore.getState()
+      if (!doc) return
+      try {
+        setStatus('Suche nach IBAN/E-Mail/Telefonnummer …')
+        const matches = await findPIIRedactions(doc, rot)
+        matches.forEach(m => addRect({
+          pageNum: m.pageNum, x: m.x, y: m.y, w: m.w, h: m.h,
+          logicalW: m.logicalW, logicalH: m.logicalH,
+        }))
+        setStatus(matches.length ? `${matches.length} Treffer gefunden` : 'Keine Treffer gefunden')
       } catch (e) { setStatus('Fehler: ' + e.message) }
     }
   }, [])
