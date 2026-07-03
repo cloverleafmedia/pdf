@@ -47,6 +47,7 @@ function createWindow() {
     minHeight: 600,
     frame:    false,
     backgroundColor: '#09090f',
+    icon:     path.join(__dirname, '..', 'assets', 'icon.ico'),
     webPreferences: {
       preload:          path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -108,12 +109,26 @@ ipcMain.handle('dialog:savePDF', (_, defaultName) => dialog.showSaveDialog(mainW
 }))
 
 // ── File I/O ───────────────────────────────────────────────────────────────
+// Extension allowlist: renderer-controlled paths must not be able to read/write
+// arbitrary files on disk (defense in depth in case of a future renderer compromise).
+const READABLE_EXTENSIONS = new Set(['.pdf'])
+const WRITABLE_EXTENSIONS  = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
+
+function assertExtension(filePath, allowed) {
+  const ext = path.extname(filePath).toLowerCase()
+  if (!allowed.has(ext)) {
+    throw new Error(`Dateityp "${ext}" ist für diese Operation nicht erlaubt.`)
+  }
+}
+
 ipcMain.handle('fs:read', (_, filePath) => {
+  assertExtension(filePath, READABLE_EXTENSIONS)
   const data = fs.readFileSync(filePath)
   return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
 })
 
 ipcMain.handle('fs:write', (_, filePath, data) => {
+  assertExtension(filePath, WRITABLE_EXTENSIONS)
   fs.writeFileSync(filePath, Buffer.from(data))
   return true
 })

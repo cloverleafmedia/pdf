@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Minus, Square, X, Maximize2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import cloverIcon from '../assets/clover-icon.png'
 
 export default function TitleBar() {
   const { fileName, isDirty, theme } = useStore()
@@ -20,7 +21,7 @@ export default function TitleBar() {
 
       {/* Logo + Name */}
       <div className="flex items-center gap-2 px-4 titlebar-nodrag select-none">
-        <CloverIcon />
+        <img src={cloverIcon} alt="" width={20} height={20} draggable={false} />
         <span className={`text-sm font-semibold tracking-wide ${isDark ? 'text-clover-400' : 'text-clover-600'}`}>
           CloverleafPDF
         </span>
@@ -53,17 +54,5 @@ function WinBtn({ icon, onClick, hover, isDark }) {
         ${isDark ? 'text-zinc-400 hover:text-white' : 'text-gray-500 hover:text-white'} ${hover}`}>
       {icon}
     </button>
-  )
-}
-
-function CloverIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle cx="8.5"  cy="8.5"  r="4.5" fill="#10b981" opacity="0.9"/>
-      <circle cx="15.5" cy="8.5"  r="4.5" fill="#10b981" opacity="0.75"/>
-      <circle cx="8.5"  cy="15.5" r="4.5" fill="#10b981" opacity="0.75"/>
-      <circle cx="15.5" cy="15.5" r="4.5" fill="#10b981" opacity="0.6"/>
-      <rect x="11" y="17" width="2" height="5" rx="1" fill="#10b981"/>
-    </svg>
   )
 }

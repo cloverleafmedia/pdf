@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FolderOpen, Eye, Edit3, Layers, Shield, Clock, FileText } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import cloverIcon from '../assets/clover-icon.png'
 
 export default function WelcomeScreen({ loadPDF }) {
   const { t } = useTranslation()
@@ -26,7 +27,7 @@ export default function WelcomeScreen({ loadPDF }) {
 
       {/* Logo */}
       <div className="flex flex-col items-center gap-3 mb-10">
-        <CloverBig />
+        <img src={cloverIcon} alt="" width={64} height={64} draggable={false} />
         <h1 className={`text-3xl font-bold tracking-tight ${isDark ? 'text-zinc-100' : 'text-gray-900'}`}>
           CloverleafPDF
         </h1>
@@ -85,17 +86,5 @@ export default function WelcomeScreen({ loadPDF }) {
         </div>
       )}
     </div>
-  )
-}
-
-function CloverBig() {
-  return (
-    <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-      <circle cx="8.5"  cy="8.5"  r="4.5" fill="#10b981" opacity="0.95"/>
-      <circle cx="15.5" cy="8.5"  r="4.5" fill="#10b981" opacity="0.8"/>
-      <circle cx="8.5"  cy="15.5" r="4.5" fill="#10b981" opacity="0.8"/>
-      <circle cx="15.5" cy="15.5" r="4.5" fill="#10b981" opacity="0.65"/>
-      <rect x="11" y="17" width="2" height="5" rx="1" fill="#10b981"/>
-    </svg>
   )
 }
