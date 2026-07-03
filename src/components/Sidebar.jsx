@@ -511,29 +511,83 @@ function SearchPanel({ isDark }) {
 
 // ── Annotations list ───────────────────────────────────────────────────────
 function AnnotationsList({ isDark }) {
-  const { annotations, removeAnnotation } = useStore()
+  const { annotations, removeAnnotation, addReply, deleteReply } = useStore()
   const ICONS = { highlight: '🟡', note: '📌', text: '📝', draw: '✏️', underline: '▁', strikethrough: '—' }
+  const [expanded, setExpanded] = useState({})
+  const [drafts,   setDrafts]   = useState({})
 
   if (!annotations.length)
     return <div className={`p-4 text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Noch keine Anmerkungen</div>
 
+  const submitReply = (id) => {
+    const text = (drafts[id] || '').trim()
+    if (!text) return
+    addReply(id, text)
+    setDrafts(d => ({ ...d, [id]: '' }))
+  }
+
   return (
     <div className="h-full overflow-y-auto p-2 space-y-1">
-      {annotations.map(a => (
-        <div key={a.id} onClick={() => document.getElementById(`page-${a.page}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          className={`flex items-start gap-2 p-2 rounded-lg text-xs cursor-pointer group transition-colors
-            ${isDark ? 'bg-zinc-800/60 hover:bg-zinc-800' : 'bg-gray-50 hover:bg-gray-100'}`}>
-          <span className="text-base flex-shrink-0 mt-0.5">{ICONS[a.type] || '📎'}</span>
-          <div className="flex-1 min-w-0">
-            <span className={`font-semibold ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>S. {a.page}</span>
-            {a.text && <div className={`truncate mt-0.5 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>{a.text}</div>}
+      {annotations.map(a => {
+        const replies = a.replies || []
+        const isOpen  = !!expanded[a.id]
+        return (
+          <div key={a.id} className={`rounded-lg text-xs ${isDark ? 'bg-zinc-800/60' : 'bg-gray-50'}`}>
+            <div onClick={() => document.getElementById(`page-${a.page}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer group transition-colors
+                ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`}>
+              <span className="text-base flex-shrink-0 mt-0.5">{ICONS[a.type] || '📎'}</span>
+              <div className="flex-1 min-w-0">
+                <span className={`font-semibold ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>S. {a.page}</span>
+                {a.text && <div className={`truncate mt-0.5 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>{a.text}</div>}
+              </div>
+              <button onClick={e => { e.stopPropagation(); setExpanded(x => ({ ...x, [a.id]: !x[a.id] })) }}
+                title={replies.length ? `${replies.length} Antwort(en)` : 'Antworten'}
+                className={`flex items-center gap-0.5 px-1 flex-shrink-0 transition-colors
+                  ${isOpen || replies.length ? 'text-clover-500' : isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'}`}>
+                <MessageSquare size={11}/>
+                {replies.length > 0 && <span className="text-[10px]">{replies.length}</span>}
+              </button>
+              <button onClick={e => { e.stopPropagation(); removeAnnotation(a.id) }}
+                className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0">
+                <X size={12}/>
+              </button>
+            </div>
+
+            {isOpen && (
+              <div className={`px-2 pb-2 pl-8 space-y-1.5 border-t ${isDark ? 'border-zinc-700/60' : 'border-gray-200'}`}
+                onClick={e => e.stopPropagation()}>
+                {replies.map(r => (
+                  <div key={r.id} className={`group/reply flex items-start gap-1.5 rounded px-2 py-1 mt-1.5
+                    ${isDark ? 'bg-zinc-900/50' : 'bg-white'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className={isDark ? 'text-zinc-300' : 'text-gray-700'}>{r.text}</div>
+                      <div className={`text-[10px] ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
+                        {new Date(r.time).toLocaleString('de-DE')}
+                      </div>
+                    </div>
+                    <button onClick={() => deleteReply(a.id, r.id)}
+                      className="opacity-0 group-hover/reply:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0">
+                      <X size={10}/>
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-1 pt-1">
+                  <input value={drafts[a.id] || ''} onChange={e => setDrafts(d => ({ ...d, [a.id]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') submitReply(a.id) }}
+                    placeholder="Antworten …"
+                    className={`flex-1 px-2 py-1 rounded text-xs outline-none border
+                      ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-100 placeholder-zinc-600' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}/>
+                  <button onClick={() => submitReply(a.id)}
+                    className="px-2 py-1 rounded text-xs bg-clover-600 hover:bg-clover-700 text-white transition-colors flex-shrink-0">
+                    ↵
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-          <button onClick={e => { e.stopPropagation(); removeAnnotation(a.id) }}
-            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0">
-            <X size={12}/>
-          </button>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

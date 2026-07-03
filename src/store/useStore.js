@@ -176,6 +176,21 @@ export const useStore = create((set, get) => ({
       isDirty: true,
     })
   },
+
+  // Reply threads on annotations — discussion metadata, not a visual mark, so
+  // deliberately kept out of the undo/redo stack.
+  addReply: (annotationId, text) => set(s => ({
+    annotations: s.annotations.map(a => a.id === annotationId
+      ? { ...a, replies: [...(a.replies || []), { id: Date.now() + Math.random(), text, time: Date.now() }] }
+      : a),
+    isDirty: true,
+  })),
+  deleteReply: (annotationId, replyId) => set(s => ({
+    annotations: s.annotations.map(a => a.id === annotationId
+      ? { ...a, replies: (a.replies || []).filter(r => r.id !== replyId) }
+      : a),
+    isDirty: true,
+  })),
   undoAnnotation: () => {
     const { annotationHistory, annotations, annotationFuture } = get()
     if (!annotationHistory.length) return
