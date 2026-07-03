@@ -3,7 +3,7 @@ import { Accessibility, CheckCircle2, XCircle, Info } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
-import { checkStructure, checkFormFieldLabels } from '../../lib/pdfCompliance'
+import { checkStructure, checkFormFieldLabels, checkImageAltText } from '../../lib/pdfCompliance'
 
 function Row({ status, title, detail, isDark }) {
   const Icon = status === 'pass' ? CheckCircle2 : status === 'fail' ? XCircle : Info
@@ -33,6 +33,7 @@ export default function AccessibilityCheckModal() {
       const structure = checkStructure(doc)
       const title = doc.getTitle()
       const formFields = checkFormFieldLabels(doc)
+      const altText = checkImageAltText(doc)
 
       const results = [
         {
@@ -63,11 +64,17 @@ export default function AccessibilityCheckModal() {
             : `${formFields.withLabel} von ${formFields.total} Feld(ern) haben eine Beschriftung.`,
         },
         {
-          status: structure.hasStructTree ? 'info' : 'info',
-          title: 'Bild-Alternativtexte',
-          detail: structure.hasStructTree
-            ? 'Automatische Prüfung von Alt-Texten pro Bild ist nicht möglich — bitte im PDF-Editor/Acrobat manuell prüfen.'
-            : 'Ohne Tag-Struktur nicht prüfbar (siehe oben).',
+          status: !altText.supported
+            ? 'info'
+            : altText.total === 0
+              ? 'info'
+              : (altText.withAlt === altText.total ? 'pass' : 'fail'),
+          title: 'Bild-Alternativtexte (Figure /Alt)',
+          detail: !altText.supported
+            ? 'Ohne Tag-Struktur nicht prüfbar (siehe oben).'
+            : altText.total === 0
+              ? 'Keine als Bild (Figure) getaggten Elemente gefunden.'
+              : `${altText.withAlt} von ${altText.total} Bild(ern) haben einen Alternativtext.`,
         },
       ]
       setChecks(results)

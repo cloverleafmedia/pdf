@@ -1,4 +1,4 @@
-import { PDFName, PDFDict } from 'pdf-lib'
+import { PDFName, PDFDict, PDFArray } from 'pdf-lib'
 
 // Low-level dict walks shared by the PDF/A export readiness report and the
 // PDF/UA accessibility checker — both need to poke at catalog-level structure
@@ -44,6 +44,43 @@ export function checkStructure(doc) {
     return !!(names instanceof PDFDict && names.lookup(PDFName.of('JavaScript')))
   })()
   return { isMarked, hasStructTree, lang, hasEncryption, hasJavaScript }
+}
+
+// Walks the struct tree (not the page content) because image alt text lives
+// on the /Figure struct element's /Alt entry, not on the image XObject itself.
+export function checkImageAltText(doc) {
+  const structTreeRoot = doc.catalog.lookup(PDFName.of('StructTreeRoot'))
+  if (!(structTreeRoot instanceof PDFDict)) return { supported: false, total: 0, withAlt: 0 }
+
+  let total = 0, withAlt = 0
+  const visited = new Set()
+
+  const walk = (node) => {
+    if (node instanceof PDFArray) {
+      for (let i = 0; i < node.size(); i++) walk(node.lookup(i))
+      return
+    }
+    if (!(node instanceof PDFDict) || visited.has(node)) return
+    visited.add(node)
+
+    const type = node.lookup(PDFName.of('Type'))
+    const typeName = type instanceof PDFName ? type.asString().replace(/^\//, '') : ''
+    if (typeName === 'MCR' || typeName === 'OBJR') return
+
+    const s = node.lookup(PDFName.of('S'))
+    const sName = s instanceof PDFName ? s.asString().replace(/^\//, '') : ''
+    if (sName === 'Figure') {
+      total++
+      const altObj = node.lookup(PDFName.of('Alt'))
+      const alt = altObj?.decodeText ? altObj.decodeText().trim() : ''
+      if (alt) withAlt++
+    }
+
+    walk(node.lookup(PDFName.of('K')))
+  }
+
+  walk(structTreeRoot.lookup(PDFName.of('K')))
+  return { supported: true, total, withAlt }
 }
 
 export function checkFormFieldLabels(doc) {

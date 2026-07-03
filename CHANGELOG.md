@@ -5,6 +5,9 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### Geändert
+- Barrierefreiheits-Check (PDF/UA) erkennt jetzt zusätzlich fehlenden Alt-Text an Bildern
+
 ## [1.2.1] – 2026-07-04
 
 ### Behoben
