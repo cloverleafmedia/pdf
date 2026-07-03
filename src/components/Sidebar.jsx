@@ -5,6 +5,11 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../store/useStore'
 
+// Fixed thumbnail render width — also used to pre-compute placeholder height
+// (see ThumbPage) so the reserved space matches what renderThumb() ends up
+// producing exactly, instead of a `w-full` guess that's usually wider.
+const THUMB_W = 200
+
 export default function Sidebar() {
   const { t } = useTranslation()
   const { sidebarTab, setSidebarTab, theme } = useStore()
@@ -55,6 +60,31 @@ function Thumbnails({ isDark }) {
   useEffect(() => {
     if (pdfDoc) setOrder(Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1))
   }, [pdfDoc])
+
+  // Base page size (at scale 1), used to reserve the correct thumbnail height
+  // up front — see baseSize usage in ThumbPage for why this matters.
+  const [baseSize, setBaseSize] = useState(null)
+  useEffect(() => {
+    if (!pdfDoc) { setBaseSize(null); return }
+    pdfDoc.getPage(1).then(page => {
+      const vp = page.getViewport({ scale: 1 })
+      setBaseSize({ width: vp.width, height: vp.height })
+    }).catch(() => {})
+  }, [pdfDoc])
+
+  // Keep the active thumbnail in view as the user scrolls the main PDF area —
+  // previously this only worked in the other direction (click thumbnail → main
+  // view scrolls), so the sidebar visibly fell behind during normal reading.
+  useEffect(() => {
+    if (dragFrom) return // don't fight the user mid-drag-reorder
+    // Wait a frame so the aspect-ratio-reserved layout above has settled
+    // before measuring/scrolling — otherwise a scroll started mid-layout can
+    // still land slightly short/long of its target.
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(`thumb-${currentPage}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [currentPage, dragFrom])
 
   const scrollToPage = (n) => {
     useStore.getState().setCurrentPage(n)
@@ -152,6 +182,7 @@ function Thumbnails({ isDark }) {
           isDark={isDark}
           onClick={() => scrollToPage(n)}
           rotation={pageRotations[n] || 0}
+          baseSize={baseSize}
           isDragOver={dragOver === n}
           onDragStart={() => setDragFrom(n)}
           onDragOver={setDragOver}
@@ -165,24 +196,43 @@ function Thumbnails({ isDark }) {
   )
 }
 
-function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, isDragOver, onDragStart, onDragOver, onDragEnd, onDelete, onDuplicate, onInsertBlank }) {
+function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, baseSize, isDragOver, onDragStart, onDragOver, onDragEnd, onDelete, onDuplicate, onInsertBlank }) {
   const { pdfDoc } = useStore()
   const canvasRef = useRef(null)
   const wrapRef   = useRef(null)
   const rendered  = useRef(false)
   const renderRef = useRef(null)
+  // Once true, we stop touching the canvas's inline style from React entirely
+  // (see placeholderH below) so renderThumb()'s direct DOM writes aren't
+  // clobbered by a later re-render of this component.
+  const [isRendered, setIsRendered] = useState(false)
 
   useEffect(() => {
     rendered.current = false
+    setIsRendered(false)
     if (renderRef.current) { renderRef.current.cancel?.(); renderRef.current = null }
   }, [pdfDoc, rotation])
+
+  // Reserve the canvas's final height up front (before it actually renders,
+  // which happens lazily/async) — otherwise every not-yet-rendered thumbnail
+  // sits at the browser's default <canvas> height, the sidebar's scrollHeight
+  // keeps growing as thumbnails pop in, and any in-flight scrollIntoView()
+  // (see the auto-scroll effect in Thumbnails) lands short of its target
+  // because the layout shifted mid-scroll.
+  // Must match renderThumb()'s own math exactly (fixed THUMB_W, same rotation
+  // swap) — the width here is a hard pixel value, not `w-full`, because
+  // renderThumb() sets canvas.style.width to a fixed THUMB_W too.
+  const aspect = baseSize
+    ? (rotation === 90 || rotation === 270 ? baseSize.height / baseSize.width : baseSize.width / baseSize.height)
+    : 0.77
+  const placeholderH = Math.round(THUMB_W / aspect)
 
   useEffect(() => {
     if (!wrapRef.current) return
     const obs = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !rendered.current && pdfDoc) {
         rendered.current = true
-        renderThumb(pageNum, canvasRef.current, pdfDoc, rotation, renderRef)
+        renderThumb(pageNum, canvasRef.current, pdfDoc, rotation, renderRef).then(() => setIsRendered(true))
       }
     }, { rootMargin: '400px' })
     obs.observe(wrapRef.current)
@@ -191,6 +241,7 @@ function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, isDragOver, o
 
   return (
     <div ref={wrapRef}
+      id={`thumb-${pageNum}`}
       draggable
       onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
       onDragOver={e => { e.preventDefault(); onDragOver(pageNum) }}
@@ -226,7 +277,7 @@ function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, isDragOver, o
         </button>
       </div>
 
-      <canvas ref={canvasRef} className="w-full block" />
+      <canvas ref={canvasRef} className="w-full block" style={isRendered ? undefined : { height: placeholderH }} />
 
       <div className={`text-center text-[10px] py-0.5
         ${isActive
@@ -244,7 +295,6 @@ async function renderThumb(pageNum, canvas, pdfDoc, rotation, renderRef) {
   try {
     const page = await pdfDoc.getPage(pageNum)
     const dpr   = Math.min(window.devicePixelRatio || 1, 2)
-    const THUMB_W = 200
     const scale = (THUMB_W / page.getViewport({ scale: 1 }).width) * dpr
 
     const vp = page.getViewport({ scale, rotation })

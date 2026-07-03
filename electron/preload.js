@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   close:            () => ipcRenderer.invoke('win:close'),
   isMaximized:      () => ipcRenderer.invoke('win:isMaximized'),
   toggleFullscreen: () => ipcRenderer.invoke('win:toggleFullscreen'),
-  print:            (deviceName) => ipcRenderer.invoke('win:print', deviceName),
+  print:            (opts) => ipcRenderer.invoke('win:print', opts),
   getPrinters:      () => ipcRenderer.invoke('win:getPrinters'),
   installUpdate:    () => ipcRenderer.invoke('win:installUpdate'),
   onWindowState:    (cb) => ipcRenderer.on('window-state-change', (_, v) => cb(v)),
