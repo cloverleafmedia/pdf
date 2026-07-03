@@ -24,7 +24,8 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Serienbrief-Formularausfüllung: füllt ein PDF-Formular für jede Zeile einer CSV-Datei aus und speichert je eine Datei (z. B. für Zertifikate, Rechnungen, Teilnahmebescheinigungen)
 - Unterschrift-Dialog: Name/Grund des Unterzeichners werden jetzt auch bei Zeichnen-/Tippen-Signaturen erfasst, als kleine Beschriftung unter der Signatur eingebettet und in einem im Dokument gespeicherten Audit-Trail protokolliert (sichtbar bei erneutem Öffnen des Dialogs, z. B. bei mehreren Unterzeichnern nacheinander)
 - Dokumenten-Bibliothek: beobachtete Ordner werden nach PDFs durchsucht, mit Dateiname-/Tag-Suche und optionaler (auf die ersten 40 Treffer × 10 Seiten begrenzter) Volltextsuche
-- PDF/A-Export: setzt PDF/A-Kennzeichnung (XMP), bettet ein sRGB-Farbprofil (OutputIntent, offizielles freies ICC-Profil des International Color Consortium) ein und entfernt JavaScript/Anhänge; bestmöglicher Export mit Bericht über verbleibende Lücken (z. B. nicht eingebettete Schriften) – keine zertifizierte PDF/A-Validierung
+- PDF/A-Export: setzt PDF/A-Kennzeichnung (XMP), bettet ein sRGB-Farbprofil (OutputIntent, offizielles freies ICC-Profil des International Color Consortium) ein, entfernt JavaScript/Anhänge, schreibt eine klassische Xref-Tabelle statt Xref-Stream und setzt eine Trailer-ID
+- PDF/A-Export: echte Konformitätsprüfung per mitgeliefertem veraPDF (ISO-19005-Validator der Archivbranche) – Button "Mit veraPDF prüfen" zeigt Regelverstöße mit Klausel/Beschreibung an, statt sich nur auf die eigene Heuristik zu verlassen. veraPDF läuft als eigener Java-Prozess (bereitgestellt via `npm run setup:verapdf`, nicht im Repository) und wird nicht in den eigenen Code eingebunden.
 - Barrierefreiheits-Check (PDF/UA): prüft Tagging, Struktur-Baum, Dokumentsprache, Titel-Metadaten und Formularfeld-Beschriftungen; reine Prüfung ohne automatische Behebung
 
 ### Geändert

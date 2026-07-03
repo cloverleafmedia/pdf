@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const path = require('path')
 const fs   = require('fs')
+const { execFile } = require('child_process')
 
 const isDev = !app.isPackaged
 
@@ -232,6 +233,75 @@ async function signPdf(pdfBytes, certPath, password, meta) {
 }
 
 ipcMain.handle('sign:pdf', (_, pdfBytes, certPath, password, meta) => signPdf(pdfBytes, certPath, password, meta))
+
+// ── PDF/A validation (bundled veraPDF — a real, ISO-accredited conformance
+// checker) ───────────────────────────────────────────────────────────────
+// Not embedded/linked into our own code: we shell out to it as a separate
+// Java process, the same way an app might shell out to ffmpeg. Bundled via
+// `npm run setup:verapdf` into vendor/verapdf-runtime/ (gitignored, populated
+// at build time) — see scripts/setup-verapdf.js for the licensing rationale
+// (MPLv2+, one of veraPDF's two license options).
+function getVerapdfRuntime() {
+  const base = isDev
+    ? path.join(__dirname, '..', 'vendor', 'verapdf-runtime')
+    : path.join(process.resourcesPath, 'verapdf-runtime')
+  return {
+    javaExe:    path.join(base, 'jre', 'bin', 'java.exe'),
+    verapdfDir: path.join(base, 'verapdf'),
+  }
+}
+
+ipcMain.handle('pdfa:validate', async (_, pdfBytes) => {
+  const { javaExe, verapdfDir } = getVerapdfRuntime()
+  if (!fs.existsSync(javaExe) || !fs.existsSync(verapdfDir)) {
+    return { available: false }
+  }
+
+  const tmpFile = path.join(app.getPath('temp'), `clover-pdfa-check-${Date.now()}.pdf`)
+  fs.writeFileSync(tmpFile, Buffer.from(pdfBytes))
+  try {
+    const classpath = `${path.join(verapdfDir, 'etc')};${path.join(verapdfDir, 'bin', '*')}`
+    const args = [
+      '-classpath', classpath,
+      `-Dapp.home=${verapdfDir}`,
+      '--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED',
+      'org.verapdf.apps.GreenfieldCliWrapper',
+      '-f', '1b', '--format', 'json',
+      tmpFile,
+    ]
+    // veraPDF exits non-zero whenever the file is non-compliant (that's a
+    // normal validation result, not a crash) — so stdout is parsed regardless
+    // of exit code, and only a JSON-parse failure counts as a real error.
+    const stdout = await new Promise((resolve, reject) => {
+      execFile(javaExe, args, { maxBuffer: 20 * 1024 * 1024 }, (_err, stdout, stderr) => {
+        if (!stdout) reject(new Error(stderr || 'Keine Ausgabe von veraPDF'))
+        else resolve(stdout)
+      })
+    })
+    const parsed = JSON.parse(stdout)
+    const result = parsed?.report?.jobs?.[0]?.validationResult?.[0]
+    if (!result) return { available: true, success: false, error: 'Kein Prüfergebnis von veraPDF erhalten.' }
+    return {
+      available: true,
+      success: true,
+      compliant: result.compliant,
+      profileName: result.profileName,
+      passedRules: result.details.passedRules,
+      failedRules: result.details.failedRules,
+      failures: (result.details.ruleSummaries || [])
+        .filter(r => r.ruleStatus === 'FAILED')
+        .map(r => ({
+          clause: r.clause,
+          description: r.description,
+          errorMessage: r.checks?.[0]?.errorMessage || '',
+        })),
+    }
+  } catch (e) {
+    return { available: true, success: false, error: e.message || 'Unbekannter Fehler bei der veraPDF-Prüfung' }
+  } finally {
+    fs.unlink(tmpFile, () => {})
+  }
+})
 
 // ── Persistent storage ─────────────────────────────────────────────────────
 const recentPath   = path.join(app.getPath('userData'), 'recent.json')

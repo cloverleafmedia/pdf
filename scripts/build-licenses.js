@@ -35,14 +35,36 @@ checker.init({ start: path.join(__dirname, ".."), production: true, excludePacka
   // Nicht-npm-Assets, die mitgeliefert werden — hier manuell gepflegt, da
   // license-checker nur package.json-Abhaengigkeiten erfasst.
   out += "----------------------------------------------------------------------\n";
-  out += "sRGB_v4_ICC_preference.icc (src/assets/)\n";
-  out += "Lizenz: Freie Nutzung/Kopie/Weitergabe unveraendert, mit Copyright-Hinweis\n";
-  out += "Quelle: https://registry.color.org/rgb-registry/profiles/sRGB_v4_ICC_preference.icc\n";
+  out += "sRGB2014.icc (src/assets/)\n";
+  out += "Lizenz: Freie Nutzung/Kopie/Weitergabe/Verkauf ohne Einschraenkung (unveraendert)\n";
+  out += "Quelle: https://registry.color.org/rgb-registry/profiles/sRGB2014.icc\n";
   out += "Publisher: International Color Consortium\n\n";
-  out += "Copyright 2007 International Color Consortium. Permission is hereby granted,\n";
-  out += "without fee, to use, copy and distribute this file for any purpose, provided\n";
-  out += "the file is used \"as-is\" without modification and that this notice remains\n";
-  out += "unaltered. Verwendet im PDF/A-Export als eingebettetes OutputIntent-Farbprofil.\n\n";
+  out += "\"This profile is made available by the International Color Consortium, and\n";
+  out += "may be copied, distributed, embedded, made, used, and sold without\n";
+  out += "restriction.\" (https://registry.color.org/profile-library/) Verwendet im\n";
+  out += "PDF/A-Export als eingebettetes OutputIntent-Farbprofil.\n\n";
+
+  out += "----------------------------------------------------------------------\n";
+  out += "Eclipse Temurin JRE 17 (vendor/verapdf-runtime/jre/, nicht im Repository, per\n";
+  out += "'npm run setup:verapdf' geladen und in den Installer gebuendelt)\n";
+  out += "Lizenz: GPL-2.0 mit Classpath Exception\n";
+  out += "Quelle: https://adoptium.net / https://github.com/adoptium/temurin17-binaries\n";
+  out += "Publisher: Eclipse Adoptium (Eclipse Foundation)\n\n";
+  out += "Die Classpath Exception erlaubt das Mitliefern dieser Java-Laufzeit, ohne dass\n";
+  out += "dadurch der Rest der Anwendung unter die GPL faellt. Wird ausschliesslich als\n";
+  out += "separater Prozess aufgerufen (nicht in den JS-Code eingebunden), um veraPDF\n";
+  out += "(siehe unten) auszufuehren.\n\n";
+
+  out += "----------------------------------------------------------------------\n";
+  out += "veraPDF 1.30.2 (vendor/verapdf-runtime/verapdf/, nicht im Repository, per\n";
+  out += "'npm run setup:verapdf' geladen und in den Installer gebuendelt)\n";
+  out += "Lizenz: GPL-3.0-or-later ODER MPL-2.0-or-later (Wahl des Nutzers/Verteilers) —\n";
+  out += "diese Anwendung verteilt veraPDF unter den Bedingungen der MPL-2.0-or-later.\n";
+  out += "Quelle: https://github.com/veraPDF (u. a. veraPDF-apps, veraPDF-library, veraPDF-validation)\n";
+  out += "Publisher: veraPDF Consortium (info@verapdf.org)\n\n";
+  out += "Wird als eigenstaendiger Java-Prozess aufgerufen (kein Linking in den eigenen\n";
+  out += "Code) fuer die optionale echte PDF/A-Konformitaetspruefung im PDF/A-Export-Dialog.\n";
+  out += "Der Quellcode ist unveraendert und oeffentlich unter obiger Adresse verfuegbar.\n\n";
 
   fs.writeFileSync(outputPath, out);
   console.log("THIRD-PARTY-LICENSES.txt geschrieben:", keys.length, "Pakete");

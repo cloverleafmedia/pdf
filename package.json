@@ -8,9 +8,10 @@
   "scripts": {
     "dev": "concurrently -k -n VITE,ELECTRON -c cyan,magenta \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "build": "vite build",
-    "dist": "npm run build && electron-builder --win",
-    "dist:dir": "npm run build && electron-builder --win --dir",
-    "licenses": "node scripts/build-licenses.js"
+    "dist": "node scripts/check-verapdf-bundled.js && npm run build && electron-builder --win",
+    "dist:dir": "node scripts/check-verapdf-bundled.js && npm run build && electron-builder --win --dir",
+    "licenses": "node scripts/build-licenses.js",
+    "setup:verapdf": "node scripts/setup-verapdf.js"
   },
   "dependencies": {
     "@signpdf/placeholder-plain": "^3.3.0",
@@ -61,6 +62,10 @@
       {
         "from": "LICENSE",
         "to": "LICENSE.txt"
+      },
+      {
+        "from": "vendor/verapdf-runtime",
+        "to": "verapdf-runtime"
       }
     ],
     "win": {

@@ -1461,13 +1461,37 @@ Publisher: Paul Henschel
 
 
 ----------------------------------------------------------------------
-sRGB_v4_ICC_preference.icc (src/assets/)
-Lizenz: Freie Nutzung/Kopie/Weitergabe unveraendert, mit Copyright-Hinweis
-Quelle: https://registry.color.org/rgb-registry/profiles/sRGB_v4_ICC_preference.icc
+sRGB2014.icc (src/assets/)
+Lizenz: Freie Nutzung/Kopie/Weitergabe/Verkauf ohne Einschraenkung (unveraendert)
+Quelle: https://registry.color.org/rgb-registry/profiles/sRGB2014.icc
 Publisher: International Color Consortium
 
-Copyright 2007 International Color Consortium. Permission is hereby granted,
-without fee, to use, copy and distribute this file for any purpose, provided
-the file is used "as-is" without modification and that this notice remains
-unaltered. Verwendet im PDF/A-Export als eingebettetes OutputIntent-Farbprofil.
+"This profile is made available by the International Color Consortium, and
+may be copied, distributed, embedded, made, used, and sold without
+restriction." (https://registry.color.org/profile-library/) Verwendet im
+PDF/A-Export als eingebettetes OutputIntent-Farbprofil.
+
+----------------------------------------------------------------------
+Eclipse Temurin JRE 17 (vendor/verapdf-runtime/jre/, nicht im Repository, per
+'npm run setup:verapdf' geladen und in den Installer gebuendelt)
+Lizenz: GPL-2.0 mit Classpath Exception
+Quelle: https://adoptium.net / https://github.com/adoptium/temurin17-binaries
+Publisher: Eclipse Adoptium (Eclipse Foundation)
+
+Die Classpath Exception erlaubt das Mitliefern dieser Java-Laufzeit, ohne dass
+dadurch der Rest der Anwendung unter die GPL faellt. Wird ausschliesslich als
+separater Prozess aufgerufen (nicht in den JS-Code eingebunden), um veraPDF
+(siehe unten) auszufuehren.
+
+----------------------------------------------------------------------
+veraPDF 1.30.2 (vendor/verapdf-runtime/verapdf/, nicht im Repository, per
+'npm run setup:verapdf' geladen und in den Installer gebuendelt)
+Lizenz: GPL-3.0-or-later ODER MPL-2.0-or-later (Wahl des Nutzers/Verteilers) —
+diese Anwendung verteilt veraPDF unter den Bedingungen der MPL-2.0-or-later.
+Quelle: https://github.com/veraPDF (u. a. veraPDF-apps, veraPDF-library, veraPDF-validation)
+Publisher: veraPDF Consortium (info@verapdf.org)
+
+Wird als eigenstaendiger Java-Prozess aufgerufen (kein Linking in den eigenen
+Code) fuer die optionale echte PDF/A-Konformitaetspruefung im PDF/A-Export-Dialog.
+Der Quellcode ist unveraendert und oeffentlich unter obiger Adresse verfuegbar.
 
