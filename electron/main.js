@@ -106,13 +106,15 @@ ipcMain.handle('win:getPrinters', async () => {
 // from here, so the best we can do is detect it and tell the user exactly
 // what to do instead of failing silently ("nothing happens" when clicking Print).
 //
-// `opts.silent` controls whether a second, native Windows print dialog opens
-// on top of our own in-app one: false (default) prints immediately using the
-// printer/page-range/copies chosen in-app; true opens the full native dialog
+// `opts.silent` controls whether the native Windows print dialog opens on top
+// of our own in-app one: true (default) prints immediately using the
+// printer/page-range/copies chosen in-app; false opens the full native dialog
 // (for printer-driver-specific settings — color, duplex, paper tray — that we
 // have no cross-driver way to expose ourselves) with those as the starting point.
 ipcMain.handle('win:print', async (_, opts = {}) => {
-  const { deviceName, pageRanges, copies, silent } = opts
+  // Default to silent (direct print with the in-app settings) unless the
+  // caller explicitly asks for the native dialog via { silent: false }.
+  const { deviceName, pageRanges, copies, silent = true } = opts
   const printers = await mainWindow.webContents.getPrintersAsync()
   if (!printers.length) {
     return { success: false, reason: 'Kein Drucker gefunden. Bitte einen Drucker in den Windows-Einstellungen einrichten.' }
@@ -120,7 +122,7 @@ ipcMain.handle('win:print', async (_, opts = {}) => {
   // deviceName comes from the printer-selection dialog the user just confirmed;
   // only fall back to auto-picking one if it's somehow missing/no longer valid.
   const target = printers.find(p => p.name === deviceName) || printers.find(p => p.isDefault) || printers[0]
-  const printOptions = { silent: !!silent, printBackground: true, deviceName: target.name }
+  const printOptions = { silent, printBackground: true, deviceName: target.name }
   if (Array.isArray(pageRanges) && pageRanges.length) printOptions.pageRanges = pageRanges
   if (copies && copies > 1) printOptions.copies = copies
   return new Promise((resolve) => {
