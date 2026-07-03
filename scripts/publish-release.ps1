@@ -29,6 +29,21 @@ try {
 
     $env:GH_TOKEN = $plainToken
 
+    # GitHub verlangt fuer sofort veroeffentlichte (nicht-Draft) Releases einen
+    # bereits existierenden Git-Tag - ohne das schlaegt electron-builder mit
+    # "422 Published releases must have a valid tag" fehl.
+    $tagName = "v$version"
+    $existingTag = git tag -l $tagName
+    if (-not $existingTag) {
+        Write-Host "`n--- Tag $tagName anlegen und pushen ---" -ForegroundColor DarkGray
+        git tag $tagName
+        if ($LASTEXITCODE -ne 0) { throw "git tag fehlgeschlagen (Exit $LASTEXITCODE)" }
+        git push origin $tagName
+        if ($LASTEXITCODE -ne 0) { throw "git push des Tags fehlgeschlagen (Exit $LASTEXITCODE)" }
+    } else {
+        Write-Host "`nTag $tagName existiert bereits, ueberspringe." -ForegroundColor DarkGray
+    }
+
     Write-Host "`n--- npm run build ---" -ForegroundColor DarkGray
     npm run build
     if ($LASTEXITCODE -ne 0) { throw "npm run build fehlgeschlagen (Exit $LASTEXITCODE)" }
