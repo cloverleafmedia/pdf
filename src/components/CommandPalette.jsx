@@ -55,10 +55,7 @@ export default function CommandPalette() {
     { group: 'Datei', label: 'Speichern als …', icon: <Save size={15}/>, disabled: !pdfDoc,
       action: run(() => window._savePDF?.(true)) },
     { group: 'Datei', label: t('toolbar.print'), icon: <Printer size={15}/>, shortcut: 'Strg+P', disabled: !pdfDoc,
-      action: run(async () => {
-        const r = await window.api?.print()
-        if (r && !r.success && r.reason !== 'cancelled') s.setStatus('Drucken fehlgeschlagen: ' + (r.reason || 'unbekannt'), 5000)
-      }) },
+      action: run(() => s.openPrintDialog()) },
     { group: 'Bearbeiten', label: 'Rückgängig', icon: <Undo2 size={15}/>, shortcut: 'Strg+Z', disabled: !pdfDoc || !s.annotationHistory?.length,
       action: run(() => s.undoAnnotation()) },
     { group: 'Bearbeiten', label: 'Wiederholen', icon: <Redo2 size={15}/>, shortcut: 'Strg+Y', disabled: !pdfDoc || !s.annotationFuture?.length,

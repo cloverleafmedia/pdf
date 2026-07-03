@@ -22,6 +22,7 @@ import QRCodeModal from './components/modals/QRCodeModal'
 import CropModal from './components/modals/CropModal'
 import BatchModal from './components/modals/BatchModal'
 import ShortcutsModal from './components/modals/ShortcutsModal'
+import PrintDialog from './components/modals/PrintDialog'
 import PresentationMode from './components/PresentationMode'
 import CompareView from './components/CompareView'
 import CommandPalette from './components/CommandPalette'
@@ -35,7 +36,7 @@ export default function App() {
   const {
     pdfDoc, theme, sidebarOpen, sidebarWidth,
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
-    compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen,
+    compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
     presentationMode,
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
@@ -166,9 +167,7 @@ export default function App() {
           case 'o': e.preventDefault(); window.api?.openPDF().then(r => { if (!r?.canceled) loadPDF(r.filePaths[0]) }); break
           case 't': e.preventDefault(); window.api?.openPDF().then(r => { if (!r?.canceled) loadPDF(r.filePaths[0], true) }); break
           case 's': e.preventDefault(); window._savePDF?.(); break
-          case 'p': e.preventDefault(); window.api?.print().then(r => {
-            if (r && !r.success && r.reason !== 'cancelled') s.setStatus('Drucken fehlgeschlagen: ' + (r.reason || 'unbekannt'), 5000)
-          }); break
+          case 'p': e.preventDefault(); if (s.pdfDoc) s.openPrintDialog(); break
           case '+': case '=': e.preventDefault(); s.zoomIn(); break
           case '-': e.preventDefault(); s.zoomOut(); break
           case '0': e.preventDefault(); s.setZoom(s.defaultZoom); break
@@ -264,6 +263,7 @@ export default function App() {
       {batchOpen         && <BatchModal />}
       {compareOpen       && <CompareView />}
       {shortcutsOpen     && <ShortcutsModal />}
+      {printDialogOpen   && <PrintDialog />}
       <CommandPalette />
     </div>
   )

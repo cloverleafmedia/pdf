@@ -95,6 +95,7 @@ export const useStore = create((set, get) => ({
   compareOpen:      false,
   compareDoc:       null,
   compareBytes:     null,
+  printDialogOpen:  false,
 
   // ── Update notification ──────────────────────────────────────────────────
   updateAvailable:  false,
@@ -327,6 +328,8 @@ export const useStore = create((set, get) => ({
   openCompare:        () => set({ compareOpen: true }),
   closeCompare:       () => set({ compareOpen: false, compareDoc: null, compareBytes: null }),
   setCompareDoc:      (doc, bytes) => set({ compareDoc: doc, compareBytes: bytes }),
+  openPrintDialog:    () => set({ printDialogOpen: true }),
+  closePrintDialog:   () => set({ printDialogOpen: false }),
 
   // ── Actions: tabs ────────────────────────────────────────────────────────
   _snapshotCurrentTab: () => {

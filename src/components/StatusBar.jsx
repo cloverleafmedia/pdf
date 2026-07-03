@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store/useStore'
+import pkg from '../../package.json'
 
 function fmt(bytes) {
   if (!bytes) return ''
@@ -61,7 +62,7 @@ export default function StatusBar() {
         {language === 'de' ? 'DE' : 'EN'}
       </button>
 
-      <span className={isDark ? 'text-zinc-700' : 'text-gray-300'}>CloverleafPDF v1.0</span>
+      <span className={isDark ? 'text-zinc-700' : 'text-gray-300'}>CloverleafPDF v{pkg.version}</span>
     </div>
   )
 }

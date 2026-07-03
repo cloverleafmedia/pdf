@@ -81,7 +81,7 @@ export default function Toolbar() {
     undoAnnotation, redoAnnotation,
     setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool,
     openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare,
-    openCommandPalette, openShortcuts, setStatus,
+    openCommandPalette, openShortcuts, openPrintDialog,
   } = useStore()
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
@@ -114,11 +114,6 @@ export default function Toolbar() {
     if (!r?.canceled && r?.filePaths?.[0]) window._loadPDF?.(r.filePaths[0])
   }
 
-  const printDoc = async () => {
-    const r = await window.api?.print()
-    // reason 'cancelled' just means the user closed the print dialog — not an error
-    if (r && !r.success && r.reason !== 'cancelled') setStatus('Drucken fehlgeschlagen: ' + (r.reason || 'unbekannt'), 5000)
-  }
 
   const h = `min-h-11 flex-shrink-0 overflow-x-auto flex items-center gap-0.5 px-1 py-1 border-b no-print
     ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`
@@ -176,7 +171,7 @@ export default function Toolbar() {
           <TBtn title={t('toolbar.open')}     onClick={openFile}                         isDark={isDark}><FolderOpen size={16}/></TBtn>
           <TBtn title="Speichern (Strg+S)"    onClick={() => window._savePDF?.()}        isDark={isDark} disabled={!pdfDoc}><Save size={16}/></TBtn>
           <TBtn title="Speichern als …"       onClick={() => window._savePDF?.(true)}    isDark={isDark} disabled={!pdfDoc}><Save size={14}/><span className="text-[9px] -ml-0.5 font-bold">+</span></TBtn>
-          <TBtn title={t('toolbar.print')}    onClick={printDoc}                         isDark={isDark} disabled={!pdfDoc}><Printer size={16}/></TBtn>
+          <TBtn title={t('toolbar.print')}    onClick={openPrintDialog}                  isDark={isDark} disabled={!pdfDoc}><Printer size={16}/></TBtn>
           <Sep isDark={isDark}/>
           <TBtn title="Rückgängig (Strg+Z)" onClick={undoAnnotation} isDark={isDark} disabled={!pdfDoc || !annotationHistory?.length}><Undo2 size={16}/></TBtn>
           <TBtn title="Wiederholen (Strg+Y)" onClick={redoAnnotation} isDark={isDark} disabled={!pdfDoc || !annotationFuture?.length}><Redo2 size={16}/></TBtn>
