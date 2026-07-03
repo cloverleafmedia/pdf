@@ -32,6 +32,18 @@ checker.init({ start: path.join(__dirname, ".."), production: true, excludePacka
     out += "\n";
   }
 
+  // Nicht-npm-Assets, die mitgeliefert werden — hier manuell gepflegt, da
+  // license-checker nur package.json-Abhaengigkeiten erfasst.
+  out += "----------------------------------------------------------------------\n";
+  out += "sRGB_v4_ICC_preference.icc (src/assets/)\n";
+  out += "Lizenz: Freie Nutzung/Kopie/Weitergabe unveraendert, mit Copyright-Hinweis\n";
+  out += "Quelle: https://registry.color.org/rgb-registry/profiles/sRGB_v4_ICC_preference.icc\n";
+  out += "Publisher: International Color Consortium\n\n";
+  out += "Copyright 2007 International Color Consortium. Permission is hereby granted,\n";
+  out += "without fee, to use, copy and distribute this file for any purpose, provided\n";
+  out += "the file is used \"as-is\" without modification and that this notice remains\n";
+  out += "unaltered. Verwendet im PDF/A-Export als eingebettetes OutputIntent-Farbprofil.\n\n";
+
   fs.writeFileSync(outputPath, out);
   console.log("THIRD-PARTY-LICENSES.txt geschrieben:", keys.length, "Pakete");
 });

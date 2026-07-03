@@ -1,10 +1,30 @@
 import React, { useState } from 'react'
 import { FileCheck2, AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { PDFDocument, PDFName } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFString } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import { checkFontEmbedding, checkStructure } from '../../lib/pdfCompliance'
+import iccUrl from '../../assets/sRGB_v4_ICC_preference.icc?url'
+
+// sRGB v4 ICC preference profile, International Color Consortium — licensed for
+// free use/copy/distribution unmodified with copyright notice retained (see
+// THIRD-PARTY-LICENSES.txt). PDF/A requires an embedded OutputIntent color
+// profile; this is the ICC's own official reference sRGB profile for exactly
+// that purpose.
+async function embedOutputIntent(doc) {
+  const iccBytes = new Uint8Array(await (await fetch(iccUrl)).arrayBuffer())
+  const iccStream = doc.context.stream(iccBytes, { N: 3, Alternate: PDFName.of('DeviceRGB') })
+  const iccRef = doc.context.register(iccStream)
+  const outputIntent = doc.context.obj({
+    Type: PDFName.of('OutputIntent'),
+    S: PDFName.of('GTS_PDFA1'),
+    OutputConditionIdentifier: PDFString.of('sRGB IEC61966-2.1'),
+    Info: PDFString.of('sRGB IEC61966-2.1'),
+    DestOutputProfile: iccRef,
+  })
+  doc.catalog.set(PDFName.of('OutputIntents'), doc.context.obj([doc.context.register(outputIntent)]))
+}
 
 function buildXmp() {
   return `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
@@ -44,6 +64,7 @@ export default function PdfaExportModal() {
       const ref = doc.context.register(stream)
       doc.catalog.set(PDFName.of('Metadata'), ref)
       doc.setProducer('CloverleafPDF')
+      await embedOutputIntent(doc)
 
       // What's left that we can't fix automatically — reported honestly rather
       // than claiming full compliance we can't verify without a real validator.
@@ -52,7 +73,6 @@ export default function PdfaExportModal() {
       const foundGaps = []
       if (fonts.unembedded.length) foundGaps.push(`${fonts.unembedded.length} Schriftart(en) nicht eingebettet: ${fonts.unembedded.join(', ')}`)
       if (structure.hasEncryption) foundGaps.push('Dokument ist verschlüsselt (PDF/A erlaubt keine Verschlüsselung)')
-      foundGaps.push('Kein ICC-Farbprofil eingebettet (OutputIntent) — für echte PDF/A-Konformität nötig')
 
       const newBytes = await doc.save()
       const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
@@ -73,13 +93,13 @@ export default function PdfaExportModal() {
         <div className={`text-xs rounded-lg px-3 py-2 flex items-start gap-2 ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-blue-50 text-blue-700'}`}>
           <AlertTriangle size={14} className="flex-shrink-0 mt-0.5"/>
           <span>
-            Bestmöglicher PDF/A-orientierter Export: PDF/A-Kennzeichnung (XMP) wird gesetzt, JavaScript/Anhänge werden entfernt.
-            Das ist <strong>keine zertifizierte PDF/A-Validierung</strong> (z. B. veraPDF) — für rechtlich verbindliche Archivierung
-            das Ergebnis vorher damit prüfen.
+            Bestmöglicher PDF/A-orientierter Export: PDF/A-Kennzeichnung (XMP), sRGB-Farbprofil (OutputIntent) werden gesetzt,
+            JavaScript/Anhänge werden entfernt. Das ist <strong>keine zertifizierte PDF/A-Validierung</strong> (z. B. veraPDF) —
+            für rechtlich verbindliche Archivierung das Ergebnis vorher damit prüfen.
           </span>
         </div>
 
-        {gaps && (
+        {gaps && gaps.length > 0 && (
           <div className={`rounded-lg border px-3 py-2 space-y-1.5 ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-gray-50 border-gray-200'}`}>
             <div className={`text-xs font-medium flex items-center gap-1.5 ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
               <FileCheck2 size={13}/> Verbleibende Lücken zur vollen Konformität
@@ -90,6 +110,12 @@ export default function PdfaExportModal() {
                 {g}
               </div>
             ))}
+          </div>
+        )}
+
+        {gaps && gaps.length === 0 && (
+          <div className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 ${isDark ? 'bg-zinc-800 text-clover-400' : 'bg-clover-50 text-clover-700'}`}>
+            <CheckCircle2 size={13} className="flex-shrink-0"/> Keine bekannten Lücken gefunden (Schriften eingebettet, keine Verschlüsselung).
           </div>
         )}
       </div>
