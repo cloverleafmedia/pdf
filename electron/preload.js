@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('api', {
   openPDF: () => ipcRenderer.invoke('dialog:openPDF'),
   savePDF: (n) => ipcRenderer.invoke('dialog:savePDF', n),
   openCert: () => ipcRenderer.invoke('dialog:openCert'),
+  openCSV: () => ipcRenderer.invoke('dialog:openCSV'),
+  pickFolder: (title) => ipcRenderer.invoke('dialog:pickFolder', title),
 
   // Digital signature (certificate never leaves the main process)
   signPDF: (pdfBytes, certPath, password, meta) => ipcRenderer.invoke('sign:pdf', pdfBytes, certPath, password, meta),
@@ -41,4 +43,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Directory picker
   saveDirectory:    () => ipcRenderer.invoke('dialog:saveDirectory'),
+
+  // Document library
+  libraryScan:      (folders) => ipcRenderer.invoke('library:scan', folders),
 })

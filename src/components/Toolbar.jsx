@@ -9,7 +9,8 @@ import {
   PanelLeftClose, PanelLeftOpen, Settings, FileText, ChevronDown,
   Square, AlertTriangle, CheckCheck, Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
-  Wrench, Eye, Pin, Command, Keyboard
+  Wrench, Eye, Pin, Command, Keyboard,
+  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -82,6 +83,7 @@ export default function Toolbar() {
     setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool,
     openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare,
     openCommandPalette, openShortcuts, openPrintDialog,
+    openSanitize, openMailMerge, openPdfa, openA11y, openLibrary,
   } = useStore()
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
@@ -148,6 +150,11 @@ export default function Toolbar() {
     { id: 'batch',       icon: <Package2 size={15}/>,            label: 'Batch-Verarbeitung',        onClick: openBatch },
     { id: 'compare',     icon: <SplitSquareHorizontal size={15}/>, label: 'PDFs vergleichen',         onClick: openCompare,                 disabled: !pdfDoc },
     { id: 'exportannot', icon: <BookmarkPlus size={15}/>,        label: 'Anmerkungen exportieren',   onClick: () => window._exportAnnotations?.(), disabled: !pdfDoc },
+    { id: 'sanitize',    icon: <ShieldCheck size={15}/>,         label: 'Dokument bereinigen',       onClick: openSanitize,                disabled: !pdfDoc },
+    { id: 'mailmerge',   icon: <FileSpreadsheet size={15}/>,     label: 'Serienbrief',               onClick: openMailMerge },
+    { id: 'pdfa',        icon: <FileCheck2 size={15}/>,          label: 'PDF/A-Export',              onClick: openPdfa,                    disabled: !pdfDoc },
+    { id: 'a11y',        icon: <Accessibility size={15}/>,       label: 'Barrierefreiheits-Check',   onClick: openA11y,                    disabled: !pdfDoc },
+    { id: 'library',     icon: <Library size={15}/>,             label: 'Bibliothek',                onClick: openLibrary },
   ]
 
   const viewItems = [

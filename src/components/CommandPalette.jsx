@@ -9,6 +9,7 @@ import {
   Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
   BookmarkPlus, Package2, Keyboard, CornerDownLeft,
+  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -123,6 +124,11 @@ export default function CommandPalette() {
     { group: 'Dokument', label: 'Batch-Verarbeitung', icon: <Package2 size={15}/>, action: run(() => s.openBatch()) },
     { group: 'Dokument', label: 'PDFs vergleichen', icon: <SplitSquareHorizontal size={15}/>, disabled: !pdfDoc, action: run(() => s.openCompare()) },
     { group: 'Dokument', label: 'Anmerkungen exportieren', icon: <BookmarkPlus size={15}/>, disabled: !pdfDoc, action: run(() => window._exportAnnotations?.()) },
+    { group: 'Dokument', label: 'Dokument bereinigen', icon: <ShieldCheck size={15}/>, disabled: !pdfDoc, action: run(() => s.openSanitize()) },
+    { group: 'Dokument', label: 'Serienbrief', icon: <FileSpreadsheet size={15}/>, action: run(() => s.openMailMerge()) },
+    { group: 'Dokument', label: 'PDF/A-Export', icon: <FileCheck2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openPdfa()) },
+    { group: 'Dokument', label: 'Barrierefreiheits-Check', icon: <Accessibility size={15}/>, disabled: !pdfDoc, action: run(() => s.openA11y()) },
+    { group: 'Dokument', label: 'Bibliothek', icon: <Library size={15}/>, action: run(() => s.openLibrary()) },
 
     // ── Ansicht ────────────────────────────────────────────────────────
     { group: 'Ansicht', label: 'Nachtmodus umschalten', icon: <Moon size={15}/>, disabled: !pdfDoc, active: nightMode,

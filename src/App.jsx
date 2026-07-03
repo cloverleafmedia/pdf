@@ -23,6 +23,11 @@ import CropModal from './components/modals/CropModal'
 import BatchModal from './components/modals/BatchModal'
 import ShortcutsModal from './components/modals/ShortcutsModal'
 import PrintDialog from './components/modals/PrintDialog'
+import SanitizeModal from './components/modals/SanitizeModal'
+import MailMergeModal from './components/modals/MailMergeModal'
+import PdfaExportModal from './components/modals/PdfaExportModal'
+import AccessibilityCheckModal from './components/modals/AccessibilityCheckModal'
+import LibraryModal from './components/modals/LibraryModal'
 import PresentationMode from './components/PresentationMode'
 import CompareView from './components/CompareView'
 import CommandPalette from './components/CommandPalette'
@@ -37,6 +42,7 @@ export default function App() {
     pdfDoc, theme, sidebarOpen, sidebarWidth,
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
     compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
+    sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen,
     presentationMode,
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
@@ -59,6 +65,8 @@ export default function App() {
       if (Array.isArray(settings.pinnedTools)) useStore.setState({ pinnedTools: settings.pinnedTools })
       if (Array.isArray(settings.watermarkTemplates)) useStore.setState({ watermarkTemplates: settings.watermarkTemplates })
       if (Array.isArray(settings.headerFooterTemplates)) useStore.setState({ headerFooterTemplates: settings.headerFooterTemplates })
+      if (Array.isArray(settings.libraryFolders)) useStore.setState({ libraryFolders: settings.libraryFolders })
+      if (settings.libraryTags && typeof settings.libraryTags === 'object') useStore.setState({ libraryTags: settings.libraryTags })
       setRecentFiles(recent)
     }
     boot()
@@ -264,6 +272,11 @@ export default function App() {
       {compareOpen       && <CompareView />}
       {shortcutsOpen     && <ShortcutsModal />}
       {printDialogOpen   && <PrintDialog />}
+      {sanitizeOpen      && <SanitizeModal />}
+      {mailMergeOpen     && <MailMergeModal />}
+      {pdfaOpen          && <PdfaExportModal />}
+      {a11yOpen          && <AccessibilityCheckModal />}
+      {libraryOpen       && <LibraryModal />}
       <CommandPalette />
     </div>
   )

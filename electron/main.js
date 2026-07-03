@@ -156,10 +156,21 @@ ipcMain.handle('dialog:openCert', () => dialog.showOpenDialog(mainWindow, {
   filters: [{ name: 'PKCS#12-Zertifikat', extensions: ['p12', 'pfx'] }],
 }))
 
+ipcMain.handle('dialog:openCSV', () => dialog.showOpenDialog(mainWindow, {
+  title: 'CSV-Datei auswählen',
+  properties: ['openFile'],
+  filters: [{ name: 'CSV-Dateien', extensions: ['csv'] }],
+}))
+
+ipcMain.handle('dialog:pickFolder', (_, title) => dialog.showOpenDialog(mainWindow, {
+  title: title || 'Ordner auswählen',
+  properties: ['openDirectory'],
+}))
+
 // ── File I/O ───────────────────────────────────────────────────────────────
 // Extension allowlist: renderer-controlled paths must not be able to read/write
 // arbitrary files on disk (defense in depth in case of a future renderer compromise).
-const READABLE_EXTENSIONS = new Set(['.pdf'])
+const READABLE_EXTENSIONS = new Set(['.pdf', '.csv'])
 const WRITABLE_EXTENSIONS  = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
 
 function assertExtension(filePath, allowed) {
@@ -240,6 +251,42 @@ ipcMain.handle('dialog:saveDirectory', () => dialog.showOpenDialog(mainWindow, {
   title: 'Ausgabeordner wählen',
   properties: ['openDirectory', 'createDirectory'],
 }))
+
+// ── Document library: recursive scan of watched folders for PDFs ──────────
+// Capped at LIBRARY_SCAN_LIMIT files / LIBRARY_SCAN_DEPTH directory levels so a
+// folder pointed at something huge (e.g. a whole user profile) can't hang the app.
+const LIBRARY_SCAN_LIMIT = 2000
+const LIBRARY_SCAN_DEPTH = 6
+
+function scanFolder(root, results) {
+  const walk = (dir, depth) => {
+    if (results.length >= LIBRARY_SCAN_LIMIT || depth > LIBRARY_SCAN_DEPTH) return
+    let entries
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (results.length >= LIBRARY_SCAN_LIMIT) return
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(full, depth + 1)
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf')) {
+        try {
+          const stat = fs.statSync(full)
+          results.push({ path: full, name: entry.name, size: stat.size, mtimeMs: stat.mtimeMs })
+        } catch {}
+      }
+    }
+  }
+  walk(root, 0)
+}
+
+ipcMain.handle('library:scan', (_, folders) => {
+  const results = []
+  for (const folder of folders || []) {
+    if (results.length >= LIBRARY_SCAN_LIMIT) break
+    scanFolder(folder, results)
+  }
+  return results
+})
 
 // ── Default app ────────────────────────────────────────────────────────────
 // Opens Windows "Default Apps" settings so the user can set CloverleafPDF as the default PDF viewer.

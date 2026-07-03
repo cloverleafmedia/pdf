@@ -1,9 +1,24 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Trash2, Check, PenTool, ShieldCheck, FileKey, FolderOpen } from 'lucide-react'
-import { PDFDocument } from 'pdf-lib'
+import { Trash2, Check, PenTool, ShieldCheck, FileKey, FolderOpen, History } from 'lucide-react'
+import { PDFDocument, PDFName, PDFString, StandardFonts, rgb } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+
+const AUDIT_KEY = 'CloverleafAuditTrail'
+
+function readAuditTrail(doc) {
+  try {
+    const raw = doc.getInfoDict().lookup(PDFName.of(AUDIT_KEY))
+    if (!raw) return []
+    const parsed = JSON.parse(raw.asString ? raw.asString() : String(raw))
+    return Array.isArray(parsed) ? parsed : []
+  } catch { return [] }
+}
+
+function writeAuditTrail(doc, entries) {
+  doc.getInfoDict().set(PDFName.of(AUDIT_KEY), PDFString.of(JSON.stringify(entries)))
+}
 
 const POSITIONS = [
   { id: 'br', label: 'Unten rechts' },
@@ -45,6 +60,12 @@ export default function SignatureModal() {
   const [signLocation, setSignLocation] = useState('')
   const [signerName,   setSignerName]   = useState('')
   const [signError,    setSignError]    = useState('')
+  const [auditTrail,   setAuditTrail]   = useState([])
+
+  useEffect(() => {
+    if (!pdfBytes) { setAuditTrail([]); return }
+    PDFDocument.load(pdfBytes).then(doc => setAuditTrail(readAuditTrail(doc))).catch(() => setAuditTrail([]))
+  }, [pdfBytes])
 
   const canvasRef = useRef(null)
   const ctxRef    = useRef(null)
@@ -138,6 +159,21 @@ export default function SignatureModal() {
 
       page.drawImage(pngImage, { x, y, width: sigW, height: sigH })
 
+      // Small audit line under the signature image — visible proof of who
+      // signed and when, so a document that's passed between several signers
+      // (each one signs, saves, forwards) shows a readable chain, not just images.
+      const now = new Date()
+      if (signerName.trim()) {
+        const font = await doc.embedFont(StandardFonts.Helvetica)
+        const label = `${signerName.trim()}${signReason.trim() ? ' · ' + signReason.trim() : ''} · ${now.toLocaleDateString('de-DE')}`
+        page.drawText(label, { x, y: Math.max(4, y - 10), size: 7, font, color: rgb(0.4, 0.4, 0.4) })
+      }
+
+      const entries = [...readAuditTrail(doc), {
+        name: signerName.trim() || 'Unbenannt', reason: signReason.trim(), page: targetPage, date: now.toISOString(),
+      }]
+      writeAuditTrail(doc, entries)
+
       const newBytes = await doc.save()
       // getDocument() transfers/detaches the buffer it's given — pass a copy.
       const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
@@ -204,6 +240,35 @@ export default function SignatureModal() {
             </button>
           ))}
         </div>
+
+        {/* Audit trail — prior signatures already embedded in this document */}
+        {auditTrail.length > 0 && (
+          <div className={`text-xs rounded-lg px-3 py-2 space-y-1 ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-50 text-gray-600'}`}>
+            <div className="flex items-center gap-1.5 font-medium">
+              <History size={12}/> Bisherige Unterschriften ({auditTrail.length})
+            </div>
+            {auditTrail.map((e, i) => (
+              <div key={i} className="pl-4">
+                {e.name}{e.reason ? ' · ' + e.reason : ''} · Seite {e.page} · {new Date(e.date).toLocaleString('de-DE')}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Signer info — shown for image-based signatures too, so the embedded
+            audit line/trail has a name to attribute the signature to */}
+        {tab !== 'cert' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Name des Unterzeichners</label>
+              <input value={signerName} onChange={e => setSignerName(e.target.value)} className={inp} placeholder="Name (für Audit-Trail)" />
+            </div>
+            <div>
+              <label className={lbl}>Grund (optional)</label>
+              <input value={signReason} onChange={e => setSignReason(e.target.value)} className={inp} placeholder="z. B. Genehmigt" />
+            </div>
+          </div>
+        )}
 
         {/* Digital (certificate) signature */}
         {tab === 'cert' && (

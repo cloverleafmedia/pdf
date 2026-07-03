@@ -19,6 +19,13 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Digitale Signatur mit PKCS#12-Zertifikat (.p12/.pfx) als dritte Option neben Zeichnen/Tippen im Unterschrift-Dialog – erzeugt eine rechtsverbindliche, kryptografisch prüfbare Signatur (CMS/PKCS#7, SHA-256) statt nur eines Bildes; speichert direkt als neue Datei, da jede spätere Änderung die Signatur ungültig machen würde
 - Drucken-Dialog: Drucker wird jetzt immer explizit ausgewählt (eigene Liste aller installierten Drucker) statt automatisch den Windows-Standarddrucker zu verwenden
 - Drucken-Dialog erweitert: Seitenauswahl (Alle/Aktuelle Seite/Bereich wie "1-3,5"), Kopienanzahl, live aktualisierte Druckvorschau sowie ein Button "Erweiterte Druckereinstellungen …" für den vollständigen nativen Windows-Druckdialog (druckerspezifische Einstellungen wie Farbe/Duplex/Papierfach)
+- Dokument bereinigen: entfernt Metadaten, JavaScript/automatische Aktionen, Anhänge und Ebenen-Konfiguration aus dem PDF, mit Bericht was gefunden/entfernt wurde
+- Bates-Nummerierung im Kopf-/Fußzeilen-Dialog (Präfix, Startnummer, Stellenzahl, Platzhalter `{bates}`)
+- Serienbrief-Formularausfüllung: füllt ein PDF-Formular für jede Zeile einer CSV-Datei aus und speichert je eine Datei (z. B. für Zertifikate, Rechnungen, Teilnahmebescheinigungen)
+- Unterschrift-Dialog: Name/Grund des Unterzeichners werden jetzt auch bei Zeichnen-/Tippen-Signaturen erfasst, als kleine Beschriftung unter der Signatur eingebettet und in einem im Dokument gespeicherten Audit-Trail protokolliert (sichtbar bei erneutem Öffnen des Dialogs, z. B. bei mehreren Unterzeichnern nacheinander)
+- Dokumenten-Bibliothek: beobachtete Ordner werden nach PDFs durchsucht, mit Dateiname-/Tag-Suche und optionaler (auf die ersten 40 Treffer × 10 Seiten begrenzter) Volltextsuche
+- PDF/A-Export: setzt PDF/A-Kennzeichnung (XMP) und entfernt JavaScript/Anhänge; bestmöglicher Export mit Bericht über verbleibende Lücken (z. B. nicht eingebettete Schriften) – keine zertifizierte PDF/A-Validierung
+- Barrierefreiheits-Check (PDF/UA): prüft Tagging, Struktur-Baum, Dokumentsprache, Titel-Metadaten und Formularfeld-Beschriftungen; reine Prüfung ohne automatische Behebung
 
 ### Geändert
 - Versionsnummer unten rechts wird jetzt dynamisch aus package.json gelesen statt fest "v1.0" anzuzeigen

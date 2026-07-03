@@ -96,6 +96,15 @@ export const useStore = create((set, get) => ({
   compareDoc:       null,
   compareBytes:     null,
   printDialogOpen:  false,
+  sanitizeOpen:     false,
+  mailMergeOpen:    false,
+  pdfaOpen:         false,
+  a11yOpen:         false,
+  libraryOpen:      false,
+
+  // ── Document library (folders watched for PDFs, tags per file path) ──────
+  libraryFolders: [],
+  libraryTags:    {},
 
   // ── Update notification ──────────────────────────────────────────────────
   updateAvailable:  false,
@@ -330,6 +339,37 @@ export const useStore = create((set, get) => ({
   setCompareDoc:      (doc, bytes) => set({ compareDoc: doc, compareBytes: bytes }),
   openPrintDialog:    () => set({ printDialogOpen: true }),
   closePrintDialog:   () => set({ printDialogOpen: false }),
+  openSanitize:       () => set({ sanitizeOpen: true }),
+  closeSanitize:      () => set({ sanitizeOpen: false }),
+  openMailMerge:      () => set({ mailMergeOpen: true }),
+  closeMailMerge:     () => set({ mailMergeOpen: false }),
+  openPdfa:           () => set({ pdfaOpen: true }),
+  closePdfa:          () => set({ pdfaOpen: false }),
+  openA11y:           () => set({ a11yOpen: true }),
+  closeA11y:          () => set({ a11yOpen: false }),
+  openLibrary:        () => set({ libraryOpen: true }),
+  closeLibrary:       () => set({ libraryOpen: false }),
+
+  // ── Actions: document library ───────────────────────────────────────────
+  setLibraryFolders: (folders) => {
+    set({ libraryFolders: folders })
+    window.api?.saveSettings({ libraryFolders: folders })
+  },
+  addLibraryFolder: (folder) => {
+    const next = [...new Set([...get().libraryFolders, folder])]
+    set({ libraryFolders: next })
+    window.api?.saveSettings({ libraryFolders: next })
+  },
+  removeLibraryFolder: (folder) => {
+    const next = get().libraryFolders.filter(f => f !== folder)
+    set({ libraryFolders: next })
+    window.api?.saveSettings({ libraryFolders: next })
+  },
+  setLibraryTags: (path, tags) => {
+    const next = { ...get().libraryTags, [path]: tags }
+    set({ libraryTags: next })
+    window.api?.saveSettings({ libraryTags: next })
+  },
 
   // ── Actions: tabs ────────────────────────────────────────────────────────
   _snapshotCurrentTab: () => {

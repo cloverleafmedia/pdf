@@ -38,6 +38,9 @@ export default function HeaderFooterModal() {
   const [startNum,    setStart]   = useState(1)
   const [colorHex,    setColor]   = useState('#555555')
   const [running,     setRunning] = useState(false)
+  const [batesPrefix, setBatesPrefix] = useState('')
+  const [batesStart,  setBatesStart]  = useState(1)
+  const [batesDigits, setBatesDigits] = useState(6)
 
   const apply = async () => {
     if (!pdfBytes) return
@@ -58,8 +61,9 @@ export default function HeaderFooterModal() {
         const total = pages.length + startNum - 1
         const margin = 18
 
+        const bates = batesPrefix + String(i + batesStart).padStart(batesDigits, '0')
         const resolve = (tmpl) =>
-          tmpl.replace(/\{n\}/gi, String(n)).replace(/\{total\}/gi, String(total))
+          tmpl.replace(/\{n\}/gi, String(n)).replace(/\{total\}/gi, String(total)).replace(/\{bates\}/gi, bates)
 
         const drawText = (text, yPos) => {
           if (!text.trim()) return
@@ -99,6 +103,9 @@ export default function HeaderFooterModal() {
     setAlign(config.align ?? 'center')
     setStart(config.startNum ?? 1)
     setColor(config.colorHex ?? '#555555')
+    setBatesPrefix(config.batesPrefix ?? '')
+    setBatesStart(config.batesStart ?? 1)
+    setBatesDigits(config.batesDigits ?? 6)
   }
 
   return (
@@ -110,7 +117,7 @@ export default function HeaderFooterModal() {
           isDark={isDark}
           templates={headerFooterTemplates}
           onLoad={loadTemplate}
-          onSave={(name) => saveHeaderFooterTemplate(name, { headerText, footerText, fontSize, align, startNum, colorHex })}
+          onSave={(name) => saveHeaderFooterTemplate(name, { headerText, footerText, fontSize, align, startNum, colorHex, batesPrefix, batesStart, batesDigits })}
           onDelete={deleteHeaderFooterTemplate}
         />
 
@@ -121,7 +128,30 @@ export default function HeaderFooterModal() {
         {/* Hint */}
         <div className={`text-xs rounded-lg px-3 py-2 ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-blue-50 text-blue-700'}`}>
           Platzhalter: <code className="font-mono">{'{n}'}</code> = aktuelle Seite &nbsp;·&nbsp;
-          <code className="font-mono">{'{total}'}</code> = Gesamtanzahl
+          <code className="font-mono">{'{total}'}</code> = Gesamtanzahl &nbsp;·&nbsp;
+          <code className="font-mono">{'{bates}'}</code> = Bates-Nummer
+        </div>
+
+        {/* Bates numbering */}
+        <div>
+          <label className={lbl}>Bates-Nummerierung (z. B. für <code className="font-mono">{'{bates}'}</code> in Kopf-/Fußzeile)</label>
+          <div className="grid grid-cols-3 gap-2">
+            <input value={batesPrefix} onChange={e => setBatesPrefix(e.target.value)}
+              placeholder="Präfix, z. B. DOC-"
+              className={`px-3 py-1.5 text-sm rounded-lg border outline-none focus:border-clover-500
+                ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-600' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}/>
+            <input type="number" min={0} value={batesStart} onChange={e => setBatesStart(Math.max(0, Number(e.target.value) || 0))}
+              title="Startnummer"
+              className={`px-3 py-1.5 text-sm rounded-lg border outline-none focus:border-clover-500
+                ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-gray-200 text-gray-900'}`}/>
+            <input type="number" min={1} max={12} value={batesDigits} onChange={e => setBatesDigits(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
+              title="Anzahl Stellen (führende Nullen)"
+              className={`px-3 py-1.5 text-sm rounded-lg border outline-none focus:border-clover-500
+                ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-gray-200 text-gray-900'}`}/>
+          </div>
+          <div className={`text-[11px] mt-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+            Beispiel: {batesPrefix}{String(batesStart).padStart(batesDigits, '0')}
+          </div>
         </div>
 
         {/* Font size + Start number */}
@@ -179,14 +209,14 @@ export default function HeaderFooterModal() {
           {headerText && (
             <div className={`text-xs border-b pb-1.5 mb-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
               style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
-              {headerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages))}
+              {headerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
             </div>
           )}
           <div className={`text-xs text-center ${isDark ? 'text-zinc-600' : 'text-gray-300'}`}>… Seiteninhalt …</div>
           {footerText && (
             <div className={`text-xs border-t pt-1.5 mt-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
               style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
-              {footerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages))}
+              {footerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
             </div>
           )}
         </div>
