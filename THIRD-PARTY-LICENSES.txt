@@ -1,0 +1,542 @@
+CloverleafPDF - Third-Party Licenses
+======================================
+
+Diese Anwendung nutzt Open-Source-Software Dritter. Nachfolgend die Lizenzhinweise aller Produktiv-Abhaengigkeiten.
+
+----------------------------------------------------------------------
+@babel/runtime@7.29.7
+Lizenz: MIT
+Repository: https://github.com/babel/babel
+Publisher: The Babel Team
+
+
+----------------------------------------------------------------------
+@napi-rs/canvas-win32-x64-msvc@0.1.100
+Lizenz: MIT
+Repository: https://github.com/Brooooooklyn/canvas
+
+
+----------------------------------------------------------------------
+@napi-rs/canvas@0.1.100
+Lizenz: MIT
+Repository: https://github.com/Brooooooklyn/canvas
+
+
+----------------------------------------------------------------------
+@pdf-lib/standard-fonts@1.0.0
+Lizenz: MIT
+Repository: https://github.com/Hopding/standard-fonts
+Publisher: Andrew Dillon
+
+
+----------------------------------------------------------------------
+@pdf-lib/upng@1.0.1
+Lizenz: MIT
+Repository: https://github.com/Hopding/upng
+Publisher: photopea
+
+
+----------------------------------------------------------------------
+ansi-regex@5.0.1
+Lizenz: MIT
+Repository: https://github.com/chalk/ansi-regex
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+ansi-styles@4.3.0
+Lizenz: MIT
+Repository: https://github.com/chalk/ansi-styles
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+argparse@2.0.1
+Lizenz: Python-2.0
+Repository: https://github.com/nodeca/argparse
+
+
+----------------------------------------------------------------------
+bmp-js@0.1.0
+Lizenz: MIT
+Repository: https://github.com/shaozilee/bmp-js
+Publisher: shaozilee
+
+
+----------------------------------------------------------------------
+builder-util-runtime@9.7.0
+Lizenz: MIT
+Repository: https://github.com/electron-userland/electron-builder
+Publisher: Vladimir Krivosheev
+
+
+----------------------------------------------------------------------
+camelcase@5.3.1
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/camelcase
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+cliui@6.0.0
+Lizenz: ISC
+Repository: https://github.com/yargs/cliui
+Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+color-convert@2.0.1
+Lizenz: MIT
+Repository: https://github.com/Qix-/color-convert
+Publisher: Heather Arthur
+
+
+----------------------------------------------------------------------
+color-name@1.1.4
+Lizenz: MIT
+Repository: https://github.com/colorjs/color-name
+Publisher: DY
+
+
+----------------------------------------------------------------------
+debug@4.4.3
+Lizenz: MIT
+Repository: https://github.com/debug-js/debug
+Publisher: Josh Junon
+
+
+----------------------------------------------------------------------
+decamelize@1.2.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/decamelize
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+dijkstrajs@1.0.3
+Lizenz: MIT
+Repository: https://github.com/tcort/dijkstrajs
+
+
+----------------------------------------------------------------------
+electron-updater@6.8.9
+Lizenz: MIT
+Repository: https://github.com/electron-userland/electron-builder
+Publisher: Vladimir Krivosheev
+
+
+----------------------------------------------------------------------
+emoji-regex@8.0.0
+Lizenz: MIT
+Repository: https://github.com/mathiasbynens/emoji-regex
+Publisher: Mathias Bynens
+
+
+----------------------------------------------------------------------
+find-up@4.1.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/find-up
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+fs-extra@10.1.0
+Lizenz: MIT
+Repository: https://github.com/jprichardson/node-fs-extra
+Publisher: JP Richardson
+
+
+----------------------------------------------------------------------
+get-caller-file@2.0.5
+Lizenz: ISC
+Repository: https://github.com/stefanpenner/get-caller-file
+Publisher: Stefan Penner
+
+
+----------------------------------------------------------------------
+graceful-fs@4.2.11
+Lizenz: ISC
+Repository: https://github.com/isaacs/node-graceful-fs
+
+
+----------------------------------------------------------------------
+html-parse-stringify@3.0.1
+Lizenz: MIT
+Repository: https://github.com/henrikjoreteg/html-parse-stringify
+Publisher: Henrik Joreteg
+
+
+----------------------------------------------------------------------
+i18next@23.16.8
+Lizenz: MIT
+Repository: https://github.com/i18next/i18next
+Publisher: Jan Mühlemann
+
+
+----------------------------------------------------------------------
+idb-keyval@6.2.5
+Lizenz: Apache-2.0
+Repository: https://github.com/jakearchibald/idb-keyval
+Publisher: Jake Archibald
+
+
+----------------------------------------------------------------------
+is-fullwidth-code-point@3.0.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/is-fullwidth-code-point
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+is-url@1.2.4
+Lizenz: MIT
+Repository: https://github.com/segmentio/is-url
+
+
+----------------------------------------------------------------------
+js-tokens@4.0.0
+Lizenz: MIT
+Repository: https://github.com/lydell/js-tokens
+Publisher: Simon Lydell
+
+
+----------------------------------------------------------------------
+js-yaml@4.3.0
+Lizenz: MIT
+Repository: https://github.com/nodeca/js-yaml
+Publisher: Vladimir Zapparov
+
+
+----------------------------------------------------------------------
+jsonfile@6.2.1
+Lizenz: MIT
+Repository: https://github.com/jprichardson/node-jsonfile
+Publisher: JP Richardson
+
+
+----------------------------------------------------------------------
+lazy-val@1.0.5
+Lizenz: MIT
+Repository: https://github.com/develar/lazy-val
+Publisher: Vladimir Krivosheev
+
+
+----------------------------------------------------------------------
+locate-path@5.0.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/locate-path
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+lodash.escaperegexp@4.1.2
+Lizenz: MIT
+Repository: https://github.com/lodash/lodash
+Publisher: John-David Dalton
+
+
+----------------------------------------------------------------------
+lodash.isequal@4.5.0
+Lizenz: MIT
+Repository: https://github.com/lodash/lodash
+Publisher: John-David Dalton
+
+
+----------------------------------------------------------------------
+loose-envify@1.4.0
+Lizenz: MIT
+Repository: https://github.com/zertosh/loose-envify
+Publisher: Andres Suarez
+
+
+----------------------------------------------------------------------
+lucide-react@0.395.0
+Lizenz: ISC
+Repository: https://github.com/lucide-icons/lucide
+Publisher: Eric Fennis
+
+
+----------------------------------------------------------------------
+ms@2.1.3
+Lizenz: MIT
+Repository: https://github.com/vercel/ms
+
+
+----------------------------------------------------------------------
+node-fetch@2.7.0
+Lizenz: MIT
+Repository: https://github.com/bitinn/node-fetch
+Publisher: David Frank
+
+
+----------------------------------------------------------------------
+opencollective-postinstall@2.0.3
+Lizenz: MIT
+Repository: https://github.com/opencollective/opencollective-postinstall
+Publisher: Xavier Damman
+
+
+----------------------------------------------------------------------
+p-limit@2.3.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/p-limit
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+p-locate@4.1.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/p-locate
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+p-try@2.2.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/p-try
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+pako@1.0.11
+Lizenz: (MIT AND Zlib)
+Repository: https://github.com/nodeca/pako
+
+
+----------------------------------------------------------------------
+path-exists@4.0.0
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/path-exists
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+pdf-lib@1.17.1
+Lizenz: MIT
+Repository: https://github.com/Hopding/pdf-lib
+Publisher: Andrew Dillon
+
+
+----------------------------------------------------------------------
+pdfjs-dist@4.10.38
+Lizenz: Apache-2.0
+Repository: https://github.com/mozilla/pdf.js
+
+
+----------------------------------------------------------------------
+pngjs@5.0.0
+Lizenz: MIT
+Repository: https://github.com/lukeapage/pngjs
+
+
+----------------------------------------------------------------------
+qrcode@1.5.4
+Lizenz: MIT
+Repository: https://github.com/soldair/node-qrcode
+Publisher: Ryan Day
+
+
+----------------------------------------------------------------------
+react-dom@18.3.1
+Lizenz: MIT
+Repository: https://github.com/facebook/react
+
+
+----------------------------------------------------------------------
+react-i18next@14.1.3
+Lizenz: MIT
+Repository: https://github.com/i18next/react-i18next
+Publisher: Jan Mühlemann
+
+
+----------------------------------------------------------------------
+react@18.3.1
+Lizenz: MIT
+Repository: https://github.com/facebook/react
+
+
+----------------------------------------------------------------------
+regenerator-runtime@0.13.11
+Lizenz: MIT
+Repository: https://github.com/facebook/regenerator/tree/main/packages/runtime
+Publisher: Ben Newman
+
+
+----------------------------------------------------------------------
+require-directory@2.1.1
+Lizenz: MIT
+Repository: https://github.com/troygoode/node-require-directory
+Publisher: Troy Goode
+
+
+----------------------------------------------------------------------
+require-main-filename@2.0.0
+Lizenz: ISC
+Repository: https://github.com/yargs/require-main-filename
+Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+sax@1.6.0
+Lizenz: BlueOak-1.0.0
+Repository: https://github.com/isaacs/sax-js
+Publisher: Isaac Z. Schlueter
+
+
+----------------------------------------------------------------------
+scheduler@0.23.2
+Lizenz: MIT
+Repository: https://github.com/facebook/react
+
+
+----------------------------------------------------------------------
+semver@7.7.4
+Lizenz: ISC
+Repository: https://github.com/npm/node-semver
+Publisher: GitHub Inc.
+
+
+----------------------------------------------------------------------
+set-blocking@2.0.0
+Lizenz: ISC
+Repository: https://github.com/yargs/set-blocking
+Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+string-width@4.2.3
+Lizenz: MIT
+Repository: https://github.com/sindresorhus/string-width
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+strip-ansi@6.0.1
+Lizenz: MIT
+Repository: https://github.com/chalk/strip-ansi
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+tesseract.js-core@7.0.0
+Lizenz: Apache-2.0
+Repository: https://github.com/naptha/tesseract.js-core
+Publisher: antimatter15
+
+
+----------------------------------------------------------------------
+tesseract.js@7.0.0
+Lizenz: Apache-2.0
+Repository: https://github.com/naptha/tesseract.js
+
+
+----------------------------------------------------------------------
+tiny-typed-emitter@2.1.0
+Lizenz: MIT
+Repository: https://github.com/binier/tiny-typed-emitter
+Publisher: Zurab Benashvili
+
+
+----------------------------------------------------------------------
+tr46@0.0.3
+Lizenz: MIT
+Repository: https://github.com/Sebmaster/tr46.js
+Publisher: Sebastian Mayr
+
+
+----------------------------------------------------------------------
+tslib@1.14.1
+Lizenz: 0BSD
+Repository: https://github.com/Microsoft/tslib
+Publisher: Microsoft Corp.
+
+
+----------------------------------------------------------------------
+universalify@2.0.1
+Lizenz: MIT
+Repository: https://github.com/RyanZim/universalify
+Publisher: Ryan Zimmerman
+
+
+----------------------------------------------------------------------
+use-sync-external-store@1.6.0
+Lizenz: MIT
+Repository: https://github.com/facebook/react
+
+
+----------------------------------------------------------------------
+void-elements@3.1.0
+Lizenz: MIT
+Repository: https://github.com/pugjs/void-elements
+Publisher: hemanth.hm
+
+
+----------------------------------------------------------------------
+wasm-feature-detect@1.8.0
+Lizenz: Apache-2.0
+Repository: https://github.com/GoogleChromeLabs/wasm-feature-detect
+Publisher: Surma
+
+
+----------------------------------------------------------------------
+webidl-conversions@3.0.1
+Lizenz: BSD-2-Clause
+Repository: https://github.com/jsdom/webidl-conversions
+Publisher: Domenic Denicola
+
+
+----------------------------------------------------------------------
+whatwg-url@5.0.0
+Lizenz: MIT
+Repository: https://github.com/jsdom/whatwg-url
+Publisher: Sebastian Mayr
+
+
+----------------------------------------------------------------------
+which-module@2.0.1
+Lizenz: ISC
+Repository: https://github.com/nexdrew/which-module
+Publisher: nexdrew
+
+
+----------------------------------------------------------------------
+wrap-ansi@6.2.0
+Lizenz: MIT
+Repository: https://github.com/chalk/wrap-ansi
+Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+y18n@4.0.3
+Lizenz: ISC
+Repository: https://github.com/yargs/y18n
+Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+yargs-parser@18.1.3
+Lizenz: ISC
+Repository: https://github.com/yargs/yargs-parser
+Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+yargs@15.4.1
+Lizenz: MIT
+Repository: https://github.com/yargs/yargs
+
+
+----------------------------------------------------------------------
+zlibjs@0.3.1
+Lizenz: MIT
+Repository: https://github.com/imaya/zlib.js
+Publisher: Yuta Imaya
+
+
+----------------------------------------------------------------------
+zustand@4.5.7
+Lizenz: MIT
+Repository: https://github.com/pmndrs/zustand
+Publisher: Paul Henschel
+
+

@@ -1,0 +1,171 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "Professional PDF Suite"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "document": "Document",
+    "tools": "Tools",
+    "help": "Help"
+  },
+  "file": {
+    "open": "Open",
+    "openRecent": "Open Recent",
+    "close": "Close",
+    "save": "Save",
+    "saveAs": "Save As …",
+    "print": "Print",
+    "properties": "Properties",
+    "noRecent": "No recent files"
+  },
+  "toolbar": {
+    "open": "Open",
+    "save": "Save",
+    "print": "Print",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "fitWidth": "Fit Width",
+    "fitPage": "Fit Page",
+    "rotateLeft": "Rotate Left",
+    "rotateRight": "Rotate Right",
+    "firstPage": "First Page",
+    "prevPage": "Previous Page",
+    "nextPage": "Next Page",
+    "lastPage": "Last Page",
+    "hand": "Hand Tool",
+    "select": "Selection Tool",
+    "highlight": "Highlight",
+    "underline": "Underline",
+    "strikethrough": "Strikethrough",
+    "note": "Sticky Note",
+    "textBox": "Text Box",
+    "draw": "Draw",
+    "shapes": "Shapes",
+    "eraser": "Eraser",
+    "merge": "Merge PDFs",
+    "split": "Split PDF",
+    "extract": "Extract Pages",
+    "protect": "Password Protect",
+    "sign": "Sign"
+  },
+  "sidebar": {
+    "thumbnails": "Pages",
+    "bookmarks": "Bookmarks",
+    "search": "Search",
+    "annotations": "Annotations"
+  },
+  "search": {
+    "placeholder": "Search in document …",
+    "results": "{{count}} result(s)",
+    "noResults": "No results",
+    "caseSensitive": "Case sensitive",
+    "wholeWord": "Whole word",
+    "next": "Next",
+    "prev": "Previous"
+  },
+  "status": {
+    "page": "Page",
+    "of": "of",
+    "zoom": "Zoom",
+    "noFile": "No document open",
+    "ready": "Ready",
+    "loading": "Loading …",
+    "saving": "Saving …",
+    "saved": "Saved"
+  },
+  "welcome": {
+    "title": "Welcome to CloverleafPDF",
+    "subtitle": "The professional PDF suite for Windows",
+    "openPDF": "Open PDF",
+    "openPDFHint": "or drop a file here",
+    "recentFiles": "Recently opened",
+    "features": {
+      "view": "View",
+      "viewDesc": "High-quality PDF rendering",
+      "edit": "Edit",
+      "editDesc": "Annotations & highlights",
+      "manage": "Manage",
+      "manageDesc": "Pages, merge, split",
+      "protect": "Protect",
+      "protectDesc": "Encryption & signatures"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "appearance": "Appearance",
+    "language": "Language",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "themeSystem": "System",
+    "defaultZoom": "Default Zoom",
+    "scrollMode": "Scroll Mode",
+    "scrollVertical": "Vertical",
+    "scrollHorizontal": "Horizontal",
+    "scrollPage": "Page by Page",
+    "annotations": "Annotations",
+    "annotationColor": "Default Color",
+    "annotationOpacity": "Opacity",
+    "performance": "Performance",
+    "cachePages": "Cached Pages",
+    "save": "Save",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "system": "System",
+    "defaultApp": "Default PDF Application",
+    "defaultAppHint": "Opens Windows Settings where you can set CloverleafPDF as the default PDF application. CloverleafPDF must be installed (not just running in dev mode) for this to work.",
+    "setAsDefault": "Set as Default App"
+  },
+  "document": {
+    "pages": "Pages",
+    "author": "Author",
+    "title": "Title",
+    "subject": "Subject",
+    "keywords": "Keywords",
+    "created": "Created",
+    "modified": "Modified",
+    "creator": "Created with",
+    "producer": "PDF Producer",
+    "version": "PDF Version",
+    "fileSize": "File Size",
+    "encrypted": "Encrypted",
+    "yes": "Yes",
+    "no": "No",
+    "propertiesTitle": "Document Properties"
+  },
+  "error": {
+    "openFailed": "Could not open file",
+    "saveFailed": "Could not save file",
+    "corrupted": "File is corrupted or not a valid PDF",
+    "passwordRequired": "This PDF is password protected",
+    "wrongPassword": "Wrong password",
+    "generic": "An error occurred"
+  },
+  "password": {
+    "title": "Password Protected",
+    "enter": "Enter password",
+    "placeholder": "Password …",
+    "ok": "Open",
+    "cancel": "Cancel"
+  },
+  "page": {
+    "rotate": "Rotate Page",
+    "delete": "Delete Page",
+    "deleteConfirm": "Really delete page {{num}}?",
+    "insertBefore": "Insert Page Before",
+    "insertAfter": "Insert Page After",
+    "moveUp": "Move Page Up",
+    "moveDown": "Move Page Down"
+  },
+  "action": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm"
+  }
+}

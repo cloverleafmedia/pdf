@@ -1,0 +1,171 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "Professionelle PDF-Suite"
+  },
+  "menu": {
+    "file": "Datei",
+    "edit": "Bearbeiten",
+    "view": "Ansicht",
+    "document": "Dokument",
+    "tools": "Werkzeuge",
+    "help": "Hilfe"
+  },
+  "file": {
+    "open": "Öffnen",
+    "openRecent": "Zuletzt geöffnet",
+    "close": "Schließen",
+    "save": "Speichern",
+    "saveAs": "Speichern unter …",
+    "print": "Drucken",
+    "properties": "Eigenschaften",
+    "noRecent": "Keine zuletzt geöffneten Dateien"
+  },
+  "toolbar": {
+    "open": "Öffnen",
+    "save": "Speichern",
+    "print": "Drucken",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "fitWidth": "Seitenbreite",
+    "fitPage": "Ganze Seite",
+    "rotateLeft": "Links drehen",
+    "rotateRight": "Rechts drehen",
+    "firstPage": "Erste Seite",
+    "prevPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "lastPage": "Letzte Seite",
+    "hand": "Hand",
+    "select": "Auswahl",
+    "highlight": "Markieren",
+    "underline": "Unterstreichen",
+    "strikethrough": "Durchstreichen",
+    "note": "Notiz",
+    "textBox": "Textfeld",
+    "draw": "Zeichnen",
+    "shapes": "Formen",
+    "eraser": "Radiergummi",
+    "merge": "PDFs zusammenführen",
+    "split": "PDF teilen",
+    "extract": "Seiten extrahieren",
+    "protect": "Passwortschutz",
+    "sign": "Unterschreiben"
+  },
+  "sidebar": {
+    "thumbnails": "Seiten",
+    "bookmarks": "Lesezeichen",
+    "search": "Suchen",
+    "annotations": "Anmerkungen"
+  },
+  "search": {
+    "placeholder": "Im Dokument suchen …",
+    "results": "{{count}} Ergebnis(se)",
+    "noResults": "Keine Ergebnisse",
+    "caseSensitive": "Groß-/Kleinschreibung",
+    "wholeWord": "Ganzes Wort",
+    "next": "Weiter",
+    "prev": "Zurück"
+  },
+  "status": {
+    "page": "Seite",
+    "of": "von",
+    "zoom": "Zoom",
+    "noFile": "Kein Dokument geöffnet",
+    "ready": "Bereit",
+    "loading": "Lade …",
+    "saving": "Speichern …",
+    "saved": "Gespeichert"
+  },
+  "welcome": {
+    "title": "Willkommen bei CloverleafPDF",
+    "subtitle": "Die professionelle PDF-Suite für Windows",
+    "openPDF": "PDF öffnen",
+    "openPDFHint": "oder Datei hier ablegen",
+    "recentFiles": "Zuletzt geöffnet",
+    "features": {
+      "view": "Anzeigen",
+      "viewDesc": "Hochwertige PDF-Darstellung",
+      "edit": "Bearbeiten",
+      "editDesc": "Anmerkungen & Markierungen",
+      "manage": "Verwalten",
+      "manageDesc": "Seiten, Zusammenführen, Teilen",
+      "protect": "Schützen",
+      "protectDesc": "Verschlüsselung & Signaturen"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "general": "Allgemein",
+    "appearance": "Darstellung",
+    "language": "Sprache",
+    "theme": "Design",
+    "themeDark": "Dunkel",
+    "themeLight": "Hell",
+    "themeSystem": "System",
+    "defaultZoom": "Standard-Zoom",
+    "scrollMode": "Scroll-Modus",
+    "scrollVertical": "Vertikal",
+    "scrollHorizontal": "Horizontal",
+    "scrollPage": "Seitenweise",
+    "annotations": "Anmerkungen",
+    "annotationColor": "Standard-Farbe",
+    "annotationOpacity": "Deckkraft",
+    "performance": "Leistung",
+    "cachePages": "Seiten im Cache",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "reset": "Zurücksetzen",
+    "system": "System",
+    "defaultApp": "Standard-PDF-Programm",
+    "defaultAppHint": "Öffnet die Windows-Einstellungen, wo du CloverleafPDF als Standard-PDF-Programm festlegen kannst. CloverleafPDF muss dazu installiert sein (nicht nur im Dev-Modus ausgeführt werden).",
+    "setAsDefault": "Als Standardprogramm festlegen"
+  },
+  "document": {
+    "pages": "Seiten",
+    "author": "Autor",
+    "title": "Titel",
+    "subject": "Betreff",
+    "keywords": "Schlüsselwörter",
+    "created": "Erstellt",
+    "modified": "Geändert",
+    "creator": "Erstellt mit",
+    "producer": "PDF-Ersteller",
+    "version": "PDF-Version",
+    "fileSize": "Dateigröße",
+    "encrypted": "Verschlüsselt",
+    "yes": "Ja",
+    "no": "Nein",
+    "propertiesTitle": "Dokumenteigenschaften"
+  },
+  "error": {
+    "openFailed": "Datei konnte nicht geöffnet werden",
+    "saveFailed": "Datei konnte nicht gespeichert werden",
+    "corrupted": "Datei ist beschädigt oder kein gültiges PDF",
+    "passwordRequired": "Dieses PDF ist passwortgeschützt",
+    "wrongPassword": "Falsches Passwort",
+    "generic": "Ein Fehler ist aufgetreten"
+  },
+  "password": {
+    "title": "Passwortschutz",
+    "enter": "Passwort eingeben",
+    "placeholder": "Passwort …",
+    "ok": "Öffnen",
+    "cancel": "Abbrechen"
+  },
+  "page": {
+    "rotate": "Seite drehen",
+    "delete": "Seite löschen",
+    "deleteConfirm": "Seite {{num}} wirklich löschen?",
+    "insertBefore": "Seite davor einfügen",
+    "insertAfter": "Seite danach einfügen",
+    "moveUp": "Seite nach oben",
+    "moveDown": "Seite nach unten"
+  },
+  "action": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "yes": "Ja",
+    "no": "Nein",
+    "confirm": "Bestätigen"
+  }
+}

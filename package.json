@@ -1,0 +1,99 @@
+{
+  "name": "cloverleaf-pdf",
+  "version": "1.0.0",
+  "description": "CloverleafPDF – Professional PDF Suite",
+  "author": "CloverleafPDF",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n VITE,ELECTRON -c cyan,magenta \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
+    "build": "vite build",
+    "dist": "npm run build && electron-builder --win",
+    "dist:dir": "npm run build && electron-builder --win --dir",
+    "licenses": "node scripts/build-licenses.js"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "i18next": "^23.11.5",
+    "lucide-react": "^0.395.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.4.168",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-i18next": "^14.1.3",
+    "tesseract.js": "^7.0.0",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "license-checker": "^25.0.1",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.cloverleafpdf.app",
+    "productName": "CloverleafPDF",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "THIRD-PARTY-LICENSES.txt",
+        "to": "THIRD-PARTY-LICENSES.txt"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.txt"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "fileAssociations": [
+      {
+        "ext": "pdf",
+        "name": "PDF Document",
+        "description": "PDF-Dokument",
+        "mimeType": "application/pdf",
+        "role": "Editor",
+        "icon": "assets/icon.ico"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CloverleafPDF",
+      "installerSidebar": null
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "cloverleafmedia",
+      "repo": "pdf",
+      "releaseType": "release"
+    }
+  }
+}
