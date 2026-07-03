@@ -5,6 +5,10 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### Behoben
+- `npm run setup:verapdf` bündelte veraPDF ohne dessen eigene `LICENSE.GPL`/`LICENSE.MPL`-Dateien (der Installer entpackt sie nicht automatisch) – werden jetzt zusätzlich von der offiziellen Quelle geladen
+- Lizenz-Generator (`npm run licenses`) schloss den eigenen Paketeintrag nur bei Version 1.0.0 aus (fest verdrahtet) – seit 1.1.0 tauchte CloverleafPDF selbst fälschlich in seiner eigenen Drittanbieter-Lizenzliste auf
+
 ## [1.2.0] – 2026-07-04
 
 ### Hinzugefügt

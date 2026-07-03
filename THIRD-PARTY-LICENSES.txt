@@ -211,12 +211,6 @@ Publisher: Paul Vorbach
 
 
 ----------------------------------------------------------------------
-cloverleaf-pdf@1.1.0
-Lizenz: MIT
-Publisher: CloverleafPDF
-
-
-----------------------------------------------------------------------
 color-convert@2.0.1
 Lizenz: MIT
 Repository: https://github.com/Qix-/color-convert

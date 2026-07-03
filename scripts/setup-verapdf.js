@@ -27,6 +27,12 @@ const JRE_URL =
   "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.19%2B10/OpenJDK17U-jre_x64_windows_hotspot_17.0.19_10.zip";
 const VERAPDF_URL = "https://software.verapdf.org/releases/verapdf-installer.zip";
 const VERAPDF_VERSION = "1.30.2";
+// The unattended installer's output doesn't include veraPDF's own top-level
+// LICENSE.GPL/LICENSE.MPL (only compiled jars + docs) — fetched separately
+// from the exact same tagged version so the actual license text ships
+// alongside the binaries, not just a description pointing at it.
+const VERAPDF_LICENSE_GPL_URL = `https://raw.githubusercontent.com/veraPDF/veraPDF-apps/v${VERAPDF_VERSION}/LICENSE.GPL`;
+const VERAPDF_LICENSE_MPL_URL = `https://raw.githubusercontent.com/veraPDF/veraPDF-apps/v${VERAPDF_VERSION}/LICENSE.MPL`;
 
 const rootDir = path.join(__dirname, "..");
 const vendorDir = path.join(rootDir, "vendor");
@@ -105,6 +111,10 @@ async function main() {
   if (!fs.existsSync(path.join(installDir, "bin", `cli-${VERAPDF_VERSION}.jar`))) {
     throw new Error("veraPDF-Installation scheint fehlgeschlagen — cli-jar fehlt.");
   }
+
+  console.log("Lade veraPDF-Lizenztexte (GPL/MPL) ...");
+  await download(VERAPDF_LICENSE_GPL_URL, path.join(installDir, "LICENSE.GPL"));
+  await download(VERAPDF_LICENSE_MPL_URL, path.join(installDir, "LICENSE.MPL"));
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
   console.log("Fertig: vendor/verapdf-runtime/ enthaelt jre/ und verapdf/.");

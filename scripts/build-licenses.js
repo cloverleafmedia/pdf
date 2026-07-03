@@ -3,8 +3,9 @@ const path = require("path");
 const checker = require("license-checker");
 
 const outputPath = path.join(__dirname, "..", "THIRD-PARTY-LICENSES.txt");
+const ownPkg = require(path.join(__dirname, "..", "package.json"));
 
-checker.init({ start: path.join(__dirname, ".."), production: true, excludePackages: "cloverleaf-pdf@1.0.0" }, (err, data) => {
+checker.init({ start: path.join(__dirname, ".."), production: true, excludePackages: `${ownPkg.name}@${ownPkg.version}` }, (err, data) => {
   if (err) {
     console.error(err);
     process.exit(1);
