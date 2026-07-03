@@ -21,8 +21,10 @@ import ExportImagesModal from './components/modals/ExportImagesModal'
 import QRCodeModal from './components/modals/QRCodeModal'
 import CropModal from './components/modals/CropModal'
 import BatchModal from './components/modals/BatchModal'
+import ShortcutsModal from './components/modals/ShortcutsModal'
 import PresentationMode from './components/PresentationMode'
 import CompareView from './components/CompareView'
+import CommandPalette from './components/CommandPalette'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -33,11 +35,12 @@ export default function App() {
   const {
     pdfDoc, theme, sidebarOpen, sidebarWidth,
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
-    compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen,
+    compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen,
     presentationMode,
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
-    setUpdateAvailable, setUpdateDownloaded, togglePresentation,
+    setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels,
+    toggleCommandPalette, openShortcuts,
   } = useStore()
 
   const [isDragging, setIsDragging] = useState(false)
@@ -51,6 +54,8 @@ export default function App() {
       ])
       setTheme(settings.theme || 'dark')
       if (settings.language) setLanguage(settings.language)
+      if (settings.toolbarLabels) useStore.setState({ toolbarLabels: true })
+      if (Array.isArray(settings.pinnedTools)) useStore.setState({ pinnedTools: settings.pinnedTools })
       setRecentFiles(recent)
     }
     boot()
@@ -157,7 +162,9 @@ export default function App() {
           case 'o': e.preventDefault(); window.api?.openPDF().then(r => { if (!r?.canceled) loadPDF(r.filePaths[0]) }); break
           case 't': e.preventDefault(); window.api?.openPDF().then(r => { if (!r?.canceled) loadPDF(r.filePaths[0], true) }); break
           case 's': e.preventDefault(); window._savePDF?.(); break
-          case 'p': e.preventDefault(); window.api?.print(); break
+          case 'p': e.preventDefault(); window.api?.print().then(r => {
+            if (r && !r.success && r.reason !== 'cancelled') s.setStatus('Drucken fehlgeschlagen: ' + (r.reason || 'unbekannt'), 5000)
+          }); break
           case '+': case '=': e.preventDefault(); s.zoomIn(); break
           case '-': e.preventDefault(); s.zoomOut(); break
           case '0': e.preventDefault(); s.setZoom(s.defaultZoom); break
@@ -166,6 +173,7 @@ export default function App() {
           case 'w': e.preventDefault(); if (s.activeTabId) s.closeTab(s.activeTabId); else s.closeDocument?.(); break
           case 'z': e.preventDefault(); s.undoAnnotation?.(); break
           case 'y': e.preventDefault(); s.redoAnnotation?.(); break
+          case 'k': e.preventDefault(); s.toggleCommandPalette?.(); break
           case 'F5': case 'f5': e.preventDefault(); if (s.pdfDoc) s.togglePresentation?.(); break
         }
       } else {
@@ -175,7 +183,9 @@ export default function App() {
           case 'Home': s.setCurrentPage(1); break
           case 'End':  s.setCurrentPage(s.totalPages); break
           case 'F5':   e.preventDefault(); if (s.pdfDoc) s.togglePresentation?.(); break
+          case '?':    s.openShortcuts?.(); break
           case 'Escape':
+            if (s.commandPaletteOpen) { s.closeCommandPalette?.(); break }
             if (s.presentationMode) { s.togglePresentation?.(); break }
             if (s.activeTool !== 'hand') s.setActiveTool('hand'); break
         }
@@ -200,7 +210,7 @@ export default function App() {
 
       {/* Update banner */}
       {updateDownloaded && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-clover-600 text-white text-sm z-50">
+        <div className="no-print flex items-center gap-3 px-4 py-2 bg-clover-600 text-white text-sm z-50">
           <span>Update heruntergeladen — jetzt neu starten?</span>
           <button onClick={() => window.api?.installUpdate?.()}
             className="px-3 py-0.5 bg-white text-clover-700 rounded font-medium text-xs hover:bg-clover-50">
@@ -209,7 +219,7 @@ export default function App() {
         </div>
       )}
       {!updateDownloaded && updateAvailable && (
-        <div className="flex items-center gap-3 px-4 py-1.5 bg-zinc-800 text-zinc-300 text-xs z-50">
+        <div className="no-print flex items-center gap-3 px-4 py-1.5 bg-zinc-800 text-zinc-300 text-xs z-50">
           <span>Update verfügbar — wird heruntergeladen …</span>
         </div>
       )}
@@ -220,13 +230,13 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="sidebar-transition overflow-hidden flex-shrink-0"
+        <div className="no-print sidebar-transition overflow-hidden flex-shrink-0"
           style={{ width: sidebarOpen ? sidebarWidth : 0 }}>
           <Sidebar />
         </div>
 
         {/* Main area */}
-        <main className="flex-1 overflow-hidden">
+        <main className="print-area flex-1 overflow-hidden">
           {pdfDoc ? <PDFViewer /> : <WelcomeScreen loadPDF={loadPDF} />}
         </main>
       </div>
@@ -249,6 +259,8 @@ export default function App() {
       {cropOpen          && <CropModal />}
       {batchOpen         && <BatchModal />}
       {compareOpen       && <CompareView />}
+      {shortcutsOpen     && <ShortcutsModal />}
+      <CommandPalette />
     </div>
   )
 }

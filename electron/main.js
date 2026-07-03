@@ -92,7 +92,27 @@ ipcMain.handle('win:maximize',        () => { if (mainWindow.isMaximized()) main
 ipcMain.handle('win:close',           () => mainWindow.close())
 ipcMain.handle('win:isMaximized',     () => mainWindow.isMaximized())
 ipcMain.handle('win:toggleFullscreen',() => mainWindow.setFullScreen(!mainWindow.isFullScreen()))
-ipcMain.handle('win:print',           () => mainWindow.webContents.print({ silent: false, printBackground: true }))
+// On Windows, Chromium's print backend fails with "Invalid printer settings"
+// whenever no printer is marked as the OS default — even if a deviceName is
+// passed explicitly. This is a Chromium/Windows quirk, not something fixable
+// from here, so the best we can do is detect it and tell the user exactly
+// what to do instead of failing silently ("nothing happens" when clicking Print).
+ipcMain.handle('win:print', async () => {
+  const printers = await mainWindow.webContents.getPrintersAsync()
+  if (!printers.length) {
+    return { success: false, reason: 'Kein Drucker gefunden. Bitte einen Drucker in den Windows-Einstellungen einrichten.' }
+  }
+  const deviceName = (printers.find(p => p.isDefault) || printers[0]).name
+  return new Promise((resolve) => {
+    mainWindow.webContents.print({ silent: false, printBackground: true, deviceName }, (success, reason) => {
+      if (!success && reason === 'Invalid printer settings') {
+        resolve({ success, reason: 'Kein Standarddrucker festgelegt. Bitte in den Windows-Druckereinstellungen einen Standarddrucker auswählen (z. B. "Microsoft Print to PDF") und erneut versuchen.' })
+      } else {
+        resolve({ success, reason })
+      }
+    })
+  })
+})
 ipcMain.handle('win:installUpdate',   () => autoUpdater?.quitAndInstall())
 
 // ── File dialogs ───────────────────────────────────────────────────────────
@@ -144,7 +164,11 @@ const settingsPath = path.join(app.getPath('userData'), 'settings.json')
 ipcMain.handle('recent:load',    ()       => { try { return JSON.parse(fs.readFileSync(recentPath,   'utf8')) } catch { return [] } })
 ipcMain.handle('recent:save',    (_, l)   => { fs.writeFileSync(recentPath,   JSON.stringify(l)) })
 ipcMain.handle('settings:load',  ()       => { try { return JSON.parse(fs.readFileSync(settingsPath, 'utf8')) } catch { return {} } })
-ipcMain.handle('settings:save',  (_, d)   => { fs.writeFileSync(settingsPath, JSON.stringify(d)) })
+ipcMain.handle('settings:save',  (_, d)   => {
+  let existing = {}
+  try { existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) } catch {}
+  fs.writeFileSync(settingsPath, JSON.stringify({ ...existing, ...d }))
+})
 
 // ── Directory picker (for image export, batch processing) ─────────────────
 ipcMain.handle('dialog:saveDirectory', () => dialog.showOpenDialog(mainWindow, {

@@ -20,7 +20,7 @@ export default function StatusBar() {
   }
 
   return (
-    <div className={`flex items-center h-6 px-3 gap-4 flex-shrink-0 text-[11px] border-t
+    <div className={`flex items-center h-6 px-3 gap-4 flex-shrink-0 text-[11px] border-t no-print
       ${isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
 
       {pdfDoc ? (

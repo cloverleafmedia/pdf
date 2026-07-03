@@ -16,7 +16,7 @@ export default function TitleBar() {
   const title = fileName ? `${fileName}${isDirty ? ' •' : ''} — CloverleafPDF` : 'CloverleafPDF'
 
   return (
-    <div className={`flex items-center h-10 flex-shrink-0 titlebar-drag
+    <div className={`flex items-center h-10 flex-shrink-0 titlebar-drag no-print
       ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'} border-b`}>
 
       {/* Logo + Name */}

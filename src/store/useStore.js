@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import i18n from '../i18n/index.js'
 
+const ANNOTATE_TOOL_IDS = ['highlight', 'underline', 'strikethrough', 'note', 'text', 'draw', 'eraser']
+
 export const useStore = create((set, get) => ({
   // ── PDF document ────────────────────────────────────────────────────────
   pdfDoc:    null,
@@ -20,6 +22,7 @@ export const useStore = create((set, get) => ({
 
   // ── Tools ───────────────────────────────────────────────────────────────
   activeTool:         'hand',
+  lastAnnotateTool:   'highlight',
   drawColor:          '#f59e0b',
   drawWidth:          3,
   annotationOpacity:  0.4,
@@ -37,6 +40,10 @@ export const useStore = create((set, get) => ({
   sidebarWidth: 264,
   sidebarTab:   'thumbnails',
   statusMessage: '',
+  toolbarLabels: false,
+  pinnedTools:   [],
+  commandPaletteOpen: false,
+  shortcutsOpen:      false,
 
   // ── Search ──────────────────────────────────────────────────────────────
   searchQuery:   '',
@@ -130,7 +137,10 @@ export const useStore = create((set, get) => ({
   })),
 
   // ── Actions: tools ──────────────────────────────────────────────────────
-  setActiveTool: (t) => set({ activeTool: t }),
+  setActiveTool: (t) => set(s => ({
+    activeTool: t,
+    lastAnnotateTool: ANNOTATE_TOOL_IDS.includes(t) ? t : s.lastAnnotateTool,
+  })),
   setDrawColor:  (c) => set({ drawColor: c }),
   setDrawWidth:  (w) => set({ drawWidth: w }),
 
@@ -190,6 +200,26 @@ export const useStore = create((set, get) => ({
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   setSidebarTab:  (t) => set({ sidebarTab: t, sidebarOpen: true }),
   toggleSidebar:  ()  => set(s => ({ sidebarOpen: !s.sidebarOpen })),
+
+  // ── Actions: toolbar ────────────────────────────────────────────────────
+  setToolbarLabels: (v) => {
+    set({ toolbarLabels: v })
+    window.api?.saveSettings({ toolbarLabels: v })
+  },
+  togglePinnedTool: (id) => {
+    const next = get().pinnedTools.includes(id)
+      ? get().pinnedTools.filter(p => p !== id)
+      : [...get().pinnedTools, id]
+    set({ pinnedTools: next })
+    window.api?.saveSettings({ pinnedTools: next })
+  },
+
+  // ── Actions: command palette / shortcuts ────────────────────────────────
+  openCommandPalette:   () => set({ commandPaletteOpen: true }),
+  closeCommandPalette:  () => set({ commandPaletteOpen: false }),
+  toggleCommandPalette: () => set(s => ({ commandPaletteOpen: !s.commandPaletteOpen })),
+  openShortcuts:  () => set({ shortcutsOpen: true }),
+  closeShortcuts: () => set({ shortcutsOpen: false }),
 
   // ── Actions: search ─────────────────────────────────────────────────────
   setSearchQuery:   (q) => set({ searchQuery: q }),

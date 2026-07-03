@@ -94,3 +94,21 @@ html:not(.dark) .pdf-page-wrap {
 /* ── Custom title bar ────────────────────────────────────────────────────── */
 .titlebar-drag   { -webkit-app-region: drag; }
 .titlebar-nodrag { -webkit-app-region: no-drag; }
+
+/* ── Print: only the PDF pages themselves, never the app chrome ─────────── */
+@media print {
+  .no-print { display: none !important; }
+  html, body, #root { background: white !important; height: auto !important; overflow: visible !important; }
+  .print-area {
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+  }
+  .pdf-page-wrap {
+    box-shadow: none !important;
+    break-after: page;
+    margin: 0 auto !important;
+  }
+  .pdf-page-wrap:last-child { break-after: auto; }
+}

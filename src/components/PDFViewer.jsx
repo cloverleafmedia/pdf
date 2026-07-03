@@ -206,7 +206,7 @@ export default function PDFViewer() {
 
   return (
     <div ref={containerRef}
-      className={`h-full overflow-y-auto overflow-x-auto ${isDark ? 'bg-zinc-950' : 'bg-gray-300'}`}>
+      className={`print-area h-full overflow-y-auto overflow-x-auto ${isDark ? 'bg-zinc-950' : 'bg-gray-300'}`}>
       {twoPageView ? (
         <div className="flex flex-col items-center py-8 gap-8">
           {chunk(pages, 2).map((pair, i) => (

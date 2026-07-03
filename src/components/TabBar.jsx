@@ -21,7 +21,7 @@ export default function TabBar() {
   if (allTabs.length <= 1 && !tabs.length) return null
 
   return (
-    <div className={`flex items-end h-8 overflow-x-auto flex-shrink-0 border-b select-none
+    <div className={`flex items-end h-8 overflow-x-auto flex-shrink-0 border-b select-none no-print
       ${isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-gray-100 border-gray-200'}`}>
       {allTabs.map(tab => (
         <div
