@@ -146,7 +146,7 @@ function Field({ label, children, isDark }) {
   )
 }
 
-export function Modal({ isDark, onClose, title, children }) {
+export function Modal({ isDark, onClose, title, children, maxWidth = 'max-w-lg' }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -157,7 +157,7 @@ export function Modal({ isDark, onClose, title, children }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={`rounded-xl shadow-2xl w-full max-w-lg overflow-hidden
+      <div className={`rounded-xl shadow-2xl w-full ${maxWidth} overflow-hidden
         ${isDark ? 'bg-zinc-900 border border-zinc-700' : 'bg-white border border-gray-200'}`}>
         <div className={`flex items-center justify-between px-5 py-3.5 border-b
           ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>

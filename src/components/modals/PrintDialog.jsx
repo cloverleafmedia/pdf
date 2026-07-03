@@ -77,7 +77,7 @@ export default function PrintDialog() {
       try {
         const page = await pdfDoc.getPage(previewPage)
         const vp0 = page.getViewport({ scale: 1 })
-        const scale = Math.min(280 / vp0.width, 360 / vp0.height)
+        const scale = Math.min(360 / vp0.width, 460 / vp0.height)
         const vp = page.getViewport({ scale })
         const canvas = canvasRef.current
         canvas.width = vp.width
@@ -128,7 +128,7 @@ export default function PrintDialog() {
     ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-gray-200 text-gray-900'}`
 
   return (
-    <Modal isDark={isDark} onClose={closePrintDialog} title="Drucken">
+    <Modal isDark={isDark} onClose={closePrintDialog} title="Drucken" maxWidth="max-w-2xl">
       <div className="p-5 flex gap-5">
         {/* Settings column */}
         <div className="w-64 flex-shrink-0 space-y-4">
@@ -225,7 +225,7 @@ export default function PrintDialog() {
             Druckansicht{resolvedPages.length > 0 ? ` — ${resolvedPages.length} Seite${resolvedPages.length !== 1 ? 'n' : ''}` : ''}
           </div>
           <div className={`flex-1 w-full flex items-center justify-center rounded-lg border overflow-hidden
-            ${isDark ? 'bg-zinc-950 border-zinc-700' : 'bg-gray-100 border-gray-200'}`} style={{ minHeight: 300 }}>
+            ${isDark ? 'bg-zinc-950 border-zinc-700' : 'bg-gray-100 border-gray-200'}`} style={{ minHeight: 460 }}>
             {previewPage
               ? <canvas ref={canvasRef} className="shadow-lg" style={{ background: '#fff' }}/>
               : <span className={`text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Keine Seiten ausgewählt</span>}

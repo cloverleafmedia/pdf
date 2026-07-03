@@ -26,6 +26,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ### Behoben
 - Miniaturansichten in der Seitenleiste folgten nicht automatisch, wenn im Hauptbereich gescrollt wurde (nur der umgekehrte Weg – Klick auf Miniaturansicht → Hauptansicht scrollt – funktionierte). Ursache: Nicht gerenderte Canvas-Miniaturansichten hatten keine reservierte Höhe, wodurch sich die Seitenleiste während der Scroll-Animation noch verschob und das Ziel verfehlt wurde.
 - "Drucken"-Button öffnete stattdessen den nativen Windows-Druckdialog (identisch zu "Erweiterte Druckereinstellungen …"), weil der Silent-Modus ohne explizite Angabe fälschlich auf "aus" statt "an" stand
+- Druckvorschau wurde abgeschnitten, weil der Dialog dafür zu schmal war (Vorschau-Spalte hatte weniger Platz als das Vorschaubild breit gerendert wurde)
 
 ### Behoben
 - Drucken tat bei fehlendem Windows-Standarddrucker nichts – zeigt jetzt eine verständliche Fehlermeldung
