@@ -9,7 +9,7 @@ import {
   PanelLeftClose, PanelLeftOpen, Settings, FileText, ChevronDown,
   Square, AlertTriangle, CheckCheck, Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
-  Wrench, Eye, Pin, Command, Keyboard,
+  Wrench, Eye, Pin, Terminal, Keyboard,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
@@ -293,7 +293,7 @@ export default function Toolbar() {
 
           {/* Right side */}
           <div className="flex-1"/>
-          <TBtn title="Befehle durchsuchen (Strg+K)" onClick={openCommandPalette} isDark={isDark}><Command size={16}/></TBtn>
+          <TBtn title="Befehle durchsuchen (Strg+K)" onClick={openCommandPalette} isDark={isDark}><Terminal size={16}/></TBtn>
           <TBtn title="Tastenkombinationen (?)" onClick={openShortcuts} isDark={isDark}><Keyboard size={16}/></TBtn>
           <TBtn title={toolbarLabels ? 'Beschriftungen ausblenden' : 'Beschriftungen anzeigen'}
             onClick={() => setToolbarLabels(!toolbarLabels)} isDark={isDark} active={toolbarLabels} textOnly>
