@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
-import { ScanText, Copy, Download, ChevronDown } from 'lucide-react'
+import * as pdfjsLib from 'pdfjs-dist'
+import { ScanText, Copy, Download, ChevronDown, FileSearch } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 
@@ -11,7 +12,9 @@ const LANGS = [
   { id: 'spa',     label: 'Español' },
 ]
 
-async function pageToCanvas(pdfDoc, pageNum, scale = 2) {
+const OCR_SCALE = 2
+
+async function pageToCanvas(pdfDoc, pageNum, scale = OCR_SCALE) {
   const page = pdfDoc.getPage(pageNum)
   const vp   = (await page).getViewport({ scale })
   const canvas = document.createElement('canvas')
@@ -21,8 +24,58 @@ async function pageToCanvas(pdfDoc, pageNum, scale = 2) {
   return canvas
 }
 
+// Tesseract.js v7 only returns plain text by default (`blocks: false`) — word-level
+// bounding boxes (needed to place an invisible text layer) require the lower-level
+// worker API with an explicit `{ blocks: true }` output request; the convenience
+// `Tesseract.recognize()` wrapper has no way to pass that through.
+function extractWords(data) {
+  const words = []
+  for (const block of data.blocks || []) {
+    for (const para of block.paragraphs || []) {
+      for (const line of para.lines || []) {
+        for (const w of line.words || []) words.push(w)
+      }
+    }
+  }
+  return words
+}
+
+// Embed the recognized words as an invisible (opacity 0) text layer at their
+// scanned position, so the PDF becomes searchable/selectable without changing
+// how it looks. Word bounding boxes come back in canvas-pixel space (at
+// OCR_SCALE); converting to PDF points just undoes that scale and flips Y.
+async function embedSearchableLayer(pdfBytes, pageWords) {
+  const { PDFDocument, StandardFonts } = await import('pdf-lib')
+  const doc  = await PDFDocument.load(pdfBytes)
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+
+  for (const [pageNumStr, words] of Object.entries(pageWords)) {
+    const page = doc.getPage(Number(pageNumStr) - 1)
+    if (!page) continue
+    const { height: ph } = page.getSize()
+
+    for (const w of words) {
+      const text = w.text?.trim()
+      if (!text) continue
+      const { x0, y0, x1, y1 } = w.bbox
+      const boxH = (y1 - y0) / OCR_SCALE
+      if (boxH < 2) continue
+      const fontSize = Math.max(4, boxH * 0.85)
+      page.drawText(text, {
+        x: x0 / OCR_SCALE,
+        y: ph - y1 / OCR_SCALE,
+        size: fontSize,
+        font,
+        opacity: 0,
+      })
+    }
+  }
+
+  return doc.save()
+}
+
 export default function OCRModal() {
-  const { pdfDoc, totalPages, currentPage, theme, closeOCR, setStatus } = useStore()
+  const { pdfDoc, pdfBytes, filePath, fileName, totalPages, currentPage, theme, closeOCR, setStatus, openDocument } = useStore()
   const [lang,     setLang]     = useState('deu+eng')
   const [scope,    setScope]    = useState('current')
   const [progress, setProgress] = useState(0)
@@ -30,8 +83,11 @@ export default function OCRModal() {
   const [result,   setResult]   = useState('')
   const [error,    setError]    = useState('')
   const [langOpen, setLangOpen] = useState(false)
+  const [embedding, setEmbedding] = useState(false)
   const isDark   = theme === 'dark'
   const abortRef = useRef(false)
+  const pageWordsRef = useRef({})
+  const currentRecognizingPage = useRef(null)
 
   const runOCR = useCallback(async () => {
     if (!pdfDoc) return
@@ -40,6 +96,7 @@ export default function OCRModal() {
     setError('')
     setProgress(0)
     abortRef.current = false
+    pageWordsRef.current = {}
 
     const pages = scope === 'all'
       ? Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -47,26 +104,34 @@ export default function OCRModal() {
 
     let fullText = ''
 
+    let worker = null
     try {
-      // Dynamic import — Tesseract.js is large, load on demand
+      // Dynamic import — Tesseract.js is large, load on demand.
+      // Uses the lower-level worker API (not the Tesseract.recognize() convenience
+      // wrapper) so we can request `{ blocks: true }` and get word-level bounding
+      // boxes — needed to place an invisible, searchable text layer afterwards.
       const Tesseract = (await import('tesseract.js')).default
+      worker = await Tesseract.createWorker(lang, 1, {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            const i = pages.indexOf(currentRecognizingPage.current)
+            const base = (i / pages.length) * 100
+            const part = (m.progress / pages.length) * 100
+            setProgress(Math.round(base + part))
+          }
+        },
+      })
 
       for (let i = 0; i < pages.length; i++) {
         if (abortRef.current) break
         const pageNum = pages[i]
+        currentRecognizingPage.current = pageNum
 
         // Render page to canvas element
-        const canvas = await pageToCanvas(pdfDoc, pageNum, 2)
+        const canvas = await pageToCanvas(pdfDoc, pageNum)
+        const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true })
 
-        const { data } = await Tesseract.recognize(canvas, lang, {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              const base = (i / pages.length) * 100
-              const part = (m.progress / pages.length) * 100
-              setProgress(Math.round(base + part))
-            }
-          },
-        })
+        pageWordsRef.current[pageNum] = extractWords(data)
 
         if (pages.length > 1) fullText += `\n\n─── Seite ${pageNum} ───\n\n`
         fullText += data.text.trim()
@@ -80,6 +145,7 @@ export default function OCRModal() {
       setError(e.message || 'Unbekannter Fehler')
       setStatus('OCR Fehler')
     } finally {
+      await worker?.terminate()
       setRunning(false)
     }
   }, [pdfDoc, lang, scope, currentPage, totalPages])
@@ -92,6 +158,23 @@ export default function OCRModal() {
       const txtPath = r.filePath.replace(/\.[^.]+$/, '.txt')
       await window.api?.writeFile(txtPath, new TextEncoder().encode(result))
       setStatus('Gespeichert: ' + txtPath.split(/[\\/]/).pop())
+    }
+  }
+
+  const saveSearchablePDF = async () => {
+    if (!Object.keys(pageWordsRef.current).length) return
+    setEmbedding(true)
+    try {
+      setStatus('Durchsuchbare PDF wird erstellt …')
+      const newBytes = await embedSearchableLayer(pdfBytes, pageWordsRef.current)
+      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
+      setStatus('Text-Ebene eingebettet — jetzt speichern (Strg+S) um es dauerhaft zu machen')
+      closeOCR()
+    } catch (e) {
+      setStatus('Fehler: ' + e.message)
+    } finally {
+      setEmbedding(false)
     }
   }
 
@@ -192,12 +275,20 @@ export default function OCRModal() {
                   className={`p-1.5 rounded transition-colors ${isDark ? 'hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}>
                   <Download size={13}/>
                 </button>
+                <button onClick={saveSearchablePDF} disabled={embedding} title="Erkannten Text unsichtbar ins PDF einbetten (durchsuchbar/kopierbar machen)"
+                  className={`p-1.5 rounded transition-colors ${isDark ? 'hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'} disabled:opacity-50`}>
+                  <FileSearch size={13}/>
+                </button>
               </div>
             </div>
             <textarea readOnly value={result} rows={8}
               className={`w-full text-xs p-3 rounded-lg border resize-none font-mono leading-relaxed
                 ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-gray-50 border-gray-200 text-gray-700'}
                 focus:outline-none`}/>
+            <p className={`text-[11px] mt-1.5 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+              <FileSearch size={11} className="inline -mt-0.5 mr-1"/>
+              legt eine unsichtbare, durchsuchbare Text-Ebene über den Scan (Aussehen bleibt unverändert)
+            </p>
           </div>
         )}
       </div>
