@@ -4,6 +4,7 @@ import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import TemplateBar from './TemplateBar'
 
 const COLORS = [
   { hex: '#888888', label: 'Grau' },
@@ -13,7 +14,10 @@ const COLORS = [
 ]
 
 export default function WatermarkModal() {
-  const { pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeWatermark, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeWatermark, setStatus, openDocument,
+    watermarkTemplates, saveWatermarkTemplate, deleteWatermarkTemplate,
+  } = useStore()
   const isDark = theme === 'dark'
 
   const [text,     setText]    = useState('VERTRAULICH')
@@ -68,9 +72,27 @@ export default function WatermarkModal() {
     ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-gray-200 text-gray-900'}`
   const lbl = `block text-xs font-medium mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`
 
+  const loadTemplate = (config) => {
+    setText(config.text ?? 'VERTRAULICH')
+    setFs(config.fontSize ?? 52)
+    setOpacity(config.opacity ?? 25)
+    setRotation(config.rotation ?? 45)
+    setColor(config.colorHex ?? '#888888')
+    setScope(config.scope ?? 'all')
+  }
+
   return (
     <Modal isDark={isDark} onClose={closeWatermark} title="Wasserzeichen">
       <div className="p-5 space-y-4 max-w-md">
+
+        {/* Vorlagen */}
+        <TemplateBar
+          isDark={isDark}
+          templates={watermarkTemplates}
+          onLoad={loadTemplate}
+          onSave={(name) => saveWatermarkTemplate(name, { text, fontSize, opacity, rotation, colorHex, scope })}
+          onDelete={deleteWatermarkTemplate}
+        />
 
         {/* Text */}
         <div>

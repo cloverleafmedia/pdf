@@ -38,6 +38,10 @@ export const useStore = create((set, get) => ({
   // ── Form fields (AcroForm values, keyed by field name) ──────────────────
   formValues: {},
 
+  // ── Reusable templates (Wasserzeichen / Kopf-Fußzeile) ──────────────────
+  watermarkTemplates:    [],
+  headerFooterTemplates: [],
+
   // ── UI state ────────────────────────────────────────────────────────────
   sidebarOpen:  true,
   sidebarWidth: 264,
@@ -219,6 +223,28 @@ export const useStore = create((set, get) => ({
       : [...get().pinnedTools, id]
     set({ pinnedTools: next })
     window.api?.saveSettings({ pinnedTools: next })
+  },
+
+  // ── Actions: reusable templates ─────────────────────────────────────────
+  saveWatermarkTemplate: (name, config) => {
+    const next = [...get().watermarkTemplates, { id: Date.now(), name, config }]
+    set({ watermarkTemplates: next })
+    window.api?.saveSettings({ watermarkTemplates: next })
+  },
+  deleteWatermarkTemplate: (id) => {
+    const next = get().watermarkTemplates.filter(t => t.id !== id)
+    set({ watermarkTemplates: next })
+    window.api?.saveSettings({ watermarkTemplates: next })
+  },
+  saveHeaderFooterTemplate: (name, config) => {
+    const next = [...get().headerFooterTemplates, { id: Date.now(), name, config }]
+    set({ headerFooterTemplates: next })
+    window.api?.saveSettings({ headerFooterTemplates: next })
+  },
+  deleteHeaderFooterTemplate: (id) => {
+    const next = get().headerFooterTemplates.filter(t => t.id !== id)
+    set({ headerFooterTemplates: next })
+    window.api?.saveSettings({ headerFooterTemplates: next })
   },
 
   // ── Actions: command palette / shortcuts ────────────────────────────────

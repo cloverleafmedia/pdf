@@ -4,6 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import TemplateBar from './TemplateBar'
 
 const ALIGN_OPTS = [
   { id: 'left',   icon: <AlignLeft size={13}/> },
@@ -24,7 +25,10 @@ function TextRow({ label, value, onChange, isDark }) {
 }
 
 export default function HeaderFooterModal() {
-  const { pdfBytes, filePath, fileName, totalPages, theme, closeHeaderFooter, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, totalPages, theme, closeHeaderFooter, setStatus, openDocument,
+    headerFooterTemplates, saveHeaderFooterTemplate, deleteHeaderFooterTemplate,
+  } = useStore()
   const isDark = theme === 'dark'
 
   const [headerText,  setHeader]  = useState('{n} / {total}')
@@ -88,9 +92,27 @@ export default function HeaderFooterModal() {
 
   const lbl = `block text-xs font-medium mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`
 
+  const loadTemplate = (config) => {
+    setHeader(config.headerText ?? '{n} / {total}')
+    setFooter(config.footerText ?? '')
+    setFs(config.fontSize ?? 9)
+    setAlign(config.align ?? 'center')
+    setStart(config.startNum ?? 1)
+    setColor(config.colorHex ?? '#555555')
+  }
+
   return (
     <Modal isDark={isDark} onClose={closeHeaderFooter} title="Kopf- & Fußzeile">
       <div className="p-5 space-y-4 max-w-md">
+
+        {/* Vorlagen */}
+        <TemplateBar
+          isDark={isDark}
+          templates={headerFooterTemplates}
+          onLoad={loadTemplate}
+          onSave={(name) => saveHeaderFooterTemplate(name, { headerText, footerText, fontSize, align, startNum, colorHex })}
+          onDelete={deleteHeaderFooterTemplate}
+        />
 
         {/* Header / Footer inputs */}
         <TextRow label="Kopfzeile" value={headerText} onChange={setHeader} isDark={isDark} />

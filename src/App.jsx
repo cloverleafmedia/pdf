@@ -56,6 +56,8 @@ export default function App() {
       if (settings.language) setLanguage(settings.language)
       if (settings.toolbarLabels) useStore.setState({ toolbarLabels: true })
       if (Array.isArray(settings.pinnedTools)) useStore.setState({ pinnedTools: settings.pinnedTools })
+      if (Array.isArray(settings.watermarkTemplates)) useStore.setState({ watermarkTemplates: settings.watermarkTemplates })
+      if (Array.isArray(settings.headerFooterTemplates)) useStore.setState({ headerFooterTemplates: settings.headerFooterTemplates })
       setRecentFiles(recent)
     }
     boot()
