@@ -11,13 +11,13 @@ Publisher: The Babel Team
 
 
 ----------------------------------------------------------------------
-@napi-rs/canvas-win32-x64-msvc@0.1.100
+@napi-rs/canvas-win32-x64-msvc@1.0.2
 Lizenz: MIT
 Repository: https://github.com/Brooooooklyn/canvas
 
 
 ----------------------------------------------------------------------
-@napi-rs/canvas@0.1.100
+@napi-rs/canvas@1.0.2
 Lizenz: MIT
 Repository: https://github.com/Brooooooklyn/canvas
 
@@ -82,6 +82,12 @@ cliui@6.0.0
 Lizenz: ISC
 Repository: https://github.com/yargs/cliui
 Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+cloverleaf-pdf@1.1.0
+Lizenz: MIT
+Publisher: CloverleafPDF
 
 
 ----------------------------------------------------------------------
@@ -318,7 +324,7 @@ Publisher: Andrew Dillon
 
 
 ----------------------------------------------------------------------
-pdfjs-dist@4.10.38
+pdfjs-dist@6.1.200
 Lizenz: Apache-2.0
 Repository: https://github.com/mozilla/pdf.js
 
