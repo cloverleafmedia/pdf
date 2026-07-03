@@ -31,7 +31,8 @@ export default function CompressModal() {
       const newBytes = await doc.save({ useObjectStreams: objectStreams })
       setResultSize(newBytes.byteLength)
 
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes }).promise
+      // getDocument() transfers/detaches the buffer it's given — pass a copy.
+      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus(`Komprimiert: ${fmt(pdfBytes.byteLength)} → ${fmt(newBytes.byteLength)}`)
       closeCompress()

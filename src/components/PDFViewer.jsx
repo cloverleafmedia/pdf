@@ -4,9 +4,10 @@ import { PDFDocument, rgb } from 'pdf-lib'
 import { useStore } from '../store/useStore'
 import MagnifierLens from './MagnifierLens'
 
-// ── Flatten all UI annotations into PDF bytes via pdf-lib ──────────────────
-async function flattenAnnotations(pdfBytes, annotations) {
-  if (!annotations.length) return pdfBytes
+// ── Flatten all UI annotations + form field values into PDF bytes via pdf-lib ──
+async function flattenAnnotations(pdfBytes, annotations, formValues = {}) {
+  const hasFormValues = Object.keys(formValues).length > 0
+  if (!annotations.length && !hasFormValues) return pdfBytes
   const { PDFDocument: PD, rgb: pRgb, StandardFonts } = await import('pdf-lib')
   const doc  = await PD.load(pdfBytes)
   let   font = null
@@ -64,6 +65,24 @@ async function flattenAnnotations(pdfBytes, annotations) {
       }
     }
   }
+
+  if (hasFormValues) {
+    try {
+      const form = doc.getForm()
+      for (const [key, value] of Object.entries(formValues)) {
+        try {
+          if (typeof value === 'boolean') {
+            const cb = form.getCheckBox(key)
+            if (value) cb.check(); else cb.uncheck()
+          } else {
+            const tf = form.getTextField(key)
+            tf.setText(String(value ?? ''))
+          }
+        } catch (_) { /* field not found on this document, or wrong widget type — skip */ }
+      }
+    } catch (_) { /* PDF has no AcroForm */ }
+  }
+
   return doc.save()
 }
 
@@ -115,12 +134,12 @@ export default function PDFViewer() {
   // ── Save (with annotation flattening) ────────────────────────────────────
   useEffect(() => {
     window._savePDF = async (forceDialog = false) => {
-      const { pdfBytes: b, filePath: fp, fileName: fn, annotations } = useStore.getState()
+      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues } = useStore.getState()
       if (!b) return
       try {
         setStatus('Speichern …')
-        // Embed all UI annotations permanently into PDF bytes before writing
-        const bytes = await flattenAnnotations(b, annotations)
+        // Embed all UI annotations + filled form field values permanently into PDF bytes before writing
+        const bytes = await flattenAnnotations(b, annotations, formValues)
         let target = fp
         if (!target || forceDialog) {
           const r = await window.api?.savePDF(fn)
@@ -152,7 +171,7 @@ export default function PDFViewer() {
           pages.forEach(p => base.addPage(p))
         }
         const merged = await base.save()
-        const reloaded = await pdfjsLib.getDocument({ data: merged }).promise
+        const reloaded = await pdfjsLib.getDocument({ data: merged.slice() }).promise
         openDocument(reloaded, merged, fp, fn, merged.byteLength)
         setStatus('Zusammengeführt')
       } catch (e) { setStatus('Fehler: ' + e.message) }
@@ -179,7 +198,7 @@ export default function PDFViewer() {
           })
         }
         const newB = await doc.save()
-        const reloaded = await pdfjsLib.getDocument({ data: newB }).promise
+        const reloaded = await pdfjsLib.getDocument({ data: newB.slice() }).promise
         openDocument(reloaded, newB, fp, fn, newB.byteLength)
         clearRedactions()
         setStatus('Schwärzung angewendet')
@@ -237,6 +256,7 @@ function PDFPage({ pageNum }) {
     pdfDoc, zoom, pageRotations, theme, activeTool, nightMode,
     drawColor, drawWidth, annotationOpacity, annotations,
     pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation,
+    formValues, setFormValue,
   } = useStore()
 
   const canvasRef     = useRef(null)
@@ -255,7 +275,6 @@ function PDFPage({ pageNum }) {
 
   // ── Form fields overlay ─────────────────────────────────────────────────
   const [formFields, setFormFields] = useState([])
-  const [formValues, setFormValues] = useState({})
 
   useEffect(() => {
     if (!pdfDoc || activeTool !== 'form') { setFormFields([]); return }
@@ -675,7 +694,7 @@ function PDFPage({ pageNum }) {
             {field.fieldType === 'Tx' && (
               <input
                 value={formValues[key] || ''}
-                onChange={e => setFormValues(v => ({ ...v, [key]: e.target.value }))}
+                onChange={e => setFormValue(key, e.target.value)}
                 placeholder={field.alternativeText || ''}
                 className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
                 style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}
@@ -684,7 +703,7 @@ function PDFPage({ pageNum }) {
             {isCheckbox && (
               <input type="checkbox"
                 checked={!!formValues[key]}
-                onChange={e => setFormValues(v => ({ ...v, [key]: e.target.checked }))}
+                onChange={e => setFormValue(key, e.target.checked)}
                 className="w-full h-full accent-clover-500 cursor-pointer"
               />
             )}

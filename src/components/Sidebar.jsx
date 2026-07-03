@@ -76,7 +76,8 @@ function Thumbnails({ isDark }) {
       const copied = await out.copyPages(src, newOrder.map(n => n - 1))
       copied.forEach(p => out.addPage(p))
       const bytes = await out.save()
-      const reloaded = await pdfjsLib.getDocument({ data: bytes }).promise
+      // getDocument() transfers/detaches the buffer it's given — pass a copy.
+      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
       openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
       setOrder(newOrder.map((_, i) => i + 1))
       setStatus('Sortierung gespeichert')
@@ -93,7 +94,8 @@ function Thumbnails({ isDark }) {
       const copied = await out.copyPages(src, indices)
       copied.forEach(p => out.addPage(p))
       const bytes = await out.save()
-      const reloaded = await pdfjsLib.getDocument({ data: bytes }).promise
+      // getDocument() transfers/detaches the buffer it's given — pass a copy.
+      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
       openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
       setStatus('Seite gelöscht')
     } catch (e) { setStatus('Fehler: ' + e.message) }
@@ -110,7 +112,8 @@ function Thumbnails({ isDark }) {
       const copied = await out.copyPages(src, newOrder.map(n => n - 1))
       copied.forEach(p => out.addPage(p))
       const bytes = await out.save()
-      const reloaded = await pdfjsLib.getDocument({ data: bytes }).promise
+      // getDocument() transfers/detaches the buffer it's given — pass a copy.
+      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
       openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
       setStatus('Seite dupliziert')
     } catch (e) { setStatus('Fehler: ' + e.message) }
@@ -130,7 +133,8 @@ function Thumbnails({ isDark }) {
         if (i === insertAt - 1) out.addPage([width, height])
       }
       const bytes = await out.save()
-      const reloaded = await pdfjsLib.getDocument({ data: bytes }).promise
+      // getDocument() transfers/detaches the buffer it's given — pass a copy.
+      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
       openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
       setStatus('Leere Seite eingefügt')
     } catch (e) { setStatus('Fehler: ' + e.message) }

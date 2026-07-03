@@ -18,6 +18,8 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Drucken druckte bisher das gesamte App-Fenster statt nur die PDF-Seiten
 - Seitenzahl-Anzeige ("1 / 6") brach bei bestimmten Fensterbreiten mitten im Text um
 - Dropdown-Menüs der Werkzeugleiste wurden teils unsichtbar abgeschnitten
+- **Kritisch:** Ausgefüllte Formularfelder wurden beim Speichern nie ins PDF übernommen
+- **Kritisch:** Nach Zusammenführen, Schwärzen, Komprimieren, Zuschneiden, Kopf-/Fußzeile, QR-Code, Unterschrift, Wasserzeichen oder Seiten umsortieren/löschen/duplizieren/einfügen führte ein anschließendes Speichern zu einer leeren bzw. beschädigten Datei ("No PDF header found"), weil `pdfjsLib.getDocument()` den übergebenen Buffer an den Worker überträgt und dabei im Hauptprozess entwertet ("detached") – derselbe Buffer wurde aber weiterhin zum Speichern verwendet. Betraf praktisch jede "PDF ändern dann speichern"-Aktion in der App.
 
 ## [1.1.0] – 2026-07-03
 

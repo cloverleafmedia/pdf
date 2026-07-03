@@ -59,7 +59,8 @@ export default function QRCodeModal() {
       }
 
       const newBytes = await doc.save()
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes }).promise
+      // getDocument() transfers/detaches the buffer it's given — pass a copy.
+      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('QR-Code eingebettet')
       closeQRCode()

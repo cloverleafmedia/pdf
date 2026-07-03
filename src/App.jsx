@@ -79,11 +79,13 @@ export default function App() {
 
       let doc
       try {
-        doc = await pdfjsLib.getDocument({ data: bytes }).promise
+        // pdfjsLib.getDocument() transfers ownership of the buffer to its worker,
+        // detaching it — pass a copy so `bytes` stays intact for storing/saving.
+        doc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
       } catch (err) {
         if (err.name === 'PasswordException') {
           useStore.getState().openPassword(async (pwd) => {
-            doc = await pdfjsLib.getDocument({ data: bytes, password: pwd }).promise
+            doc = await pdfjsLib.getDocument({ data: bytes.slice(), password: pwd }).promise
             if (inTab && useStore.getState().pdfDoc) {
               openTab(doc, bytes, filePath, name, bytes.byteLength)
             } else {
