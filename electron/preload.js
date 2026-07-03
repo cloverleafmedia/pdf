@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('api', {
   // Dialogs
   openPDF: () => ipcRenderer.invoke('dialog:openPDF'),
   savePDF: (n) => ipcRenderer.invoke('dialog:savePDF', n),
+  openCert: () => ipcRenderer.invoke('dialog:openCert'),
+
+  // Digital signature (certificate never leaves the main process)
+  signPDF: (pdfBytes, certPath, password, meta) => ipcRenderer.invoke('sign:pdf', pdfBytes, certPath, password, meta),
 
   // File I/O
   readFile:     (p)    => ipcRenderer.invoke('fs:read', p),

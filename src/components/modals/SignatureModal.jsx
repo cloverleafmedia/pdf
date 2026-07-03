@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Trash2, Check, PenTool } from 'lucide-react'
+import { Trash2, Check, PenTool, ShieldCheck, FileKey, FolderOpen } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
@@ -37,6 +37,14 @@ export default function SignatureModal() {
   const [running,    setRunning]   = useState(false)
   const [hasDrawing, setHasDrawing] = useState(false)
   const [inkColor,   setInkColor]  = useState('#111111')
+
+  // Digital (certificate-based) signature state
+  const [certPath,     setCertPath]     = useState('')
+  const [certPassword, setCertPassword] = useState('')
+  const [signReason,   setSignReason]   = useState('')
+  const [signLocation, setSignLocation] = useState('')
+  const [signerName,   setSignerName]   = useState('')
+  const [signError,    setSignError]    = useState('')
 
   const canvasRef = useRef(null)
   const ctxRef    = useRef(null)
@@ -144,6 +152,39 @@ export default function SignatureModal() {
     }
   }
 
+  const pickCert = async () => {
+    const r = await window.api?.openCert()
+    if (!r?.canceled && r?.filePaths?.[0]) { setCertPath(r.filePaths[0]); setSignError('') }
+  }
+
+  // Digitally signing is a terminal operation: it writes straight to a new file
+  // rather than updating the in-app document, because any further edit + resave
+  // through pdf-lib would rewrite the PDF structure and invalidate the signature
+  // anyway — better to make that a deliberate "save as" than a silent trap.
+  const signWithCertificate = async () => {
+    if (!certPath || !pdfBytes) return
+    setRunning(true)
+    setSignError('')
+    try {
+      const result = await window.api?.signPDF(pdfBytes, certPath, certPassword, {
+        reason: signReason, location: signLocation, name: signerName,
+      })
+      if (!result?.success) {
+        setSignError(result?.error || 'Signieren fehlgeschlagen')
+        return
+      }
+      const saveRes = await window.api?.savePDF(fileName)
+      if (saveRes?.canceled || !saveRes?.filePath) return
+      await window.api?.writeFile(saveRes.filePath, result.bytes)
+      setStatus('Digital signiert und gespeichert: ' + saveRes.filePath.split(/[\\/]/).pop())
+      closeSignature()
+    } catch (e) {
+      setSignError(e.message || 'Unbekannter Fehler')
+    } finally {
+      setRunning(false)
+    }
+  }
+
   const canApply = (tab === 'draw' && hasDrawing) || (tab === 'type' && typedText.trim().length > 0)
   const lbl = `block text-xs font-medium mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`
   const inp = `w-full px-3 py-1.5 text-sm rounded-lg border outline-none focus:border-clover-500 transition-colors
@@ -155,7 +196,7 @@ export default function SignatureModal() {
 
         {/* Tab selector */}
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? '#3f3f46' : '#e5e7eb' }}>
-          {[{ id: 'draw', l: '✏️ Zeichnen' }, { id: 'type', l: '⌨️ Tippen' }].map(t => (
+          {[{ id: 'draw', l: '✏️ Zeichnen' }, { id: 'type', l: '⌨️ Tippen' }, { id: 'cert', l: '🔏 Zertifikat' }].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex-1 py-2 text-sm transition-colors
                 ${tab === t.id ? 'bg-clover-600 text-white' : isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
@@ -164,7 +205,55 @@ export default function SignatureModal() {
           ))}
         </div>
 
+        {/* Digital (certificate) signature */}
+        {tab === 'cert' && (
+          <div className="space-y-3">
+            <div className={`text-xs rounded-lg px-3 py-2 flex items-start gap-2 ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-blue-50 text-blue-700'}`}>
+              <ShieldCheck size={14} className="flex-shrink-0 mt-0.5"/>
+              <span>Rechtsverbindliche PKI-Signatur mit einem PKCS#12-Zertifikat (.p12/.pfx). Das Ergebnis wird direkt als neue Datei gespeichert — jede spätere Änderung würde die Signatur ungültig machen.</span>
+            </div>
+
+            <div>
+              <label className={lbl}>Zertifikat</label>
+              <button onClick={pickCert}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors
+                  ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+                <FolderOpen size={14}/>
+                {certPath ? certPath.split(/[\\/]/).pop() : 'Zertifikatsdatei wählen (.p12 / .pfx) …'}
+              </button>
+            </div>
+
+            <div>
+              <label className={lbl}>Passwort</label>
+              <input type="password" value={certPassword} onChange={e => setCertPassword(e.target.value)}
+                className={inp} placeholder="Zertifikat-Passwort" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Grund (optional)</label>
+                <input value={signReason} onChange={e => setSignReason(e.target.value)} className={inp} placeholder="z. B. Genehmigt" />
+              </div>
+              <div>
+                <label className={lbl}>Ort (optional)</label>
+                <input value={signLocation} onChange={e => setSignLocation(e.target.value)} className={inp} placeholder="z. B. Berlin" />
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Name (optional)</label>
+              <input value={signerName} onChange={e => setSignerName(e.target.value)} className={inp} placeholder="Name des Unterzeichners" />
+            </div>
+
+            {signError && (
+              <div className="text-xs p-3 rounded-lg bg-red-950/40 border border-red-900/50 text-red-300">
+                <strong>Fehler:</strong> {signError}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Ink color */}
+        {tab !== 'cert' && (
         <div className="flex items-center gap-3">
           <label className={lbl.replace(' mb-1', '')}>Tintenfarbe:</label>
           {['#111111', '#1a3aaf', '#8b0000'].map(c => (
@@ -174,6 +263,7 @@ export default function SignatureModal() {
               style={{ backgroundColor: c }} />
           ))}
         </div>
+        )}
 
         {/* Draw canvas */}
         {tab === 'draw' && (
@@ -226,6 +316,7 @@ export default function SignatureModal() {
         )}
 
         {/* Page + Width */}
+        {tab !== 'cert' && (
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={lbl}>Seite (1–{totalPages})</label>
@@ -240,8 +331,10 @@ export default function SignatureModal() {
               className="w-full mt-2 accent-clover-500" />
           </div>
         </div>
+        )}
 
         {/* Position */}
+        {tab !== 'cert' && (
         <div>
           <label className={lbl}>Position auf der Seite</label>
           <div className="flex flex-wrap gap-1.5">
@@ -256,6 +349,7 @@ export default function SignatureModal() {
             ))}
           </div>
         </div>
+        )}
       </div>
 
       <div className={`flex justify-end gap-2 px-5 py-3 border-t ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>
@@ -263,10 +357,17 @@ export default function SignatureModal() {
           className={`px-4 py-1.5 rounded-lg text-sm ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-600 hover:bg-gray-100'}`}>
           Abbrechen
         </button>
-        <button onClick={applySignature} disabled={running || !canApply}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
-          <Check size={14} /> {running ? 'Wird eingebettet …' : 'In PDF einbetten'}
-        </button>
+        {tab === 'cert' ? (
+          <button onClick={signWithCertificate} disabled={running || !certPath || !certPassword}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
+            <FileKey size={14} /> {running ? 'Wird signiert …' : 'Signieren & Speichern'}
+          </button>
+        ) : (
+          <button onClick={applySignature} disabled={running || !canApply}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
+            <Check size={14} /> {running ? 'Wird eingebettet …' : 'In PDF einbetten'}
+          </button>
+        )}
       </div>
     </Modal>
   )

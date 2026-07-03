@@ -37,6 +37,49 @@ Publisher: photopea
 
 
 ----------------------------------------------------------------------
+@signpdf/placeholder-pdfkit010@3.3.0
+Lizenz: MIT
+Repository: https://github.com/vbuch/node-signpdf
+
+
+----------------------------------------------------------------------
+@signpdf/placeholder-plain@3.3.0
+Lizenz: MIT
+Repository: https://github.com/vbuch/node-signpdf
+
+
+----------------------------------------------------------------------
+@signpdf/signer-p12@3.3.0
+Lizenz: MIT
+Repository: https://github.com/vbuch/node-signpdf
+
+
+----------------------------------------------------------------------
+@signpdf/signpdf@3.3.0
+Lizenz: MIT
+Repository: https://github.com/vbuch/node-signpdf
+
+
+----------------------------------------------------------------------
+@signpdf/utils@3.3.0
+Lizenz: MIT
+Repository: https://github.com/vbuch/node-signpdf
+
+
+----------------------------------------------------------------------
+@swc/helpers@0.3.17
+Lizenz: MIT
+Repository: https://github.com/swc-project/swc
+Publisher: 강동윤
+
+
+----------------------------------------------------------------------
+acorn@7.4.1
+Lizenz: MIT
+Repository: https://github.com/acornjs/acorn
+
+
+----------------------------------------------------------------------
 ansi-regex@5.0.1
 Lizenz: MIT
 Repository: https://github.com/chalk/ansi-regex
@@ -57,6 +100,34 @@ Repository: https://github.com/nodeca/argparse
 
 
 ----------------------------------------------------------------------
+array-buffer-byte-length@1.0.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/array-buffer-byte-length
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+available-typed-arrays@1.0.7
+Lizenz: MIT
+Repository: https://github.com/inspect-js/available-typed-arrays
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+base64-js@0.0.8
+Lizenz: MIT
+Repository: https://github.com/beatgammit/base64-js
+Publisher: T. Jameson Little
+
+
+----------------------------------------------------------------------
+base64-js@1.5.1
+Lizenz: MIT
+Repository: https://github.com/beatgammit/base64-js
+Publisher: T. Jameson Little
+
+
+----------------------------------------------------------------------
 bmp-js@0.1.0
 Lizenz: MIT
 Repository: https://github.com/shaozilee/bmp-js
@@ -64,10 +135,58 @@ Publisher: shaozilee
 
 
 ----------------------------------------------------------------------
+brfs@1.6.1
+Lizenz: MIT
+Repository: https://github.com/substack/brfs
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+brotli@1.3.3
+Lizenz: MIT
+Repository: https://github.com/devongovett/brotli.js
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
+buffer-equal@0.0.1
+Lizenz: MIT
+Repository: https://github.com/substack/node-buffer-equal
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+buffer-from@1.1.2
+Lizenz: MIT
+Repository: https://github.com/LinusU/buffer-from
+
+
+----------------------------------------------------------------------
 builder-util-runtime@9.7.0
 Lizenz: MIT
 Repository: https://github.com/electron-userland/electron-builder
 Publisher: Vladimir Krivosheev
+
+
+----------------------------------------------------------------------
+call-bind-apply-helpers@1.0.2
+Lizenz: MIT
+Repository: https://github.com/ljharb/call-bind-apply-helpers
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+call-bind@1.0.9
+Lizenz: MIT
+Repository: https://github.com/ljharb/call-bind
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+call-bound@1.0.4
+Lizenz: MIT
+Repository: https://github.com/ljharb/call-bound
+Publisher: Jordan Harband
 
 
 ----------------------------------------------------------------------
@@ -82,6 +201,13 @@ cliui@6.0.0
 Lizenz: ISC
 Repository: https://github.com/yargs/cliui
 Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+clone@2.1.2
+Lizenz: MIT
+Repository: https://github.com/pvorb/node-clone
+Publisher: Paul Vorbach
 
 
 ----------------------------------------------------------------------
@@ -105,6 +231,34 @@ Publisher: DY
 
 
 ----------------------------------------------------------------------
+concat-stream@1.6.2
+Lizenz: MIT
+Repository: https://github.com/maxogden/concat-stream
+Publisher: Max Ogden
+
+
+----------------------------------------------------------------------
+convert-source-map@1.9.0
+Lizenz: MIT
+Repository: https://github.com/thlorenz/convert-source-map
+Publisher: Thorsten Lorenz
+
+
+----------------------------------------------------------------------
+core-util-is@1.0.3
+Lizenz: MIT
+Repository: https://github.com/isaacs/core-util-is
+Publisher: Isaac Z. Schlueter
+
+
+----------------------------------------------------------------------
+crypto-js@3.3.0
+Lizenz: MIT
+Repository: https://github.com/brix/crypto-js
+Publisher: Evan Vosberg
+
+
+----------------------------------------------------------------------
 debug@4.4.3
 Lizenz: MIT
 Repository: https://github.com/debug-js/debug
@@ -119,9 +273,58 @@ Publisher: Sindre Sorhus
 
 
 ----------------------------------------------------------------------
+deep-equal@2.2.3
+Lizenz: MIT
+Repository: https://github.com/inspect-js/node-deep-equal
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+deep-is@0.1.4
+Lizenz: MIT
+Repository: https://github.com/thlorenz/deep-is
+Publisher: Thorsten Lorenz
+
+
+----------------------------------------------------------------------
+define-data-property@1.1.4
+Lizenz: MIT
+Repository: https://github.com/ljharb/define-data-property
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+define-properties@1.2.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/define-properties
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+dfa@1.2.0
+Lizenz: MIT
+Repository: https://github.com/devongovett/dfa
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
 dijkstrajs@1.0.3
 Lizenz: MIT
 Repository: https://github.com/tcort/dijkstrajs
+
+
+----------------------------------------------------------------------
+dunder-proto@1.0.1
+Lizenz: MIT
+Repository: https://github.com/es-shims/dunder-proto
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+duplexer2@0.1.4
+Lizenz: BSD-3-Clause
+Repository: https://github.com/deoxxa/duplexer2
+Publisher: Conrad Pankoff
 
 
 ----------------------------------------------------------------------
@@ -139,10 +342,117 @@ Publisher: Mathias Bynens
 
 
 ----------------------------------------------------------------------
+es-define-property@1.0.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/es-define-property
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+es-errors@1.3.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/es-errors
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+es-get-iterator@1.1.3
+Lizenz: MIT
+Repository: https://github.com/ljharb/es-get-iterator
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+es-object-atoms@1.1.2
+Lizenz: MIT
+Repository: https://github.com/ljharb/es-object-atoms
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+escodegen@1.9.1
+Lizenz: BSD-2-Clause
+Repository: https://github.com/estools/escodegen
+
+
+----------------------------------------------------------------------
+escodegen@2.1.0
+Lizenz: BSD-2-Clause
+Repository: https://github.com/estools/escodegen
+
+
+----------------------------------------------------------------------
+esprima@3.1.3
+Lizenz: BSD-2-Clause
+Repository: https://github.com/jquery/esprima
+Publisher: Ariya Hidayat
+
+
+----------------------------------------------------------------------
+esprima@4.0.1
+Lizenz: BSD-2-Clause
+Repository: https://github.com/jquery/esprima
+Publisher: Ariya Hidayat
+
+
+----------------------------------------------------------------------
+estraverse@4.3.0
+Lizenz: BSD-2-Clause
+Repository: https://github.com/estools/estraverse
+
+
+----------------------------------------------------------------------
+estraverse@5.3.0
+Lizenz: BSD-2-Clause
+Repository: https://github.com/estools/estraverse
+
+
+----------------------------------------------------------------------
+esutils@2.0.3
+Lizenz: BSD-2-Clause
+Repository: https://github.com/estools/esutils
+
+
+----------------------------------------------------------------------
+falafel@2.2.5
+Lizenz: MIT
+Repository: https://github.com/substack/node-falafel
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+fast-levenshtein@2.0.6
+Lizenz: MIT
+Repository: https://github.com/hiddentao/fast-levenshtein
+Publisher: Ramesh Nair
+
+
+----------------------------------------------------------------------
+fflate@0.8.3
+Lizenz: MIT
+Repository: https://github.com/101arrowz/fflate
+Publisher: Arjun Barrett
+
+
+----------------------------------------------------------------------
 find-up@4.1.0
 Lizenz: MIT
 Repository: https://github.com/sindresorhus/find-up
 Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+fontkit@1.9.0
+Lizenz: MIT
+Repository: https://github.com/foliojs/fontkit
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
+for-each@0.3.5
+Lizenz: MIT
+Repository: https://github.com/Raynos/for-each
+Publisher: Raynos
 
 
 ----------------------------------------------------------------------
@@ -153,6 +463,20 @@ Publisher: JP Richardson
 
 
 ----------------------------------------------------------------------
+function-bind@1.1.2
+Lizenz: MIT
+Repository: https://github.com/Raynos/function-bind
+Publisher: Raynos
+
+
+----------------------------------------------------------------------
+functions-have-names@1.2.3
+Lizenz: MIT
+Repository: https://github.com/inspect-js/functions-have-names
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 get-caller-file@2.0.5
 Lizenz: ISC
 Repository: https://github.com/stefanpenner/get-caller-file
@@ -160,9 +484,72 @@ Publisher: Stefan Penner
 
 
 ----------------------------------------------------------------------
+get-intrinsic@1.3.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/get-intrinsic
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+get-proto@1.0.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/get-proto
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+gopd@1.2.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/gopd
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 graceful-fs@4.2.11
 Lizenz: ISC
 Repository: https://github.com/isaacs/node-graceful-fs
+
+
+----------------------------------------------------------------------
+has-bigints@1.1.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/has-bigints
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+has-property-descriptors@1.0.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/has-property-descriptors
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+has-symbols@1.1.0
+Lizenz: MIT
+Repository: https://github.com/inspect-js/has-symbols
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+has-tostringtag@1.0.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/has-tostringtag
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+has@1.0.4
+Lizenz: MIT
+Repository: https://github.com/tarruda/has
+Publisher: Thiago de Arruda
+
+
+----------------------------------------------------------------------
+hasown@2.0.4
+Lizenz: MIT
+Repository: https://github.com/inspect-js/hasOwn
+Publisher: Jordan Harband
 
 
 ----------------------------------------------------------------------
@@ -187,6 +574,68 @@ Publisher: Jake Archibald
 
 
 ----------------------------------------------------------------------
+inherits@2.0.4
+Lizenz: ISC
+Repository: https://github.com/isaacs/inherits
+
+
+----------------------------------------------------------------------
+internal-slot@1.1.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/internal-slot
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-arguments@1.2.0
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-arguments
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-array-buffer@3.0.5
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-array-buffer
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-bigint@1.1.0
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-bigint
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-boolean-object@1.2.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-boolean-object
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-callable@1.2.7
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-callable
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-core-module@2.16.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-core-module
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-date-object@1.1.0
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-date-object
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 is-fullwidth-code-point@3.0.0
 Lizenz: MIT
 Repository: https://github.com/sindresorhus/is-fullwidth-code-point
@@ -194,9 +643,86 @@ Publisher: Sindre Sorhus
 
 
 ----------------------------------------------------------------------
+is-map@2.0.3
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-map
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-number-object@1.1.1
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-number-object
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-regex@1.2.1
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-regex
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-set@2.0.3
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-set
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-shared-array-buffer@1.0.4
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-shared-array-buffer
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-string@1.1.1
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-string
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-symbol@1.1.1
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-symbol
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 is-url@1.2.4
 Lizenz: MIT
 Repository: https://github.com/segmentio/is-url
+
+
+----------------------------------------------------------------------
+is-weakmap@2.0.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-weakmap
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+is-weakset@2.0.4
+Lizenz: MIT
+Repository: https://github.com/inspect-js/is-weakset
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+isarray@1.0.0
+Lizenz: MIT
+Repository: https://github.com/juliangruber/isarray
+Publisher: Julian Gruber
+
+
+----------------------------------------------------------------------
+isarray@2.0.5
+Lizenz: MIT
+Repository: https://github.com/juliangruber/isarray
+Publisher: Julian Gruber
 
 
 ----------------------------------------------------------------------
@@ -225,6 +751,20 @@ lazy-val@1.0.5
 Lizenz: MIT
 Repository: https://github.com/develar/lazy-val
 Publisher: Vladimir Krivosheev
+
+
+----------------------------------------------------------------------
+levn@0.3.0
+Lizenz: MIT
+Repository: https://github.com/gkz/levn
+Publisher: George Zahariev
+
+
+----------------------------------------------------------------------
+linebreak@0.3.0
+Lizenz: MIT
+Repository: https://github.com/devongovett/linebreaker
+Publisher: Devon Govett
 
 
 ----------------------------------------------------------------------
@@ -263,6 +803,34 @@ Publisher: Eric Fennis
 
 
 ----------------------------------------------------------------------
+magic-string@0.22.5
+Lizenz: MIT
+Repository: https://github.com/rich-harris/magic-string
+Publisher: Rich Harris
+
+
+----------------------------------------------------------------------
+math-intrinsics@1.1.0
+Lizenz: MIT
+Repository: https://github.com/es-shims/math-intrinsics
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+merge-source-map@1.0.4
+Lizenz: MIT
+Repository: https://github.com/keik/merge-source-map
+Publisher: keik
+
+
+----------------------------------------------------------------------
+minimist@1.2.8
+Lizenz: MIT
+Repository: https://github.com/minimistjs/minimist
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
 ms@2.1.3
 Lizenz: MIT
 Repository: https://github.com/vercel/ms
@@ -276,10 +844,59 @@ Publisher: David Frank
 
 
 ----------------------------------------------------------------------
+node-forge@1.4.0
+Lizenz: (BSD-3-Clause OR GPL-2.0)
+Repository: https://github.com/digitalbazaar/forge
+Publisher: Digital Bazaar, Inc.
+
+
+----------------------------------------------------------------------
+object-inspect@1.13.4
+Lizenz: MIT
+Repository: https://github.com/inspect-js/object-inspect
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+object-inspect@1.4.1
+Lizenz: MIT
+Repository: https://github.com/substack/object-inspect
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+object-is@1.1.6
+Lizenz: MIT
+Repository: https://github.com/es-shims/object-is
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+object-keys@1.1.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/object-keys
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+object.assign@4.1.7
+Lizenz: MIT
+Repository: https://github.com/ljharb/object.assign
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 opencollective-postinstall@2.0.3
 Lizenz: MIT
 Repository: https://github.com/opencollective/opencollective-postinstall
 Publisher: Xavier Damman
+
+
+----------------------------------------------------------------------
+optionator@0.8.3
+Lizenz: MIT
+Repository: https://github.com/gkz/optionator
+Publisher: George Zahariev
 
 
 ----------------------------------------------------------------------
@@ -304,6 +921,12 @@ Publisher: Sindre Sorhus
 
 
 ----------------------------------------------------------------------
+pako@0.2.9
+Lizenz: MIT
+Repository: https://github.com/nodeca/pako
+
+
+----------------------------------------------------------------------
 pako@1.0.11
 Lizenz: (MIT AND Zlib)
 Repository: https://github.com/nodeca/pako
@@ -314,6 +937,13 @@ path-exists@4.0.0
 Lizenz: MIT
 Repository: https://github.com/sindresorhus/path-exists
 Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+path-parse@1.0.7
+Lizenz: MIT
+Repository: https://github.com/jbgutierrez/path-parse
+Publisher: Javier Blanco
 
 
 ----------------------------------------------------------------------
@@ -330,9 +960,43 @@ Repository: https://github.com/mozilla/pdf.js
 
 
 ----------------------------------------------------------------------
+pdfkit@0.10.0
+Lizenz: MIT
+Repository: https://github.com/foliojs/pdfkit
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
+png-js@2.0.0
+Lizenz: MIT*
+Repository: https://github.com/devongovett/png.js
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
 pngjs@5.0.0
 Lizenz: MIT
 Repository: https://github.com/lukeapage/pngjs
+
+
+----------------------------------------------------------------------
+possible-typed-array-names@1.1.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/possible-typed-array-names
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+prelude-ls@1.1.2
+Lizenz: MIT
+Repository: https://github.com/gkz/prelude-ls
+Publisher: George Zahariev
+
+
+----------------------------------------------------------------------
+process-nextick-args@2.0.1
+Lizenz: MIT
+Repository: https://github.com/calvinmetcalf/process-nextick-args
 
 
 ----------------------------------------------------------------------
@@ -340,6 +1004,13 @@ qrcode@1.5.4
 Lizenz: MIT
 Repository: https://github.com/soldair/node-qrcode
 Publisher: Ryan Day
+
+
+----------------------------------------------------------------------
+quote-stream@1.0.2
+Lizenz: MIT
+Repository: https://github.com/substack/quote-stream
+Publisher: James Halliday
 
 
 ----------------------------------------------------------------------
@@ -362,10 +1033,23 @@ Repository: https://github.com/facebook/react
 
 
 ----------------------------------------------------------------------
+readable-stream@2.3.8
+Lizenz: MIT
+Repository: https://github.com/nodejs/readable-stream
+
+
+----------------------------------------------------------------------
 regenerator-runtime@0.13.11
 Lizenz: MIT
 Repository: https://github.com/facebook/regenerator/tree/main/packages/runtime
 Publisher: Ben Newman
+
+
+----------------------------------------------------------------------
+regexp.prototype.flags@1.5.4
+Lizenz: MIT
+Repository: https://github.com/es-shims/RegExp.prototype.flags
+Publisher: Jordan Harband
 
 
 ----------------------------------------------------------------------
@@ -380,6 +1064,34 @@ require-main-filename@2.0.0
 Lizenz: ISC
 Repository: https://github.com/yargs/require-main-filename
 Publisher: Ben Coe
+
+
+----------------------------------------------------------------------
+resolve@1.22.12
+Lizenz: MIT
+Repository: https://github.com/browserify/resolve
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+restructure@2.0.1
+Lizenz: MIT
+Repository: https://github.com/devongovett/restructure
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
+safe-buffer@5.1.2
+Lizenz: MIT
+Repository: https://github.com/feross/safe-buffer
+Publisher: Feross Aboukhadijeh
+
+
+----------------------------------------------------------------------
+safe-regex-test@1.1.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/safe-regex-test
+Publisher: Jordan Harband
 
 
 ----------------------------------------------------------------------
@@ -410,6 +1122,96 @@ Publisher: Ben Coe
 
 
 ----------------------------------------------------------------------
+set-function-length@1.2.2
+Lizenz: MIT
+Repository: https://github.com/ljharb/set-function-length
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+set-function-name@2.0.2
+Lizenz: MIT
+Repository: https://github.com/ljharb/set-function-name
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+shallow-copy@0.0.1
+Lizenz: MIT
+Repository: https://github.com/substack/shallow-copy
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+side-channel-list@1.0.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/side-channel-list
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+side-channel-map@1.0.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/side-channel-map
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+side-channel-weakmap@1.0.2
+Lizenz: MIT
+Repository: https://github.com/ljharb/side-channel-weakmap
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+side-channel@1.1.1
+Lizenz: MIT
+Repository: https://github.com/ljharb/side-channel
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+source-map@0.5.7
+Lizenz: BSD-3-Clause
+Repository: https://github.com/mozilla/source-map
+Publisher: Nick Fitzgerald
+
+
+----------------------------------------------------------------------
+source-map@0.6.1
+Lizenz: BSD-3-Clause
+Repository: https://github.com/mozilla/source-map
+Publisher: Nick Fitzgerald
+
+
+----------------------------------------------------------------------
+static-eval@2.1.1
+Lizenz: MIT
+Repository: https://github.com/browserify/static-eval
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+static-module@2.2.5
+Lizenz: MIT
+Repository: https://github.com/substack/static-module
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+stop-iteration-iterator@1.1.0
+Lizenz: MIT
+Repository: https://github.com/ljharb/stop-iteration-iterator
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+string_decoder@1.1.1
+Lizenz: MIT
+Repository: https://github.com/nodejs/string_decoder
+
+
+----------------------------------------------------------------------
 string-width@4.2.3
 Lizenz: MIT
 Repository: https://github.com/sindresorhus/string-width
@@ -424,6 +1226,13 @@ Publisher: Sindre Sorhus
 
 
 ----------------------------------------------------------------------
+supports-preserve-symlinks-flag@1.0.0
+Lizenz: MIT
+Repository: https://github.com/inspect-js/node-supports-preserve-symlinks-flag
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 tesseract.js-core@7.0.0
 Lizenz: Apache-2.0
 Repository: https://github.com/naptha/tesseract.js-core
@@ -434,6 +1243,20 @@ Publisher: antimatter15
 tesseract.js@7.0.0
 Lizenz: Apache-2.0
 Repository: https://github.com/naptha/tesseract.js
+
+
+----------------------------------------------------------------------
+through2@2.0.5
+Lizenz: MIT
+Repository: https://github.com/rvagg/through2
+Publisher: Rod Vagg
+
+
+----------------------------------------------------------------------
+tiny-inflate@1.0.3
+Lizenz: MIT
+Repository: https://github.com/devongovett/tiny-inflate
+Publisher: Devon Govett
 
 
 ----------------------------------------------------------------------
@@ -458,6 +1281,48 @@ Publisher: Microsoft Corp.
 
 
 ----------------------------------------------------------------------
+tslib@2.8.1
+Lizenz: 0BSD
+Repository: https://github.com/Microsoft/tslib
+Publisher: Microsoft Corp.
+
+
+----------------------------------------------------------------------
+type-check@0.3.2
+Lizenz: MIT
+Repository: https://github.com/gkz/type-check
+Publisher: George Zahariev
+
+
+----------------------------------------------------------------------
+typedarray@0.0.6
+Lizenz: MIT
+Repository: https://github.com/substack/typedarray
+Publisher: James Halliday
+
+
+----------------------------------------------------------------------
+unicode-properties@1.4.1
+Lizenz: MIT
+Repository: https://github.com/devongovett/unicode-properties
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
+unicode-trie@0.3.1
+Lizenz: MIT
+Repository: https://github.com/devongovett/unicode-trie
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
+unicode-trie@2.0.0
+Lizenz: MIT
+Repository: https://github.com/devongovett/unicode-trie
+Publisher: Devon Govett
+
+
+----------------------------------------------------------------------
 universalify@2.0.1
 Lizenz: MIT
 Repository: https://github.com/RyanZim/universalify
@@ -468,6 +1333,20 @@ Publisher: Ryan Zimmerman
 use-sync-external-store@1.6.0
 Lizenz: MIT
 Repository: https://github.com/facebook/react
+
+
+----------------------------------------------------------------------
+util-deprecate@1.0.2
+Lizenz: MIT
+Repository: https://github.com/TooTallNate/util-deprecate
+Publisher: Nathan Rajlich
+
+
+----------------------------------------------------------------------
+vlq@0.2.3
+Lizenz: MIT
+Repository: https://github.com/Rich-Harris/vlq
+Publisher: Rich Harris
 
 
 ----------------------------------------------------------------------
@@ -499,6 +1378,20 @@ Publisher: Sebastian Mayr
 
 
 ----------------------------------------------------------------------
+which-boxed-primitive@1.1.1
+Lizenz: MIT
+Repository: https://github.com/inspect-js/which-boxed-primitive
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+which-collection@1.0.2
+Lizenz: MIT
+Repository: https://github.com/inspect-js/which-collection
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
 which-module@2.0.1
 Lizenz: ISC
 Repository: https://github.com/nexdrew/which-module
@@ -506,10 +1399,31 @@ Publisher: nexdrew
 
 
 ----------------------------------------------------------------------
+which-typed-array@1.1.22
+Lizenz: MIT
+Repository: https://github.com/inspect-js/which-typed-array
+Publisher: Jordan Harband
+
+
+----------------------------------------------------------------------
+word-wrap@1.2.5
+Lizenz: MIT
+Repository: https://github.com/jonschlinkert/word-wrap
+Publisher: Jon Schlinkert
+
+
+----------------------------------------------------------------------
 wrap-ansi@6.2.0
 Lizenz: MIT
 Repository: https://github.com/chalk/wrap-ansi
 Publisher: Sindre Sorhus
+
+
+----------------------------------------------------------------------
+xtend@4.0.2
+Lizenz: MIT
+Repository: https://github.com/Raynos/xtend
+Publisher: Raynos
 
 
 ----------------------------------------------------------------------

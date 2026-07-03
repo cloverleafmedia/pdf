@@ -128,6 +128,12 @@ ipcMain.handle('dialog:savePDF', (_, defaultName) => dialog.showSaveDialog(mainW
   filters: [{ name: 'PDF-Dokumente', extensions: ['pdf'] }],
 }))
 
+ipcMain.handle('dialog:openCert', () => dialog.showOpenDialog(mainWindow, {
+  title: 'Zertifikat auswählen',
+  properties: ['openFile'],
+  filters: [{ name: 'PKCS#12-Zertifikat', extensions: ['p12', 'pfx'] }],
+}))
+
 // ── File I/O ───────────────────────────────────────────────────────────────
 // Extension allowlist: renderer-controlled paths must not be able to read/write
 // arbitrary files on disk (defense in depth in case of a future renderer compromise).
@@ -156,6 +162,43 @@ ipcMain.handle('fs:write', (_, filePath, data) => {
 ipcMain.handle('fs:exists', (_, filePath) => fs.existsSync(filePath))
 
 ipcMain.handle('shell:showInFolder', (_, filePath) => shell.showItemInFolder(filePath))
+
+// ── Digital signature (PKCS#12 certificate) ─────────────────────────────────
+// Runs entirely in the main process: node-forge/@signpdf are Node-only, and
+// keeping the certificate file + its password out of the renderer entirely
+// (the renderer only ever sees a file path, chosen via dialog:openCert) is a
+// deliberate defense-in-depth choice, same spirit as the fs read/write allowlist.
+async function signPdf(pdfBytes, certPath, password, meta) {
+  try {
+    assertExtension(certPath, new Set(['.p12', '.pfx']))
+    const { PDFDocument } = require('pdf-lib')
+    const { plainAddPlaceholder } = require('@signpdf/placeholder-plain')
+    const signpdf = require('@signpdf/signpdf').default
+    const { P12Signer } = require('@signpdf/signer-p12')
+
+    // @signpdf's placeholder logic expects a classic (plain-text) xref table;
+    // pdf-lib's default .save() uses compressed xref streams, which it can't
+    // parse ("Expected xref at NaN but found other content"). Re-saving without
+    // object streams first makes this work regardless of how the PDF was built.
+    const doc = await PDFDocument.load(pdfBytes)
+    const classicBytes = await doc.save({ useObjectStreams: false })
+
+    const certBuffer = fs.readFileSync(certPath)
+    const pdfWithPlaceholder = plainAddPlaceholder({
+      pdfBuffer: Buffer.from(classicBytes),
+      reason:   meta?.reason   || '',
+      name:     meta?.name     || '',
+      location: meta?.location || '',
+    })
+    const signer = new P12Signer(certBuffer, { passphrase: password || '' })
+    const signed = await signpdf.sign(pdfWithPlaceholder, signer)
+    return { success: true, bytes: signed.buffer.slice(signed.byteOffset, signed.byteOffset + signed.byteLength) }
+  } catch (e) {
+    return { success: false, error: e.message || 'Unbekannter Fehler' }
+  }
+}
+
+ipcMain.handle('sign:pdf', (_, pdfBytes, certPath, password, meta) => signPdf(pdfBytes, certPath, password, meta))
 
 // ── Persistent storage ─────────────────────────────────────────────────────
 const recentPath   = path.join(app.getPath('userData'), 'recent.json')
