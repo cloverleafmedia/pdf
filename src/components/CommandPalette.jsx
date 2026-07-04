@@ -10,7 +10,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
   BookmarkPlus, Package2, Keyboard, CornerDownLeft,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download,
+  Upload, Download, BadgeCheck,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -128,6 +128,7 @@ export default function CommandPalette() {
     { group: 'Dokument', label: 'Anmerkungen als XFDF exportieren', icon: <Download size={15}/>, disabled: !pdfDoc, action: run(() => window._exportAnnotationsXFDF?.()) },
     { group: 'Dokument', label: 'Anmerkungen aus XFDF importieren', icon: <Upload size={15}/>, disabled: !pdfDoc, action: run(() => window._importAnnotationsXFDF?.()) },
     { group: 'Dokument', label: 'Dokument bereinigen', icon: <ShieldCheck size={15}/>, disabled: !pdfDoc, action: run(() => s.openSanitize()) },
+    { group: 'Dokument', label: 'Signatur prüfen', icon: <BadgeCheck size={15}/>, disabled: !pdfDoc, action: run(() => s.openSignatureVerify()) },
     { group: 'Dokument', label: 'Serienbrief', icon: <FileSpreadsheet size={15}/>, action: run(() => s.openMailMerge()) },
     { group: 'Dokument', label: 'PDF/A-Export', icon: <FileCheck2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openPdfa()) },
     { group: 'Dokument', label: 'Barrierefreiheits-Check', icon: <Accessibility size={15}/>, disabled: !pdfDoc, action: run(() => s.openA11y()) },

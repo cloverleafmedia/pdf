@@ -11,7 +11,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
   Wrench, Eye, Pin, Terminal, Keyboard,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download
+  Upload, Download, BadgeCheck
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { navigateToPage } from '../lib/navigate'
@@ -86,7 +86,7 @@ export default function Toolbar() {
     openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare,
     openCommandPalette, openShortcuts, openPrintDialog,
     openSanitize, openMailMerge, openPdfa, openA11y, openLibrary,
-    openEncrypt, openImagesToPdf,
+    openEncrypt, openImagesToPdf, openSignatureVerify,
   } = useStore()
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
@@ -156,6 +156,7 @@ export default function Toolbar() {
     { id: 'exportxfdf',  icon: <Download size={15}/>,            label: 'Anmerkungen als XFDF exportieren', onClick: () => window._exportAnnotationsXFDF?.(), disabled: !pdfDoc },
     { id: 'importxfdf',  icon: <Upload size={15}/>,              label: 'Anmerkungen aus XFDF importieren', onClick: () => window._importAnnotationsXFDF?.(), disabled: !pdfDoc },
     { id: 'sanitize',    icon: <ShieldCheck size={15}/>,         label: 'Dokument bereinigen',       onClick: openSanitize,                disabled: !pdfDoc },
+    { id: 'verifysig',   icon: <BadgeCheck size={15}/>,          label: 'Signatur prüfen',           onClick: openSignatureVerify,         disabled: !pdfDoc },
     { id: 'mailmerge',   icon: <FileSpreadsheet size={15}/>,     label: 'Serienbrief',               onClick: openMailMerge },
     { id: 'pdfa',        icon: <FileCheck2 size={15}/>,          label: 'PDF/A-Export',              onClick: openPdfa,                    disabled: !pdfDoc },
     { id: 'a11y',        icon: <Accessibility size={15}/>,       label: 'Barrierefreiheits-Check',   onClick: openA11y,                    disabled: !pdfDoc },

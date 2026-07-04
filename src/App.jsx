@@ -40,6 +40,7 @@ const LibraryModal                = lazy(() => import('./components/modals/Libra
 const EncryptModal                = lazy(() => import('./components/modals/EncryptModal'))
 const ImagesToPdfModal            = lazy(() => import('./components/modals/ImagesToPdfModal'))
 const AltTextModal                = lazy(() => import('./components/modals/AltTextModal'))
+const SignatureVerifyModal        = lazy(() => import('./components/modals/SignatureVerifyModal'))
 const PresentationMode            = lazy(() => import('./components/PresentationMode'))
 const CompareView                 = lazy(() => import('./components/CompareView'))
 
@@ -50,16 +51,16 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 export default function App() {
   const {
-    pdfDoc, theme, sidebarOpen, sidebarWidth,
+    pdfDoc, pdfBytes, theme, sidebarOpen, sidebarWidth,
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
     compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
     sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen,
-    encryptOpen, imagesToPdfOpen, altTextOpen,
+    encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen,
     presentationMode,
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
     setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels,
-    toggleCommandPalette, openShortcuts,
+    toggleCommandPalette, openShortcuts, setHasSignatures,
   } = useStore()
 
   const [isDragging, setIsDragging] = useState(false)
@@ -149,6 +150,30 @@ export default function App() {
   }, [openDocument, openTab, addRecentFile, setStatus])
 
   useEffect(() => { window._loadPDF = loadPDF }, [loadPDF])
+
+  // ── Detect embedded signatures (drives the "🔏 Signiert" status-bar badge) ──
+  // Keyed on pdfBytes rather than duplicated into every load call site (open,
+  // tab, merge, redact-resave, library, drag-drop all update pdfBytes) - pure
+  // pdf-lib logic, no forge/crypto needed here, so it's cheap enough to run
+  // on every document change.
+  useEffect(() => {
+    let cancelled = false
+    if (!pdfBytes) { setHasSignatures(false); return }
+    ;(async () => {
+      try {
+        const [{ PDFDocument }, { findSignatureDicts }] = await Promise.all([
+          import('pdf-lib'),
+          import('./lib/pdfSignatureFields'),
+        ])
+        const doc = await PDFDocument.load(pdfBytes)
+        const sigs = findSignatureDicts(doc)
+        if (!cancelled) setHasSignatures(sigs.length > 0)
+      } catch {
+        if (!cancelled) setHasSignatures(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [pdfBytes, setHasSignatures])
 
   // ── Open file passed via command-line or second-instance ─────────────
   useEffect(() => {
@@ -348,6 +373,7 @@ export default function App() {
         {encryptOpen       && <EncryptModal />}
         {imagesToPdfOpen   && <ImagesToPdfModal />}
         {altTextOpen       && <AltTextModal />}
+        {signatureVerifyOpen && <SignatureVerifyModal />}
       </Suspense>
       <CommandPalette />
     </div>

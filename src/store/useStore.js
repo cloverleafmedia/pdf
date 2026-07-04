@@ -105,6 +105,8 @@ export const useStore = create((set, get) => ({
   encryptOpen:      false,
   imagesToPdfOpen:  false,
   altTextOpen:      false,
+  signatureVerifyOpen: false,
+  hasSignatures:       false,
 
   // ── Document library (folders watched for PDFs, tags per file path) ──────
   libraryFolders: [],
@@ -368,6 +370,9 @@ export const useStore = create((set, get) => ({
   closeImagesToPdf:   () => set({ imagesToPdfOpen: false }),
   openAltText:        () => set({ altTextOpen: true }),
   closeAltText:       () => set({ altTextOpen: false }),
+  openSignatureVerify:  () => set({ signatureVerifyOpen: true }),
+  closeSignatureVerify: () => set({ signatureVerifyOpen: false }),
+  setHasSignatures:     (v) => set({ hasSignatures: v }),
 
   // ── Actions: document library ───────────────────────────────────────────
   setLibraryFolders: (folders) => {

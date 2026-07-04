@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Digital signature (certificate never leaves the main process)
   signPDF: (pdfBytes, certPath, password, meta) => ipcRenderer.invoke('sign:pdf', pdfBytes, certPath, password, meta),
+  verifySignatures: (pdfBytes) => ipcRenderer.invoke('sign:verify', pdfBytes),
 
   // PDF/A validation (bundled veraPDF)
   validatePdfA: (pdfBytes) => ipcRenderer.invoke('pdfa:validate', pdfBytes),

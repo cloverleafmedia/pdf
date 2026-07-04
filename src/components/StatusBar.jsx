@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { ShieldCheck } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import pkg from '../../package.json'
 
@@ -12,7 +13,7 @@ function fmt(bytes) {
 
 export default function StatusBar() {
   const { t } = useTranslation()
-  const { pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage } = useStore()
+  const { pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage, hasSignatures, openSignatureVerify } = useStore()
   const isDark = theme === 'dark'
 
   const toolLabels = {
@@ -40,6 +41,17 @@ export default function StatusBar() {
           {fileSize > 0 && <span>{fmt(fileSize)}</span>}
           <span>|</span>
           <span>{toolLabels[activeTool] || activeTool}</span>
+          {hasSignatures && (
+            <>
+              <span>|</span>
+              <button onClick={openSignatureVerify}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors
+                  ${isDark ? 'text-amber-400 hover:bg-zinc-800' : 'text-amber-600 hover:bg-gray-100'}`}
+                title="Signiertes Dokument — Signatur prüfen">
+                <ShieldCheck size={11}/> Signiert
+              </button>
+            </>
+          )}
         </>
       ) : (
         <span>{t('status.noFile')}</span>

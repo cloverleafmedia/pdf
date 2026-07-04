@@ -256,6 +256,39 @@ async function signPdf(pdfBytes, certPath, password, meta) {
 
 ipcMain.handle('sign:pdf', (_, pdfBytes, certPath, password, meta) => signPdf(pdfBytes, certPath, password, meta))
 
+// ── Digital signature verification ──────────────────────────────────────────
+// node-forge can *sign* PKCS#7 (used above) but not verify it - see the long
+// comment at the top of pkcs7Verify.js for why this needed hand-rolled ASN.1
+// decoding instead of a library call. This is the first place electron/*.js
+// imports from src/lib/*.js (both pdfSignatureFields.js and
+// signatureVerifyFormat.js are plain pdf-lib/pure-JS logic with no browser
+// dependency, so they're safe to reuse here via dynamic import rather than
+// duplicating them as CommonJS).
+async function verifySignatures(pdfBytes) {
+  try {
+    const { PDFDocument } = require('pdf-lib')
+    const { findSignatureDicts } = await import('../src/lib/pdfSignatureFields.js')
+    const { byteRangeCoverage } = await import('../src/lib/signatureVerifyFormat.js')
+    const { verifyDetachedSignature } = require('./pkcs7Verify')
+
+    const buf = Buffer.from(pdfBytes)
+    const doc = await PDFDocument.load(buf)
+    const sigs = findSignatureDicts(doc)
+
+    const signatures = sigs.map((sig) => {
+      const [s1, l1, s2, l2] = sig.byteRange
+      const signedContent = Buffer.concat([buf.subarray(s1, s1 + l1), buf.subarray(s2, s2 + l2)])
+      const verdict = verifyDetachedSignature(Buffer.from(sig.contentsBytes), signedContent)
+      return { ...sig, ...verdict, coverage: byteRangeCoverage(sig.byteRange, buf.length) }
+    })
+    return { success: true, signatures }
+  } catch (e) {
+    return { success: false, error: e.message || 'Unbekannter Fehler' }
+  }
+}
+
+ipcMain.handle('sign:verify', (_, pdfBytes) => verifySignatures(pdfBytes))
+
 // ── PDF/A validation (bundled veraPDF — a real, ISO-accredited conformance
 // checker) ───────────────────────────────────────────────────────────────
 // Not embedded/linked into our own code: we shell out to it as a separate
