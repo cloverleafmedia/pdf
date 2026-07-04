@@ -138,7 +138,8 @@ export default function CompareView() {
               <Loader2 size={16} className="animate-spin"/> Text wird verglichen …
             </div>
           ) : (
-            <DiffResult chunks={diffChunks} isDark={isDark} />
+            <DiffResult chunks={diffChunks} isDark={isDark}
+              onJumpToPage={(n) => { useStore.getState().setCurrentPage(n); setMode('side') }} />
           )}
         </div>
       )}
@@ -332,7 +333,7 @@ function DocLabel({ label, isDark }) {
 // Single scrollable reading-flow diff, not two synced panes — the two
 // documents may have completely different page counts/layouts, so there's
 // no meaningful way to keep two independent canvases in lockstep here.
-function DiffResult({ chunks, isDark }) {
+function DiffResult({ chunks, isDark, onJumpToPage }) {
   if (!chunks) return null
   if (chunks.every(c => c.type === 'common')) {
     return (
@@ -351,10 +352,11 @@ function DiffResult({ chunks, isDark }) {
         return (
           <span key={i}>
             {showBadge && (
-              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full mx-1 align-middle select-none
-                ${isDark ? 'bg-black/40 text-zinc-400' : 'bg-black/10 text-gray-500'}`}>
+              <button onClick={() => onJumpToPage(chunk.page)}
+                className={`inline-block text-[10px] px-2 py-0.5 rounded-full mx-1 align-middle select-none cursor-pointer transition-colors
+                  ${isDark ? 'bg-black/40 text-zinc-400 hover:bg-black/60' : 'bg-black/10 text-gray-500 hover:bg-black/20'}`}>
                 S. {chunk.page}
-              </span>
+              </button>
             )}
             <span className={
               chunk.type === 'added'   ? (isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-800') :
