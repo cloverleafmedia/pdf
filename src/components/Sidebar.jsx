@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
-import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../store/useStore'
+import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
 
 // Fixed thumbnail render width — also used to pre-compute placeholder height
 // (see ThumbPage) so the reserved space matches what renderThumb() ends up
@@ -91,25 +91,19 @@ function Thumbnails({ isDark }) {
     document.getElementById(`page-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // getDocument() transfers/detaches the buffer it's given — pass a copy.
+  const reloadDocument = async (bytes) => {
+    const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
+    openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
+  }
+
   const reorder = useCallback(async (fromPage, toPage) => {
-    if (fromPage === toPage) return
     try {
       setStatus('Seiten werden umsortiert …')
-      const newOrder = [...order]
-      const fi = newOrder.indexOf(fromPage)
-      newOrder.splice(fi, 1)
-      const ti = newOrder.indexOf(toPage)
-      newOrder.splice(ti, 0, fromPage)
-
-      const src = await PDFDocument.load(pdfBytes)
-      const out = await PDFDocument.create()
-      const copied = await out.copyPages(src, newOrder.map(n => n - 1))
-      copied.forEach(p => out.addPage(p))
-      const bytes = await out.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
-      openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
-      setOrder(newOrder.map((_, i) => i + 1))
+      const result = await reorderPages(pdfBytes, order, fromPage, toPage)
+      if (!result) return
+      await reloadDocument(result.bytes)
+      setOrder(result.newOrder)
       setStatus('Sortierung gespeichert')
     } catch (e) { setStatus('Fehler: ' + e.message) }
   }, [order, pdfBytes, filePath, fileName])
@@ -118,15 +112,8 @@ function Thumbnails({ isDark }) {
     if (order.length <= 1) { setStatus('Letzte Seite kann nicht gelöscht werden'); return }
     try {
       setStatus('Seite wird gelöscht …')
-      const src = await PDFDocument.load(pdfBytes)
-      const out = await PDFDocument.create()
-      const indices = order.filter(n => n !== pageNum).map(n => n - 1)
-      const copied = await out.copyPages(src, indices)
-      copied.forEach(p => out.addPage(p))
-      const bytes = await out.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
-      openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
+      const { bytes } = await deletePageOp(pdfBytes, order, pageNum)
+      await reloadDocument(bytes)
       setStatus('Seite gelöscht')
     } catch (e) { setStatus('Fehler: ' + e.message) }
   }, [order, pdfBytes, filePath, fileName])
@@ -134,17 +121,8 @@ function Thumbnails({ isDark }) {
   const duplicatePage = useCallback(async (pageNum) => {
     try {
       setStatus('Seite wird dupliziert …')
-      const src = await PDFDocument.load(pdfBytes)
-      const out = await PDFDocument.create()
-      const insertAt = order.indexOf(pageNum) + 1
-      const newOrder = [...order]
-      newOrder.splice(insertAt, 0, pageNum)
-      const copied = await out.copyPages(src, newOrder.map(n => n - 1))
-      copied.forEach(p => out.addPage(p))
-      const bytes = await out.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
-      openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
+      const { bytes } = await duplicatePageOp(pdfBytes, order, pageNum)
+      await reloadDocument(bytes)
       setStatus('Seite dupliziert')
     } catch (e) { setStatus('Fehler: ' + e.message) }
   }, [order, pdfBytes, filePath, fileName])
@@ -152,20 +130,8 @@ function Thumbnails({ isDark }) {
   const insertBlankAfter = useCallback(async (pageNum) => {
     try {
       setStatus('Leere Seite wird eingefügt …')
-      const src = await PDFDocument.load(pdfBytes)
-      const out = await PDFDocument.create()
-      const insertAt = order.indexOf(pageNum) + 1
-      const allCopied = await out.copyPages(src, order.map(n => n - 1))
-      const refPage = src.getPage(pageNum - 1)
-      const { width, height } = refPage.getSize()
-      for (let i = 0; i < allCopied.length; i++) {
-        out.addPage(allCopied[i])
-        if (i === insertAt - 1) out.addPage([width, height])
-      }
-      const bytes = await out.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
-      openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
+      const { bytes } = await insertBlankPageAfter(pdfBytes, order, pageNum)
+      await reloadDocument(bytes)
       setStatus('Leere Seite eingefügt')
     } catch (e) { setStatus('Fehler: ' + e.message) }
   }, [order, pdfBytes, filePath, fileName])
