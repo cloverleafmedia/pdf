@@ -41,6 +41,7 @@ const EncryptModal                = lazy(() => import('./components/modals/Encry
 const ImagesToPdfModal            = lazy(() => import('./components/modals/ImagesToPdfModal'))
 const AltTextModal                = lazy(() => import('./components/modals/AltTextModal'))
 const SignatureVerifyModal        = lazy(() => import('./components/modals/SignatureVerifyModal'))
+const TableExtractModal           = lazy(() => import('./components/modals/TableExtractModal'))
 const PresentationMode            = lazy(() => import('./components/PresentationMode'))
 const CompareView                 = lazy(() => import('./components/CompareView'))
 
@@ -55,7 +56,7 @@ export default function App() {
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
     compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
     sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen,
-    encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen,
+    encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen, tableExtractOpen,
     presentationMode,
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
@@ -374,6 +375,7 @@ export default function App() {
         {imagesToPdfOpen   && <ImagesToPdfModal />}
         {altTextOpen       && <AltTextModal />}
         {signatureVerifyOpen && <SignatureVerifyModal />}
+        {tableExtractOpen  && <TableExtractModal />}
       </Suspense>
       <CommandPalette />
     </div>
