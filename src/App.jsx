@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react'
+import React, { useEffect, useCallback, useState, Suspense, lazy } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from './store/useStore'
 import TitleBar from './components/TitleBar'
@@ -8,32 +8,38 @@ import PDFViewer from './components/PDFViewer'
 import StatusBar from './components/StatusBar'
 import WelcomeScreen from './components/WelcomeScreen'
 import TabBar from './components/TabBar'
-import SettingsModal from './components/modals/SettingsModal'
-import PropertiesModal from './components/modals/PropertiesModal'
-import PasswordModal from './components/modals/PasswordModal'
-import SplitModal from './components/modals/SplitModal'
-import OCRModal from './components/modals/OCRModal'
-import WatermarkModal from './components/modals/WatermarkModal'
-import SignatureModal from './components/modals/SignatureModal'
-import HeaderFooterModal from './components/modals/HeaderFooterModal'
-import CompressModal from './components/modals/CompressModal'
-import ExportImagesModal from './components/modals/ExportImagesModal'
-import QRCodeModal from './components/modals/QRCodeModal'
-import CropModal from './components/modals/CropModal'
-import BatchModal from './components/modals/BatchModal'
-import ShortcutsModal from './components/modals/ShortcutsModal'
-import PrintDialog from './components/modals/PrintDialog'
-import SanitizeModal from './components/modals/SanitizeModal'
-import MailMergeModal from './components/modals/MailMergeModal'
-import PdfaExportModal from './components/modals/PdfaExportModal'
-import AccessibilityCheckModal from './components/modals/AccessibilityCheckModal'
-import LibraryModal from './components/modals/LibraryModal'
-import EncryptModal from './components/modals/EncryptModal'
-import ImagesToPdfModal from './components/modals/ImagesToPdfModal'
-import AltTextModal from './components/modals/AltTextModal'
-import PresentationMode from './components/PresentationMode'
-import CompareView from './components/CompareView'
 import CommandPalette from './components/CommandPalette'
+
+// Modals/overlays are only ever mounted once their `xOpen` flag is true (see
+// the render block below), so lazy-loading them keeps their code out of the
+// main bundle chunk until actually needed instead of paying for all ~25 of
+// them upfront. CommandPalette renders unconditionally, so it stays a normal
+// static import.
+const SettingsModal            = lazy(() => import('./components/modals/SettingsModal'))
+const PropertiesModal          = lazy(() => import('./components/modals/PropertiesModal'))
+const PasswordModal            = lazy(() => import('./components/modals/PasswordModal'))
+const SplitModal                = lazy(() => import('./components/modals/SplitModal'))
+const OCRModal                  = lazy(() => import('./components/modals/OCRModal'))
+const WatermarkModal            = lazy(() => import('./components/modals/WatermarkModal'))
+const SignatureModal            = lazy(() => import('./components/modals/SignatureModal'))
+const HeaderFooterModal         = lazy(() => import('./components/modals/HeaderFooterModal'))
+const CompressModal             = lazy(() => import('./components/modals/CompressModal'))
+const ExportImagesModal         = lazy(() => import('./components/modals/ExportImagesModal'))
+const QRCodeModal                = lazy(() => import('./components/modals/QRCodeModal'))
+const CropModal                  = lazy(() => import('./components/modals/CropModal'))
+const BatchModal                 = lazy(() => import('./components/modals/BatchModal'))
+const ShortcutsModal             = lazy(() => import('./components/modals/ShortcutsModal'))
+const PrintDialog                 = lazy(() => import('./components/modals/PrintDialog'))
+const SanitizeModal               = lazy(() => import('./components/modals/SanitizeModal'))
+const MailMergeModal              = lazy(() => import('./components/modals/MailMergeModal'))
+const PdfaExportModal             = lazy(() => import('./components/modals/PdfaExportModal'))
+const AccessibilityCheckModal     = lazy(() => import('./components/modals/AccessibilityCheckModal'))
+const LibraryModal                = lazy(() => import('./components/modals/LibraryModal'))
+const EncryptModal                = lazy(() => import('./components/modals/EncryptModal'))
+const ImagesToPdfModal            = lazy(() => import('./components/modals/ImagesToPdfModal'))
+const AltTextModal                = lazy(() => import('./components/modals/AltTextModal'))
+const PresentationMode            = lazy(() => import('./components/PresentationMode'))
+const CompareView                 = lazy(() => import('./components/CompareView'))
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -258,32 +264,34 @@ export default function App() {
 
       <StatusBar />
 
-      {/* Modals */}
-      {settingsOpen      && <SettingsModal />}
-      {propertiesOpen    && <PropertiesModal />}
-      {passwordOpen      && <PasswordModal />}
-      {splitOpen         && <SplitModal />}
-      {ocrOpen           && <OCRModal />}
-      {presentationMode  && <PresentationMode />}
-      {watermarkOpen     && <WatermarkModal />}
-      {signatureOpen     && <SignatureModal />}
-      {headerFooterOpen  && <HeaderFooterModal />}
-      {compressOpen      && <CompressModal />}
-      {exportImagesOpen  && <ExportImagesModal />}
-      {qrCodeOpen        && <QRCodeModal />}
-      {cropOpen          && <CropModal />}
-      {batchOpen         && <BatchModal />}
-      {compareOpen       && <CompareView />}
-      {shortcutsOpen     && <ShortcutsModal />}
-      {printDialogOpen   && <PrintDialog />}
-      {sanitizeOpen      && <SanitizeModal />}
-      {mailMergeOpen     && <MailMergeModal />}
-      {pdfaOpen          && <PdfaExportModal />}
-      {a11yOpen          && <AccessibilityCheckModal />}
-      {libraryOpen       && <LibraryModal />}
-      {encryptOpen       && <EncryptModal />}
-      {imagesToPdfOpen   && <ImagesToPdfModal />}
-      {altTextOpen       && <AltTextModal />}
+      {/* Modals — lazily loaded, so Suspense covers the brief chunk fetch on first open */}
+      <Suspense fallback={null}>
+        {settingsOpen      && <SettingsModal />}
+        {propertiesOpen    && <PropertiesModal />}
+        {passwordOpen      && <PasswordModal />}
+        {splitOpen         && <SplitModal />}
+        {ocrOpen           && <OCRModal />}
+        {presentationMode  && <PresentationMode />}
+        {watermarkOpen     && <WatermarkModal />}
+        {signatureOpen     && <SignatureModal />}
+        {headerFooterOpen  && <HeaderFooterModal />}
+        {compressOpen      && <CompressModal />}
+        {exportImagesOpen  && <ExportImagesModal />}
+        {qrCodeOpen        && <QRCodeModal />}
+        {cropOpen          && <CropModal />}
+        {batchOpen         && <BatchModal />}
+        {compareOpen       && <CompareView />}
+        {shortcutsOpen     && <ShortcutsModal />}
+        {printDialogOpen   && <PrintDialog />}
+        {sanitizeOpen      && <SanitizeModal />}
+        {mailMergeOpen     && <MailMergeModal />}
+        {pdfaOpen          && <PdfaExportModal />}
+        {a11yOpen          && <AccessibilityCheckModal />}
+        {libraryOpen       && <LibraryModal />}
+        {encryptOpen       && <EncryptModal />}
+        {imagesToPdfOpen   && <ImagesToPdfModal />}
+        {altTextOpen       && <AltTextModal />}
+      </Suspense>
       <CommandPalette />
     </div>
   )
