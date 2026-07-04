@@ -3,6 +3,13 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { X, FolderOpen, SplitSquareHorizontal, Loader2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { extractPageWords, buildPageAttributedDiff } from '../lib/textDiff'
+import { renderPageToCanvas } from '../lib/renderPage'
+import { computeDiffMask, renderDiffOverlay, pagesComparable } from '../lib/pixelDiff'
+
+// Fixed scale for visual-diff rendering (~144 DPI), independent of the live
+// UI zoom - keeps diff quality/perf consistent regardless of what zoom the
+// user happens to be at, same reasoning as PDFViewer.jsx's REDACTION_RASTER_DPI.
+const DIFF_SCALE = 2
 
 export default function CompareView() {
   const { pdfDoc, currentPage, zoom, theme, compareDoc, setCompareDoc, closeCompare } = useStore()
@@ -10,7 +17,7 @@ export default function CompareView() {
   const [split,   setSplit]   = useState(50)     // % of width for left panel
   const [syncScroll, setSync] = useState(true)
   const [opacity, setOpacity] = useState(1)      // left panel opacity (overlay mode)
-  const [mode,    setMode]    = useState('side')  // side | overlay | diff
+  const [mode,    setMode]    = useState('side')  // side | overlay | visual | diff
   const [diffChunks, setDiffChunks] = useState(null) // null = not computed yet
   const [diffLoading, setDiffLoading] = useState(false)
   const leftRef   = useRef(null)
@@ -88,7 +95,7 @@ export default function CompareView() {
         <div className="flex-1"/>
         {/* Mode */}
         <div className="flex gap-1">
-          {[['side','Nebeneinander'], ['overlay','Übereinander'], ['diff','Text-Vergleich']].map(([v,l]) => (
+          {[['side','Nebeneinander'], ['overlay','Übereinander'], ['visual','Visueller Vergleich'], ['diff','Text-Vergleich']].map(([v,l]) => (
             <button key={v} onClick={() => setMode(v)}
               className={`px-3 py-1 rounded text-xs transition-colors
                 ${mode === v ? 'bg-clover-600 text-white' : isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-500 hover:bg-gray-100'}`}>
@@ -96,7 +103,7 @@ export default function CompareView() {
             </button>
           ))}
         </div>
-        {mode !== 'diff' && (
+        {mode !== 'diff' && mode !== 'visual' && (
           <label className="flex items-center gap-1.5 text-xs cursor-pointer">
             <input type="checkbox" checked={syncScroll} onChange={e => setSync(e.target.checked)} className="accent-clover-500" />
             <span className={isDark ? 'text-zinc-400' : 'text-gray-600'}>Scrollen sync.</span>
@@ -136,8 +143,15 @@ export default function CompareView() {
         </div>
       )}
 
+      {/* Visual (pixel) diff */}
+      {mode === 'visual' && (
+        <div className="flex-1 overflow-hidden">
+          <VisualDiffPane pdfDoc={pdfDoc} compareDoc={compareDoc} currentPage={currentPage} isDark={isDark} loadSecond={loadSecond} />
+        </div>
+      )}
+
       {/* Compare panes */}
-      {mode !== 'diff' && (
+      {mode !== 'diff' && mode !== 'visual' && (
       <div id="compare-container" className="flex-1 flex relative overflow-hidden">
         {/* Left pane — current document */}
         <div ref={leftRef}
@@ -230,6 +244,80 @@ function PanePage({ pdfDoc, pageNum, zoom }) {
   }, [pdfDoc, pageNum, zoom])
 
   return <canvas ref={canvasRef} className="block rounded shadow-lg" />
+}
+
+// Per-page (not whole-document) computation, recomputed on navigation - like
+// side/overlay already only render currentPage. Rendering every page of both
+// documents up front for pixel-diffing would be prohibitively expensive.
+function VisualDiffPane({ pdfDoc, compareDoc, currentPage, isDark, loadSecond }) {
+  const canvasRef = useRef(null)
+  const [state, setState] = useState({ status: 'loading' })
+
+  useEffect(() => {
+    if (!compareDoc) { setState({ status: 'no-compare' }); return }
+    if (currentPage > compareDoc.numPages) { setState({ status: 'no-page' }); return }
+    let cancelled = false
+    setState({ status: 'loading' })
+    ;(async () => {
+      try {
+        const [pageA, pageB] = await Promise.all([pdfDoc.getPage(currentPage), compareDoc.getPage(currentPage)])
+        const vpA = pageA.getViewport({ scale: 1 })
+        const vpB = pageB.getViewport({ scale: 1 })
+        if (!pagesComparable({ width: vpA.width, height: vpA.height }, { width: vpB.width, height: vpB.height })) {
+          if (!cancelled) setState({ status: 'size-mismatch' })
+          return
+        }
+
+        const [canvasA, canvasB] = await Promise.all([
+          renderPageToCanvas(pdfDoc, currentPage, DIFF_SCALE),
+          renderPageToCanvas(compareDoc, currentPage, DIFF_SCALE),
+        ])
+        if (cancelled) return
+        const imgA = canvasA.getContext('2d').getImageData(0, 0, canvasA.width, canvasA.height)
+        const imgB = canvasB.getContext('2d').getImageData(0, 0, canvasB.width, canvasB.height)
+        const mask = computeDiffMask(imgA, imgB)
+        const overlay = renderDiffOverlay(imgA, imgB, mask)
+        if (cancelled || !canvasRef.current) return
+
+        const outCanvas = canvasRef.current
+        outCanvas.width = overlay.width
+        outCanvas.height = overlay.height
+        outCanvas.getContext('2d').putImageData(new ImageData(overlay.data, overlay.width, overlay.height), 0, 0)
+        setState({ status: 'ok' })
+      } catch (e) {
+        if (!cancelled) setState({ status: 'error', message: e.message })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [pdfDoc, compareDoc, currentPage])
+
+  const centered = (content) => (
+    <div className={`h-full flex flex-col items-center justify-center gap-4 text-sm ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+      {content}
+    </div>
+  )
+
+  if (state.status === 'no-compare') {
+    return centered(<>
+      <div>Kein Vergleichs-Dokument geladen</div>
+      <button onClick={loadSecond}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-clover-600 hover:bg-clover-700 text-white transition-colors">
+        <FolderOpen size={14}/> PDF öffnen
+      </button>
+    </>)
+  }
+  if (state.status === 'no-page') return centered(`Keine Seite ${currentPage} im Vergleichsdokument`)
+  if (state.status === 'size-mismatch') return centered('Seiten nicht vergleichbar (unterschiedliche Größe)')
+  if (state.status === 'error') return centered(`Fehler: ${state.message}`)
+  if (state.status === 'loading') {
+    return centered(<><Loader2 size={16} className="animate-spin"/> Seiten werden verglichen …</>)
+  }
+
+  return (
+    <div className={`h-full overflow-auto flex items-center justify-center p-6 ${isDark ? 'bg-zinc-950' : 'bg-gray-300'}`}>
+      <canvas ref={canvasRef} className="block rounded shadow-lg max-w-full" />
+    </div>
+  )
 }
 
 function DocLabel({ label, isDark }) {
