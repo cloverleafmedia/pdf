@@ -61,7 +61,7 @@ export default function App() {
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
     setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels,
-    toggleCommandPalette, openShortcuts, setHasSignatures,
+    toggleCommandPalette, openShortcuts, setHasSignatures, setHasJavaScriptActions,
   } = useStore()
 
   const [isDragging, setIsDragging] = useState(false)
@@ -175,6 +175,28 @@ export default function App() {
     })()
     return () => { cancelled = true }
   }, [pdfBytes, setHasSignatures])
+
+  // ── Detect embedded JavaScript (drives the "⚠ Enthält JavaScript" badge) ──
+  // Keyed on pdfDoc (the live pdf.js proxy), not pdfBytes, since pdf.js's own
+  // getJSActions() is used directly here - it already covers catalog /Names
+  // + catalog /A//AA + AcroForm-field JS in one call, a strictly more complete
+  // check than pdfCompliance.js's hand-rolled catalog/Names/JavaScript-only
+  // check (which nothing in the UI reads anyway). Per-page/annotation-level
+  // JS (PDFPageProxy.getJSActions()) is deliberately out of scope - it would
+  // require walking every page just to show a one-time badge on load.
+  useEffect(() => {
+    let cancelled = false
+    if (!pdfDoc) { setHasJavaScriptActions(false); return }
+    ;(async () => {
+      try {
+        const actions = await pdfDoc.getJSActions()
+        if (!cancelled) setHasJavaScriptActions(!!actions && Object.keys(actions).length > 0)
+      } catch {
+        if (!cancelled) setHasJavaScriptActions(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [pdfDoc, setHasJavaScriptActions])
 
   // ── Open file passed via command-line or second-instance ─────────────
   useEffect(() => {

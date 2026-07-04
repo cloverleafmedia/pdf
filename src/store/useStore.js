@@ -111,6 +111,7 @@ export const useStore = create((set, get) => ({
   altTextOpen:      false,
   signatureVerifyOpen: false,
   hasSignatures:       false,
+  hasJavaScriptActions: false,
   tableExtractOpen:    false,
 
   // ── Document library (folders watched for PDFs, tags per file path) ──────
@@ -387,6 +388,7 @@ export const useStore = create((set, get) => ({
   openSignatureVerify:  () => set({ signatureVerifyOpen: true }),
   closeSignatureVerify: () => set({ signatureVerifyOpen: false }),
   setHasSignatures:     (v) => set({ hasSignatures: v }),
+  setHasJavaScriptActions: (v) => set({ hasJavaScriptActions: v }),
   openTableExtract:     () => set({ tableExtractOpen: true }),
   closeTableExtract:    () => set({ tableExtractOpen: false }),
 

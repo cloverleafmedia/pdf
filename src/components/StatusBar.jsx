@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, TriangleAlert } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import pkg from '../../package.json'
 
@@ -13,7 +13,7 @@ function fmt(bytes) {
 
 export default function StatusBar() {
   const { t } = useTranslation()
-  const { pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage, hasSignatures, openSignatureVerify } = useStore()
+  const { pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage, hasSignatures, openSignatureVerify, hasJavaScriptActions } = useStore()
   const isDark = theme === 'dark'
 
   const toolLabels = {
@@ -51,6 +51,15 @@ export default function StatusBar() {
                 title="Signiertes Dokument — Signatur prüfen">
                 <ShieldCheck size={11}/> Signiert
               </button>
+            </>
+          )}
+          {hasJavaScriptActions && (
+            <>
+              <span>|</span>
+              <span className={`flex items-center gap-1 px-1.5 py-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}
+                title="Dieses Dokument enthält eingebettetes JavaScript (Formular-Skripte, Öffnen-Aktion oder Anmerkungs-Aktionen). CloverleafPDF führt es nicht aus, aber andere Betrachter könnten es tun.">
+                <TriangleAlert size={11}/> Enthält JavaScript
+              </span>
             </>
           )}
         </>
