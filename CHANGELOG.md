@@ -5,6 +5,9 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### Behoben
+- `scripts/publish-release.ps1` legt jetzt vor dem `electron-builder --publish`-Schritt selbst einen leeren GitHub-Release für den Ziel-Tag an, falls noch keiner existiert. Grund: electron-builder lädt Installer und Blockmap parallel hoch, und ohne bereits existierenden Release versucht jeder Upload unabhängig, ihn anzulegen — beim v1.3.1-Release gewann nur einer dieses Rennen, der andere schlug mit „422 already_exists" fehl und riss den gesamten Publish-Vorgang ab, bevor `latest.yml` hochgeladen wurde.
+
 ## [1.3.1] – 2026-07-04
 
 ### Hinzugefügt

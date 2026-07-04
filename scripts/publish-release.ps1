@@ -70,6 +70,31 @@ try {
     npm run licenses
     if ($LASTEXITCODE -ne 0) { throw "npm run licenses fehlgeschlagen (Exit $LASTEXITCODE)" }
 
+    # electron-builder laedt Installer und Blockmap parallel hoch; existiert
+    # noch KEIN Release fuer den Tag, versucht JEDER der beiden Uploads
+    # unabhaengig voneinander einen anzulegen - beim Bug vom 2026-07-04 gewann
+    # nur einer dieses Rennen, der andere schlug mit "422 already_exists" fehl
+    # und riss den ganzen Prozess mit sich, bevor latest.yml hochgeladen wurde.
+    # Fix: den (leeren) Release IMMER vorher selbst anlegen, falls er fehlt -
+    # dann gibt es fuer electron-builder nichts mehr zu erzeugen, nur noch
+    # hochzuladen, und das Rennen entfaellt.
+    Write-Host "`n--- Pruefe/lege GitHub-Release fuer $tagName an ---" -ForegroundColor DarkGray
+    $ghHeaders = @{ Authorization = "Bearer $plainToken"; Accept = "application/vnd.github+json" }
+    $releaseExists = $true
+    try {
+        Invoke-RestMethod -Uri "https://api.github.com/repos/cloverleafmedia/pdf/releases/tags/$tagName" -Headers $ghHeaders -ErrorAction Stop | Out-Null
+    } catch {
+        if ($_.Exception.Response.StatusCode.value__ -eq 404) { $releaseExists = $false }
+        else { throw "GitHub-Release-Abfrage fehlgeschlagen: $($_.Exception.Message)" }
+    }
+    if (-not $releaseExists) {
+        $body = @{ tag_name = $tagName; name = $version; target_commitish = "main"; draft = $false; prerelease = $false } | ConvertTo-Json
+        Invoke-RestMethod -Uri "https://api.github.com/repos/cloverleafmedia/pdf/releases" -Headers $ghHeaders -Method Post -Body $body -ContentType "application/json" | Out-Null
+        Write-Host "Leeren Release fuer $tagName angelegt." -ForegroundColor DarkGray
+    } else {
+        Write-Host "Release fuer $tagName existiert bereits, ueberspringe." -ForegroundColor DarkGray
+    }
+
     Write-Host "`n--- electron-builder --publish always ---" -ForegroundColor DarkGray
     npx electron-builder --win --publish always
     if ($LASTEXITCODE -ne 0) { throw "electron-builder fehlgeschlagen (Exit $LASTEXITCODE)" }
