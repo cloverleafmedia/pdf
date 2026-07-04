@@ -302,6 +302,12 @@ Publisher: Devon Govett
 
 
 ----------------------------------------------------------------------
+diff@9.0.0
+Lizenz: BSD-3-Clause
+Repository: https://github.com/kpdecker/jsdiff
+
+
+----------------------------------------------------------------------
 dijkstrajs@1.0.3
 Lizenz: MIT
 Repository: https://github.com/tcort/dijkstrajs

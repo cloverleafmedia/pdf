@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
-import { X, FolderOpen, SplitSquareHorizontal } from 'lucide-react'
+import { X, FolderOpen, SplitSquareHorizontal, Loader2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { extractPageWords, buildPageAttributedDiff } from '../lib/textDiff'
 
 export default function CompareView() {
   const { pdfDoc, currentPage, zoom, theme, compareDoc, setCompareDoc, closeCompare } = useStore()
@@ -9,10 +10,31 @@ export default function CompareView() {
   const [split,   setSplit]   = useState(50)     // % of width for left panel
   const [syncScroll, setSync] = useState(true)
   const [opacity, setOpacity] = useState(1)      // left panel opacity (overlay mode)
-  const [mode,    setMode]    = useState('side')  // side | overlay
+  const [mode,    setMode]    = useState('side')  // side | overlay | diff
+  const [diffChunks, setDiffChunks] = useState(null) // null = not computed yet
+  const [diffLoading, setDiffLoading] = useState(false)
   const leftRef   = useRef(null)
   const rightRef  = useRef(null)
   const dragging  = useRef(false)
+
+  // ── Text diff (computed once per document pair, only in diff mode) ────
+  useEffect(() => {
+    if (mode !== 'diff' || !pdfDoc || !compareDoc) { setDiffChunks(null); return }
+    let cancelled = false
+    setDiffLoading(true)
+    ;(async () => {
+      try {
+        const [pagesA, pagesB] = await Promise.all([extractPageWords(pdfDoc), extractPageWords(compareDoc)])
+        if (cancelled) return
+        setDiffChunks(buildPageAttributedDiff(pagesA, pagesB))
+      } catch (e) {
+        if (!cancelled) useStore.getState().setStatus('Fehler beim Textvergleich: ' + e.message)
+      } finally {
+        if (!cancelled) setDiffLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [mode, pdfDoc, compareDoc])
 
   // ── Load second PDF ────────────────────────────────────────────────────
   const loadSecond = async () => {
@@ -66,7 +88,7 @@ export default function CompareView() {
         <div className="flex-1"/>
         {/* Mode */}
         <div className="flex gap-1">
-          {[['side','Nebeneinander'], ['overlay','Übereinander']].map(([v,l]) => (
+          {[['side','Nebeneinander'], ['overlay','Übereinander'], ['diff','Text-Vergleich']].map(([v,l]) => (
             <button key={v} onClick={() => setMode(v)}
               className={`px-3 py-1 rounded text-xs transition-colors
                 ${mode === v ? 'bg-clover-600 text-white' : isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-500 hover:bg-gray-100'}`}>
@@ -74,10 +96,12 @@ export default function CompareView() {
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-          <input type="checkbox" checked={syncScroll} onChange={e => setSync(e.target.checked)} className="accent-clover-500" />
-          <span className={isDark ? 'text-zinc-400' : 'text-gray-600'}>Scrollen sync.</span>
-        </label>
+        {mode !== 'diff' && (
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="checkbox" checked={syncScroll} onChange={e => setSync(e.target.checked)} className="accent-clover-500" />
+            <span className={isDark ? 'text-zinc-400' : 'text-gray-600'}>Scrollen sync.</span>
+          </label>
+        )}
         {mode === 'overlay' && (
           <div className="flex items-center gap-2">
             <span className={`text-xs ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Links-Deckkraft</span>
@@ -91,7 +115,29 @@ export default function CompareView() {
         </button>
       </div>
 
+      {/* Text diff */}
+      {mode === 'diff' && (
+        <div className="flex-1 overflow-hidden">
+          {!compareDoc ? (
+            <div className="h-full flex flex-col items-center justify-center gap-4">
+              <div className={`text-sm ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Kein Vergleichs-Dokument geladen</div>
+              <button onClick={loadSecond}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-clover-600 hover:bg-clover-700 text-white transition-colors">
+                <FolderOpen size={14}/> PDF öffnen
+              </button>
+            </div>
+          ) : diffLoading ? (
+            <div className={`h-full flex items-center justify-center gap-2 text-sm ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+              <Loader2 size={16} className="animate-spin"/> Text wird verglichen …
+            </div>
+          ) : (
+            <DiffResult chunks={diffChunks} isDark={isDark} />
+          )}
+        </div>
+      )}
+
       {/* Compare panes */}
+      {mode !== 'diff' && (
       <div id="compare-container" className="flex-1 flex relative overflow-hidden">
         {/* Left pane — current document */}
         <div ref={leftRef}
@@ -141,6 +187,7 @@ export default function CompareView() {
           }
         </div>
       </div>
+      )}
     </div>
   )
 }
@@ -190,6 +237,47 @@ function DocLabel({ label, isDark }) {
     <div className={`text-xs font-medium px-3 py-1 rounded-full
       ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-white text-gray-500'}`}>
       {label}
+    </div>
+  )
+}
+
+// Single scrollable reading-flow diff, not two synced panes — the two
+// documents may have completely different page counts/layouts, so there's
+// no meaningful way to keep two independent canvases in lockstep here.
+function DiffResult({ chunks, isDark }) {
+  if (!chunks) return null
+  if (chunks.every(c => c.type === 'common')) {
+    return (
+      <div className={`h-full flex items-center justify-center text-sm ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+        Keine Unterschiede gefunden
+      </div>
+    )
+  }
+
+  let lastBadgePage = null
+  return (
+    <div className={`h-full overflow-y-auto p-6 leading-relaxed text-sm ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
+      {chunks.map((chunk, i) => {
+        const showBadge = chunk.type !== 'common' && chunk.page !== lastBadgePage
+        if (chunk.type !== 'common') lastBadgePage = chunk.page
+        return (
+          <span key={i}>
+            {showBadge && (
+              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full mx-1 align-middle select-none
+                ${isDark ? 'bg-black/40 text-zinc-400' : 'bg-black/10 text-gray-500'}`}>
+                S. {chunk.page}
+              </span>
+            )}
+            <span className={
+              chunk.type === 'added'   ? (isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-800') :
+              chunk.type === 'removed' ? (isDark ? 'bg-red-900/50 text-red-300 line-through' : 'bg-red-100 text-red-800 line-through') :
+              ''
+            }>
+              {chunk.text}{' '}
+            </span>
+          </span>
+        )
+      })}
     </div>
   )
 }
