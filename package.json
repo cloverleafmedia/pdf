@@ -13,7 +13,9 @@
     "licenses": "node scripts/build-licenses.js",
     "setup:verapdf": "node scripts/setup-verapdf.js",
     "setup:qpdf": "node scripts/setup-qpdf.js",
-    "verify:release": "node scripts/verify-release.js"
+    "verify:release": "node scripts/verify-release.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@signpdf/placeholder-plain": "^3.3.0",
@@ -43,6 +45,7 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "vite": "^5.3.1",
+    "vitest": "^2.1.9",
     "wait-on": "^7.2.0"
   },
   "build": {
