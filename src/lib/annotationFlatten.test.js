@@ -91,6 +91,44 @@ describe('flattenAnnotations', () => {
     await expect(flattenAnnotations(bytes, annotations, {})).resolves.toBeTruthy()
   })
 
+  it('draws rectangle and circle shape annotations', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'rectangle', page: 1, color: '#8b5cf6', x: 10, y: 10, w: 50, h: 30, pageW: 200, pageH: 200 },
+      { type: 'circle',    page: 1, color: '#8b5cf6', x: 20, y: 60, w: 40, h: 40, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {})
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPageCount()).toBe(1)
+  })
+
+  it('draws an arrow annotation with a shaft and arrowhead', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'arrow', page: 1, color: '#8b5cf6', width: 2, x1: 10, y1: 10, x2: 100, y2: 80, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {})
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPageCount()).toBe(1)
+  })
+
+  it('does not crash or produce NaN geometry for a degenerate zero-length arrow', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'arrow', page: 1, color: '#8b5cf6', width: 2, x1: 50, y1: 50, x2: 50, y2: 50, pageW: 200, pageH: 200 },
+    ]
+    await expect(flattenAnnotations(bytes, annotations, {})).resolves.toBeTruthy()
+  })
+
+  it('silently skips shape annotations targeting a page number beyond the document', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'rectangle', page: 5, color: '#8b5cf6', x: 0, y: 0, w: 10, h: 10, pageW: 200, pageH: 200 },
+      { type: 'arrow', page: 5, color: '#8b5cf6', x1: 0, y1: 0, x2: 10, y2: 10, pageW: 200, pageH: 200 },
+    ]
+    await expect(flattenAnnotations(bytes, annotations, {})).resolves.toBeTruthy()
+  })
+
   it('fills in text form fields and toggles checkboxes', async () => {
     const doc = await PDFDocument.create()
     const page = doc.addPage([200, 200])

@@ -66,6 +66,26 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
           page.drawRectangle({ x: tx, y: ty-boxH, width: boxW, height: boxH, color: rgb(1,1,1), borderColor: rgb(0.5,0.5,0.5), borderWidth: 0.7, opacity: 0.95 })
           lines.forEach((line, i) => page.drawText(line.slice(0,35), { x: tx+4, y: ty - fSz*1.4*(i+1)+2, size: fSz, font: f, color: rgb(0,0,0) }))
         }
+      } else if (a.type === 'rectangle' || a.type === 'circle') {
+        const x  = a.x * sx,  w = a.w * sx,  h = a.h * sy
+        const y  = ph - (a.y + a.h) * sy
+        const bw = Math.max((a.width || 2) * sx, 0.75)
+        if (a.type === 'rectangle') {
+          page.drawRectangle({ x, y, width: w, height: h, borderColor: color, borderWidth: bw })
+        } else {
+          page.drawEllipse({ x: x + w / 2, y: y + h / 2, xScale: Math.abs(w) / 2, yScale: Math.abs(h) / 2, borderColor: color, borderWidth: bw })
+        }
+      } else if (a.type === 'arrow') {
+        const x1 = a.x1 * sx,  y1 = ph - a.y1 * sy
+        const x2 = a.x2 * sx,  y2 = ph - a.y2 * sy
+        const lw = Math.max((a.width || 2) * sx, 0.75)
+        page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: lw, color })
+        // Arrowhead: two short lines back from the tip, angled off the shaft's direction.
+        const angle     = Math.atan2(y2 - y1, x2 - x1)
+        const headLen   = 10
+        const headAngle = Math.PI / 7
+        page.drawLine({ start: { x: x2, y: y2 }, end: { x: x2 - headLen * Math.cos(angle - headAngle), y: y2 - headLen * Math.sin(angle - headAngle) }, thickness: lw, color })
+        page.drawLine({ start: { x: x2, y: y2 }, end: { x: x2 - headLen * Math.cos(angle + headAngle), y: y2 - headLen * Math.sin(angle + headAngle) }, thickness: lw, color })
       }
     }
   }

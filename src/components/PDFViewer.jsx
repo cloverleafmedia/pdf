@@ -26,7 +26,40 @@ const NEW_FIELD_FILL = 'rgba(59,130,246,0.25)'
 // Tool-id groups checked in multiple places below (text-selection annotations
 // vs. freehand-drag tools) — kept as single constants so both checks can't drift.
 const HIGHLIGHT_TOOLS = ['highlight', 'underline', 'strikethrough']
-const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield']
+const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield', 'shape']
+
+// Live-drag preview stroke for the rectangle/circle shape tool - violet, distinct
+// from redaction's red and new-field's blue.
+const SHAPE_STROKE = '#8b5cf6'
+
+// Draws a line with a small 2-stroke arrowhead at (x2,y2), angle derived via atan2.
+// Used for both the live 2-click arrow preview and the committed arrow annotation.
+function drawArrowOnCanvas(ctx, x1, y1, x2, y2) {
+  ctx.beginPath()
+  ctx.moveTo(x1, y1)
+  ctx.lineTo(x2, y2)
+  ctx.stroke()
+  const angle    = Math.atan2(y2 - y1, x2 - x1)
+  const headLen  = 12
+  const headAngle = Math.PI / 7
+  ctx.beginPath()
+  ctx.moveTo(x2, y2)
+  ctx.lineTo(x2 - headLen * Math.cos(angle - headAngle), y2 - headLen * Math.sin(angle - headAngle))
+  ctx.moveTo(x2, y2)
+  ctx.lineTo(x2 - headLen * Math.cos(angle + headAngle), y2 - headLen * Math.sin(angle + headAngle))
+  ctx.stroke()
+}
+
+// Shortest distance from point p to segment a-b - used by the eraser tool to
+// hit-test arrow annotations (a single anchor/bounding-box check doesn't fit a line).
+function distToSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
+  t = Math.max(0, Math.min(1, t))
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+}
 
 // Post-redaction confirmation: reload the freshly-redacted bytes and confirm
 // the pages we just rasterized really carry no extractable text anymore.
@@ -310,6 +343,7 @@ function PDFPage({ pageNum }) {
     pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation,
     formValues, setFormValue,
     pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft,
+    shapeType,
   } = useStore()
 
   const canvasRef     = useRef(null)
@@ -320,6 +354,7 @@ function PDFPage({ pageNum }) {
   const drawingRef    = useRef(false)
   const pathRef       = useRef([])
   const rectStartRef  = useRef(null)
+  const arrowStartRef = useRef(null) // first click of the 2-click arrow gesture
 
   const [size, setSize]           = useState({ w: 0, h: 0 })
   const [inlineInput, setInline]  = useState(null)
@@ -525,6 +560,23 @@ function PDFPage({ pageNum }) {
         ctx.moveTo(a.path[0].x, a.path[0].y)
         for (let i = 1; i < a.path.length; i++) ctx.lineTo(a.path[i].x, a.path[i].y)
         ctx.stroke()
+      } else if (a.type === 'rectangle' || a.type === 'circle') {
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = a.color || SHAPE_STROKE
+        ctx.lineWidth = a.width || 2
+        if (a.type === 'rectangle') {
+          ctx.strokeRect(a.x, a.y, a.w, a.h)
+        } else {
+          ctx.beginPath()
+          ctx.ellipse(a.x + a.w / 2, a.y + a.h / 2, Math.abs(a.w) / 2, Math.abs(a.h) / 2, 0, 0, Math.PI * 2)
+          ctx.stroke()
+        }
+      } else if (a.type === 'arrow') {
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = a.color || SHAPE_STROKE
+        ctx.lineWidth = a.width || 2
+        ctx.lineCap = 'round'
+        drawArrowOnCanvas(ctx, a.x1, a.y1, a.x2, a.y2)
       }
 
       ctx.restore()
@@ -594,8 +646,14 @@ function PDFPage({ pageNum }) {
           pos.x >= r.x - 8 && pos.x <= r.x + r.w + 8 &&
           pos.y >= r.y - 8 && pos.y <= r.y + r.h + 8)
         const hitPath   = ann.path?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < 18)
-        const hitAnchor = typeof ann.x === 'number' && Math.hypot(ann.x - pos.x, ann.y - pos.y) < 24
-        if (hitRect || hitPath || hitAnchor) { removeAnnotation(ann.id); return }
+        const hitAnchor = typeof ann.x === 'number' && ann.type !== 'rectangle' && ann.type !== 'circle' &&
+          Math.hypot(ann.x - pos.x, ann.y - pos.y) < 24
+        const hitShapeBox = (ann.type === 'rectangle' || ann.type === 'circle') &&
+          pos.x >= ann.x - 8 && pos.x <= ann.x + ann.w + 8 &&
+          pos.y >= ann.y - 8 && pos.y <= ann.y + ann.h + 8
+        const hitArrow = ann.type === 'arrow' &&
+          distToSegment(pos, { x: ann.x1, y: ann.y1 }, { x: ann.x2, y: ann.y2 }) < 12
+        if (hitRect || hitPath || hitAnchor || hitShapeBox || hitArrow) { removeAnnotation(ann.id); return }
       }
       return
     }
@@ -621,13 +679,55 @@ function PDFPage({ pageNum }) {
       return
     }
 
+    // ── Shape: rectangle/circle drag, or arrow's 2-click gesture ───────
+    if (tool === 'shape') {
+      const pos = getPos(e)
+      if (shapeType === 'arrow') {
+        if (!arrowStartRef.current) {
+          arrowStartRef.current = pos
+        } else {
+          const s = arrowStartRef.current
+          if (Math.hypot(pos.x - s.x, pos.y - s.y) > 5)
+            addAnnotation({ type: 'arrow', page: pageNum, x1: s.x, y1: s.y, x2: pos.x, y2: pos.y, color: drawColor, width: drawWidth, pageW: size.w, pageH: size.h })
+          arrowStartRef.current = null
+          redraw()
+        }
+        return
+      }
+      rectStartRef.current = pos
+      drawingRef.current = true
+      return
+    }
+
     // ── Freehand drawing ──────────────────────────────────────────────
     drawingRef.current = true
     pathRef.current = [getPos(e)]
   }
 
   const onMouseMove = (e) => {
-    if (!drawingRef.current || !overlayRef.current) return
+    if (!overlayRef.current) return
+
+    // Arrow's 2-click gesture: live preview line even though drawingRef is
+    // never set (there's no drag between the two clicks).
+    if (activeTool === 'shape' && shapeType === 'arrow' && arrowStartRef.current) {
+      const pos = getPos(e)
+      redraw()
+      const dpr = window.devicePixelRatio || 1
+      const ctx = overlayRef.current.getContext('2d')
+      const s   = arrowStartRef.current
+      ctx.save()
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.strokeStyle = SHAPE_STROKE; ctx.lineWidth = drawWidth || 2
+      ctx.setLineDash([6, 3]); ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(s.x, s.y)
+      ctx.lineTo(pos.x, pos.y)
+      ctx.stroke()
+      ctx.restore()
+      return
+    }
+
+    if (!drawingRef.current) return
     const pos = getPos(e)
 
     if (activeTool === 'redact' && rectStartRef.current) {
@@ -656,6 +756,27 @@ function PDFPage({ pageNum }) {
       ctx.lineWidth = 2; ctx.setLineDash([6, 3])
       ctx.fillRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
       ctx.strokeRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
+      ctx.restore()
+      return
+    }
+
+    if (activeTool === 'shape' && shapeType !== 'arrow' && rectStartRef.current) {
+      redraw()
+      const dpr = window.devicePixelRatio || 1
+      const ctx = overlayRef.current.getContext('2d')
+      const s   = rectStartRef.current
+      const w = pos.x - s.x, h = pos.y - s.y
+      ctx.save()
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.strokeStyle = SHAPE_STROKE
+      ctx.lineWidth = 2; ctx.setLineDash([6, 3])
+      if (shapeType === 'rectangle') {
+        ctx.strokeRect(s.x, s.y, w, h)
+      } else {
+        ctx.beginPath()
+        ctx.ellipse(s.x + w / 2, s.y + h / 2, Math.abs(w) / 2, Math.abs(h) / 2, 0, 0, Math.PI * 2)
+        ctx.stroke()
+      }
       ctx.restore()
       return
     }
@@ -705,6 +826,17 @@ function PDFPage({ pageNum }) {
         const name = dedupeFieldName(defaultFieldName(newFieldType, n), existingNames)
         addFormFieldDraft({ pageNum, type: newFieldType, name, x, y, w, h, logicalW: size.w, logicalH: size.h })
       }
+      rectStartRef.current = null
+      redraw()
+      return
+    }
+
+    if (activeTool === 'shape' && shapeType !== 'arrow' && rectStartRef.current) {
+      const pos = getPos(e)
+      const s   = rectStartRef.current
+      const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
+      const w = Math.abs(pos.x - s.x),  h = Math.abs(pos.y - s.y)
+      if (w > 5 && h > 5) addAnnotation({ type: shapeType, page: pageNum, x, y, w, h, color: drawColor, width: drawWidth, pageW: size.w, pageH: size.h })
       rectStartRef.current = null
       redraw()
       return

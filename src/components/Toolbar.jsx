@@ -11,7 +11,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
   Wrench, Eye, Pin, Terminal, Keyboard,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus
+  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { navigateToPage } from '../lib/navigate'
@@ -76,10 +76,10 @@ export default function Toolbar() {
   const {
     pdfDoc, currentPage, totalPages, zoom, theme, sidebarOpen, nightMode, twoPageView, magnifierActive,
     activeTool, lastAnnotateTool, drawColor, drawWidth, pendingRedactions, annotationHistory, annotationFuture,
-    toolbarLabels, pinnedTools, pendingFormFields, newFieldType,
+    toolbarLabels, pinnedTools, pendingFormFields, newFieldType, shapeType,
     setActiveTool, setZoom, zoomIn, zoomOut, setDrawColor, setDrawWidth,
     setCurrentPage, toggleSidebar, openSettings, openProperties, openSplit, openOCR,
-    rotatePageLeft, rotatePageRight, clearRedactions, setNewFieldType, clearFormFieldDrafts,
+    rotatePageLeft, rotatePageRight, clearRedactions, setNewFieldType, clearFormFieldDrafts, setShapeType,
     toggleNightMode, openWatermark, openSignature, openHeaderFooter, togglePresentation,
     undoAnnotation, redoAnnotation,
     setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool,
@@ -126,6 +126,7 @@ export default function Toolbar() {
   // Redaction bar shown when redact tool active and pending redactions exist
   const showRedactBar = activeTool === 'redact'
   const showNewFieldBar = activeTool === 'newfield'
+  const showShapeBar = activeTool === 'shape'
 
   const isAnnotateColorTool = ['highlight', 'underline', 'strikethrough', 'draw', 'note', 'text'].includes(activeTool)
 
@@ -285,6 +286,10 @@ export default function Toolbar() {
             active={activeTool === 'newfield'} onClick={() => setActiveTool(activeTool === 'newfield' ? 'hand' : 'newfield')}>
             <SquarePlus size={16}/>
           </TBtn>
+          <TBtn title="Form einfügen (Rechteck/Kreis/Pfeil)" isDark={isDark} disabled={!pdfDoc}
+            active={activeTool === 'shape'} onClick={() => setActiveTool(activeTool === 'shape' ? 'hand' : 'shape')}>
+            <Shapes size={16}/>
+          </TBtn>
           <Sep isDark={isDark}/>
 
           {/* Document tools group — group itself stays enabled even without a doc, since
@@ -426,6 +431,29 @@ export default function Toolbar() {
                 Alle verwerfen ({pendingFormFields.length})
               </button>
             )}
+          </div>
+        )}
+
+        {/* Shape action bar */}
+        {showShapeBar && (
+          <div className={`flex items-center gap-3 px-4 py-1.5 text-xs border-b
+            ${isDark ? 'bg-violet-950/40 border-violet-900/50 text-violet-300' : 'bg-violet-50 border-violet-100 text-violet-700'}`}>
+            <Shapes size={13}/>
+            <span>
+              {shapeType === 'arrow'
+                ? 'Klicken für Start, dann klicken für Ende des Pfeils.'
+                : 'Bereich für die Form aufziehen.'}
+            </span>
+            <div className="flex-1"/>
+            <div className="flex gap-1">
+              {[['rectangle', 'Rechteck'], ['circle', 'Kreis'], ['arrow', 'Pfeil']].map(([v, l]) => (
+                <button key={v} onClick={() => setShapeType(v)}
+                  className={`px-3 py-0.5 rounded text-xs transition-colors
+                    ${shapeType === v ? 'bg-violet-600 text-white' : isDark ? 'hover:bg-violet-900/40' : 'hover:bg-violet-100'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </>

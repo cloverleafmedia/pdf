@@ -42,6 +42,9 @@ export const useStore = create((set, get) => ({
   pendingFormFields: [],
   newFieldType: 'text', // 'text' | 'checkbox' - which type the next drag-to-place placement creates
 
+  // ── Shape annotations (rectangle / circle / arrow) ──────────────────────
+  shapeType: 'rectangle', // 'rectangle' | 'circle' | 'arrow' - which shape the 'shape' tool draws next
+
   // ── Reusable templates (Wasserzeichen / Kopf-Fußzeile) ──────────────────
   watermarkTemplates:    [],
   headerFooterTemplates: [],
@@ -249,6 +252,7 @@ export const useStore = create((set, get) => ({
   removeFormFieldDraft: (id) => set(s => ({ pendingFormFields: s.pendingFormFields.filter(f => f.id !== id) })),
   clearFormFieldDrafts: ()  => set({ pendingFormFields: [] }),
   setNewFieldType:      (t) => set({ newFieldType: t }),
+  setShapeType:         (t) => set({ shapeType: t }),
 
   // ── Actions: form fields ────────────────────────────────────────────────
   setFormValue: (key, value) => set(s => ({ formValues: { ...s.formValues, [key]: value }, isDirty: true })),

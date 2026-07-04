@@ -10,7 +10,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
   BookmarkPlus, Package2, Keyboard, CornerDownLeft,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus,
+  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -112,6 +112,8 @@ export default function CommandPalette() {
       action: run(() => s.setActiveTool(activeTool === 'form' ? 'hand' : 'form')) },
     { group: 'Werkzeuge', label: 'Formularfeld erstellen', icon: <SquarePlus size={15}/>, disabled: !pdfDoc, active: activeTool === 'newfield',
       action: run(() => s.setActiveTool(activeTool === 'newfield' ? 'hand' : 'newfield')) },
+    { group: 'Werkzeuge', label: 'Form einfügen (Rechteck/Kreis/Pfeil)', icon: <Shapes size={15}/>, disabled: !pdfDoc, active: activeTool === 'shape',
+      action: run(() => s.setActiveTool(activeTool === 'shape' ? 'hand' : 'shape')) },
 
     // ── Dokument ───────────────────────────────────────────────────────
     { group: 'Dokument', label: t('toolbar.merge'), icon: <Merge size={15}/>, disabled: !pdfDoc, action: run(() => window._mergePDF?.()) },
