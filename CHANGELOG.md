@@ -5,6 +5,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.0] – 2026-07-04
+
+### Sicherheit
+- **Kritisch:** "Schwärzen" hat den geschwärzten Bereich bisher nur mit einem schwarzen Rechteck *überdeckt* — der ursprüngliche Text/Bildinhalt blieb darunter vollständig erhalten und war weiterhin per Textauswahl, Suche oder jedem Werkzeug auslesbar, das die oberste Grafikebene ignoriert (derselbe Fehler, der in der Vergangenheit bei "geschwärzten" Dokumenten realer Institutionen zum eigentlich verdeckten Text führte). Geschwärzte Seiten werden jetzt bei "Schwärzung anwenden" in ein Bild gerastert (die Schwärzungs-Balken werden direkt in die Pixel gebrannt), bevor sie zurück ins PDF eingebettet werden; Seiten ohne Schwärzung bleiben unverändert durchsuchbar. Im Anschluss wird automatisch geprüft, dass auf den geschwärzten Seiten wirklich kein Text mehr extrahierbar ist. Bewusste Konsequenz: Formularfelder und Verknüpfungen auf einer geschwärzten Seite gehen mit weg (Hinweis dazu jetzt auch in der Werkzeugleiste).
+- Neu: "Signatur prüfen" verifiziert eine im PDF eingebettete digitale Signatur (PKCS#7/CMS) kryptografisch — inkl. Erkennung, ob die Datei nach der Signatur verändert wurde, und Angaben zum Zertifikat des Unterzeichners (Gültigkeitszeitraum, Aussteller). node-forge kann PKCS#7 nur signieren, nicht prüfen (`verify()` ist dort ein nicht implementierter Platzhalter) — die Signatur-Struktur (SignerInfo) wird deshalb selbst per ASN.1 dekodiert.
+- Electron-Härtung: `sandbox: true` für das Hauptfenster explizit gesetzt; In-App-Navigation zu externen URLs sowie neue Popup-Fenster werden abgefangen und stattdessen im Standardbrowser geöffnet, statt die App selbst zu navigieren (bisher gab es dafür keine Sperre, auch wenn aktuell keine anklickbaren PDF-Links gerendert werden).
+- `npm run audit:deps` (neu): manueller Vorab-Release-Schritt wie `verify:release`, prüft Produktions-Abhängigkeiten per `npm audit` auf kritische Schwachstellen.
+
+### Hinweise
+- `npm run audit:deps` findet aktuell eine kritische, aber nicht ausnutzbare Kette: `crypto-js < 4.2.0` (schwaches PBKDF2, kein Fix verfügbar) über `pdfkit` → `@signpdf/placeholder-pdfkit010` → `@signpdf/placeholder-plain`. `pdfkit` ist dort nur eine `peerDependency` und wird im tatsächlich von uns genutzten Codepfad (`plainAddPlaceholder`) an keiner Stelle mit `require()` geladen — geprüft, `crypto-js` wird also nie ausgeführt. Beobachten, bis @signpdf/pdfkit das upstream lösen.
+
 ## [1.4.0] – 2026-07-04
 
 ### Hinzugefügt
