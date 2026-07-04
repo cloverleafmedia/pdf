@@ -49,7 +49,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ## [1.2.0] – 2026-07-04
 
 ### Hinzugefügt
-- Werkzeugleiste neu gruppiert (Adobe-Vorbild): Kernaktionen bleiben sichtbar, seltener genutzte Werkzeuge in Flyout-Gruppen "Anmerkungen", "Dokument", "Ansicht"
+- Werkzeugleiste neu gruppiert: Kernaktionen bleiben sichtbar, seltener genutzte Werkzeuge in Flyout-Gruppen "Anmerkungen", "Dokument", "Ansicht"
 - Umschaltbare Beschriftungen in der Werkzeugleiste ("Aa"-Button)
 - Split-Button "Anmerkungen" merkt sich das zuletzt genutzte Werkzeug
 - Anheften ("Pin") einzelner Dokument-Werkzeuge direkt in die Hauptleiste
