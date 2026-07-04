@@ -5,6 +5,13 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- Cloud-Sync-Ordner erkennen: Button in der Dokumenten-Bibliothek findet lokale OneDrive-/Google-Drive-/Dropbox-Ordner (inkl. "OneDrive - Firma"-Varianten und Dropbox-Custom-Pfaden) und fügt sie per Checkliste zur Bibliothek hinzu.
+- Design-Option "System": App folgt live dem Windows-Hell/Dunkel-Modus, sofern nicht ausdrücklich Dunkel/Hell gewählt wurde.
+- Tastatur-Tab-Navigation zwischen Formularfeldern: Tab/Umschalt+Tab springt jetzt in Lesereihenfolge (oben-nach-unten, links-nach-rechts) statt in roher PDF-Reihenfolge, auch über Seitengrenzen hinweg.
+- Anmerkungen als XFDF exportieren/importieren (Acrobat-kompatibles Austauschformat) zusätzlich zum bestehenden Klartext-Export — inklusive Antwort-Threads beim Export.
+- PDF-Vergleich: neuer Modus "Text-Vergleich" zeigt einen echten wortbasierten Unterschieds-Text mit Seiten-Zuordnung, zusätzlich zu Nebeneinander/Übereinander.
+
 ### Behoben
 - `scripts/publish-release.ps1` legt jetzt vor dem `electron-builder --publish`-Schritt selbst einen leeren GitHub-Release für den Ziel-Tag an, falls noch keiner existiert. Grund: electron-builder lädt Installer und Blockmap parallel hoch, und ohne bereits existierenden Release versucht jeder Upload unabhängig, ihn anzulegen — beim v1.3.1-Release gewann nur einer dieses Rennen, der andere schlug mit „422 already_exists" fehl und riss den gesamten Publish-Vorgang ab, bevor `latest.yml` hochgeladen wurde.
 
