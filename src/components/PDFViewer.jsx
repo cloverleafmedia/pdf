@@ -5,7 +5,7 @@ import { useStore } from '../store/useStore'
 import MagnifierLens from './MagnifierLens'
 
 // ── Flatten all UI annotations + form field values into PDF bytes via pdf-lib ──
-async function flattenAnnotations(pdfBytes, annotations, formValues = {}) {
+async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35) {
   const hasFormValues = Object.keys(formValues).length > 0
   if (!annotations.length && !hasFormValues) return pdfBytes
   const { PDFDocument: PD, rgb: pRgb, StandardFonts } = await import('pdf-lib')
@@ -36,7 +36,7 @@ async function flattenAnnotations(pdfBytes, annotations, formValues = {}) {
           const x = rect.x * sx,  w = rect.w * sx,  h = rect.h * sy
           const y = ph - (rect.y + rect.h) * sy
           if (a.type === 'highlight') {
-            page.drawRectangle({ x, y, width: w, height: h, color, opacity: 0.35, borderWidth: 0 })
+            page.drawRectangle({ x, y, width: w, height: h, color, opacity: highlightOpacity, borderWidth: 0 })
           } else if (a.type === 'underline') {
             page.drawLine({ start: { x, y: y + 1 }, end: { x: x + w, y: y + 1 }, thickness: 1.2, color })
           } else if (a.type === 'strikethrough') {
@@ -85,6 +85,10 @@ async function flattenAnnotations(pdfBytes, annotations, formValues = {}) {
 
   return doc.save()
 }
+
+// Shared fill for both the live-drag redaction preview and the confirmed
+// pending-redaction overlay, so drawing a box looks the same before and after mouseup.
+const REDACTION_FILL = 'rgba(0,0,0,0.55)'
 
 // ── Scan every page's text for IBAN / E-Mail / Telefonnummer patterns ──────
 // Matching is per text-item (pdf.js groups contiguous same-line runs into one
@@ -206,12 +210,12 @@ export default function PDFViewer() {
   // ── Save (with annotation flattening) ────────────────────────────────────
   useEffect(() => {
     window._savePDF = async (forceDialog = false) => {
-      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues } = useStore.getState()
+      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, annotationOpacity } = useStore.getState()
       if (!b) return
       try {
         setStatus('Speichern …')
         // Embed all UI annotations + filled form field values permanently into PDF bytes before writing
-        const bytes = await flattenAnnotations(b, annotations, formValues)
+        const bytes = await flattenAnnotations(b, annotations, formValues, annotationOpacity)
         let target = fp
         if (!target || forceDialog) {
           const r = await window.api?.savePDF(fn)
@@ -549,7 +553,7 @@ function PDFPage({ pageNum }) {
     // Draw pending redaction boxes
     for (const r of pendingRedactions.filter(r => r.pageNum === pageNum)) {
       ctx.save()
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.strokeStyle = '#ef4444'
+      ctx.fillStyle = REDACTION_FILL; ctx.strokeStyle = '#ef4444'
       ctx.lineWidth = 2; ctx.setLineDash([6, 3])
       ctx.fillRect(r.x, r.y, r.w, r.h)
       ctx.strokeRect(r.x, r.y, r.w, r.h)
@@ -646,7 +650,7 @@ function PDFPage({ pageNum }) {
       const s   = rectStartRef.current
       ctx.save()
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.strokeStyle = '#ef4444'
+      ctx.fillStyle = REDACTION_FILL; ctx.strokeStyle = '#ef4444'
       ctx.lineWidth = 2; ctx.setLineDash([6, 3])
       ctx.fillRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
       ctx.strokeRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
