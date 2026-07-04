@@ -602,35 +602,29 @@ function PDFPage({ pageNum }) {
 
       {/* 5. Sticky note icons */}
       {annotations.filter(a => a.page === pageNum && a.type === 'note').map(a => (
-        <div key={a.id}
+        <DraggableAnnotationMarker key={a.id} activeTool={activeTool}
           className={`absolute text-xl select-none z-10
             ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
           style={{ left: a.x - 10, top: a.y - 10, userSelect: 'none' }}
           title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : a.text}
-          onMouseDown={activeTool === 'hand' ? (e) => {
-            e.preventDefault(); e.stopPropagation()
-            setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })
-          } : undefined}
-          onContextMenu={activeTool === 'hand' ? (e) => { e.preventDefault(); removeAnnotation(a.id) } : undefined}>
+          onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
+          onRemove={() => removeAnnotation(a.id)}>
           📌
-        </div>
+        </DraggableAnnotationMarker>
       ))}
 
       {/* 6. Text box overlays */}
       {annotations.filter(a => a.page === pageNum && a.type === 'text').map(a => (
-        <div key={a.id}
+        <DraggableAnnotationMarker key={a.id} activeTool={activeTool}
           className={`absolute text-xs px-2.5 py-1.5 rounded border shadow-sm max-w-[260px] min-w-[60px] break-words leading-relaxed z-10
             ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none select-none'}
             ${isDark ? 'bg-zinc-800/95 text-zinc-100 border-zinc-500' : 'bg-white text-gray-900 border-gray-400'}`}
           style={{ left: a.x, top: a.y, userSelect: 'none' }}
           title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : undefined}
-          onMouseDown={activeTool === 'hand' ? (e) => {
-            e.preventDefault(); e.stopPropagation()
-            setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })
-          } : undefined}
-          onContextMenu={activeTool === 'hand' ? (e) => { e.preventDefault(); removeAnnotation(a.id) } : undefined}>
+          onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
+          onRemove={() => removeAnnotation(a.id)}>
           {a.text}
-        </div>
+        </DraggableAnnotationMarker>
       ))}
 
       {/* 7. Form fields overlay */}
@@ -674,6 +668,21 @@ function PDFPage({ pageNum }) {
         ${isDark ? 'bg-black/40 text-zinc-400' : 'bg-black/10 text-gray-500'}`}>
         {pageNum}
       </div>
+    </div>
+  )
+}
+
+// Shared drag-to-move / right-click-to-delete wrapper for sticky notes and
+// text boxes — both only ever differ in their own className/style/content.
+function DraggableAnnotationMarker({ activeTool, className, style, title, onDragStart, onRemove, children }) {
+  return (
+    <div className={className} style={style} title={title}
+      onMouseDown={activeTool === 'hand' ? (e) => {
+        e.preventDefault(); e.stopPropagation()
+        onDragStart(e)
+      } : undefined}
+      onContextMenu={activeTool === 'hand' ? (e) => { e.preventDefault(); onRemove() } : undefined}>
+      {children}
     </div>
   )
 }

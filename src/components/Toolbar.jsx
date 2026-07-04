@@ -13,6 +13,7 @@ import {
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { navigateToPage } from '../lib/navigate'
 
 const ZOOM_PRESETS = [25, 50, 75, 100, 125, 150, 175, 200, 300, 400]
 const COLORS = ['#f59e0b','#ef4444','#3b82f6','#10b981','#a855f7','#ec4899','#000000','#ffffff']
@@ -101,10 +102,8 @@ export default function Toolbar() {
 
   const commitPage = () => {
     const n = parseInt(pageInput)
-    if (!isNaN(n) && n >= 1 && n <= totalPages) {
-      setCurrentPage(n)
-      document.getElementById(`page-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } else setPageInput(String(currentPage))
+    if (!isNaN(n) && n >= 1 && n <= totalPages) navigateToPage(n)
+    else setPageInput(String(currentPage))
   }
 
   const commitZoom = () => {
@@ -398,7 +397,7 @@ export default function Toolbar() {
 }
 
 function scrollTo(n) {
-  document.getElementById(`page-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  navigateToPage(n, { setPage: false })
 }
 
 function TBtn({ children, title, onClick, disabled, active, isDark, textOnly }) {
@@ -410,12 +409,7 @@ function TBtn({ children, title, onClick, disabled, active, isDark, textOnly }) 
     return (
       <button title={title} onClick={onClick} disabled={disabled}
         className={`h-8 min-w-8 px-1.5 flex items-center justify-center rounded transition-colors flex-shrink-0 text-xs font-semibold
-          ${active
-            ? 'bg-clover-600 text-white shadow-inner'
-            : isDark
-              ? 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:text-zinc-700 disabled:cursor-default'
-              : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-default'
-          }`}>
+          ${toolbarButtonClasses(active, isDark)}`}>
         {children}
       </button>
     )
@@ -425,12 +419,7 @@ function TBtn({ children, title, onClick, disabled, active, isDark, textOnly }) 
     <button title={title} onClick={onClick} disabled={disabled}
       className={`h-8 flex-shrink-0 flex items-center justify-center rounded transition-colors
         ${showLabels ? 'px-2 gap-1.5' : 'w-8'}
-        ${active
-          ? 'bg-clover-600 text-white shadow-inner'
-          : isDark
-            ? 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:text-zinc-700 disabled:cursor-default'
-            : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-default'
-        }`}>
+        ${toolbarButtonClasses(active, isDark)}`}>
       {children}
       {showLabels && label && <span className="text-[11px] whitespace-nowrap">{label}</span>}
     </button>
@@ -449,12 +438,7 @@ function ToolGroup({ title, icon, isDark, disabled, items, activeId, onSelect, s
   const isGroupActive = activeId != null && items.some(it => it.id === activeId)
 
   const btnBase = (isActive) => `h-8 flex items-center gap-1 transition-colors flex-shrink-0
-    ${isActive
-      ? 'bg-clover-600 text-white shadow-inner'
-      : isDark
-        ? 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:text-zinc-700 disabled:cursor-default'
-        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-default'
-    }`
+    ${toolbarButtonClasses(isActive, isDark)}`
 
   return (
     <div className="flex-shrink-0 flex items-stretch">
@@ -509,6 +493,16 @@ function ToolGroup({ title, icon, isDark, disabled, items, activeId, onSelect, s
       </FloatingMenu>
     </div>
   )
+}
+
+// Active/dark/light state classes shared by every toolbar button variant
+// (TBtn's icon and text-only forms, ToolGroup's split/flyout trigger).
+function toolbarButtonClasses(active, isDark) {
+  return active
+    ? 'bg-clover-600 text-white shadow-inner'
+    : isDark
+      ? 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:text-zinc-700 disabled:cursor-default'
+      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-default'
 }
 
 function Sep({ isDark }) {

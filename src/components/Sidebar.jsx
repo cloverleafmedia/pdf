@@ -4,6 +4,7 @@ import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../store/useStore'
 import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
+import { navigateToPage } from '../lib/navigate'
 
 // Fixed thumbnail render width — also used to pre-compute placeholder height
 // (see ThumbPage) so the reserved space matches what renderThumb() ends up
@@ -86,10 +87,7 @@ function Thumbnails({ isDark }) {
     return () => cancelAnimationFrame(raf)
   }, [currentPage, dragFrom])
 
-  const scrollToPage = (n) => {
-    useStore.getState().setCurrentPage(n)
-    document.getElementById(`page-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  const scrollToPage = (n) => navigateToPage(n)
 
   // getDocument() transfers/detaches the buffer it's given — pass a copy.
   const reloadDocument = async (bytes) => {
@@ -314,10 +312,7 @@ function Bookmarks({ isDark }) {
 
   const deleteMark = (page) => saveMarks(userMarks.filter(m => m.page !== page))
 
-  const goTo = (n) => {
-    useStore.getState().setCurrentPage(n)
-    document.getElementById(`page-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  const goTo = (n) => navigateToPage(n)
 
   if (!pdfDoc) return <Empty isDark={isDark} />
 
@@ -399,9 +394,7 @@ function OutlineItem({ item, isDark, depth }) {
       if (typeof dest === 'string') dest = await pdfDoc.getDestination(dest)
       if (!Array.isArray(dest) || !dest[0]) return
       const pageIndex = await pdfDoc.getPageIndex(dest[0])
-      const n = pageIndex + 1
-      useStore.getState().setCurrentPage(n)
-      document.getElementById(`page-${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      navigateToPage(pageIndex + 1)
     } catch (_) {}
   }
 
@@ -465,8 +458,7 @@ function SearchPanel({ isDark }) {
 
   const goTo = (r, i) => {
     setSearchIndex(i)
-    useStore.getState().setCurrentPage(r.page)
-    document.getElementById(`page-${r.page}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    navigateToPage(r.page)
   }
 
   if (!pdfDoc) return <Empty isDark={isDark} />
@@ -549,7 +541,7 @@ function AnnotationsList({ isDark }) {
         const isOpen  = !!expanded[a.id]
         return (
           <div key={a.id} className={`rounded-lg text-xs ${isDark ? 'bg-zinc-800/60' : 'bg-gray-50'}`}>
-            <div onClick={() => document.getElementById(`page-${a.page}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            <div onClick={() => navigateToPage(a.page, { setPage: false })}
               className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer group transition-colors
                 ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`}>
               <span className="text-base flex-shrink-0 mt-0.5">{ICONS[a.type] || '📎'}</span>
