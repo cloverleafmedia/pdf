@@ -173,6 +173,12 @@ ipcMain.handle('dialog:openCSV', () => dialog.showOpenDialog(mainWindow, {
   filters: [{ name: 'CSV-Dateien', extensions: ['csv'] }],
 }))
 
+ipcMain.handle('dialog:openXFDF', () => dialog.showOpenDialog(mainWindow, {
+  title: 'XFDF/FDF-Datei auswählen',
+  properties: ['openFile'],
+  filters: [{ name: 'XFDF/FDF-Dateien', extensions: ['xfdf', 'fdf'] }],
+}))
+
 ipcMain.handle('dialog:pickFolder', (_, title) => dialog.showOpenDialog(mainWindow, {
   title: title || 'Ordner auswählen',
   properties: ['openDirectory'],
@@ -187,7 +193,7 @@ ipcMain.handle('dialog:openImages', () => dialog.showOpenDialog(mainWindow, {
 // ── File I/O ───────────────────────────────────────────────────────────────
 // Extension allowlist: renderer-controlled paths must not be able to read/write
 // arbitrary files on disk (defense in depth in case of a future renderer compromise).
-const READABLE_EXTENSIONS = new Set(['.pdf', '.csv', '.png', '.jpg', '.jpeg'])
+const READABLE_EXTENSIONS = new Set(['.pdf', '.csv', '.png', '.jpg', '.jpeg', '.xfdf', '.fdf'])
 const WRITABLE_EXTENSIONS  = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
 
 function assertExtension(filePath, allowed) {

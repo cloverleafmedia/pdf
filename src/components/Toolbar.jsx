@@ -10,7 +10,8 @@ import {
   Square, AlertTriangle, CheckCheck, Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
   Wrench, Eye, Pin, Terminal, Keyboard,
-  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images
+  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
+  Upload, Download
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { navigateToPage } from '../lib/navigate'
@@ -152,6 +153,8 @@ export default function Toolbar() {
     { id: 'batch',       icon: <Package2 size={15}/>,            label: 'Batch-Verarbeitung',        onClick: openBatch },
     { id: 'compare',     icon: <SplitSquareHorizontal size={15}/>, label: 'PDFs vergleichen',         onClick: openCompare,                 disabled: !pdfDoc },
     { id: 'exportannot', icon: <BookmarkPlus size={15}/>,        label: 'Anmerkungen exportieren',   onClick: () => window._exportAnnotations?.(), disabled: !pdfDoc },
+    { id: 'exportxfdf',  icon: <Download size={15}/>,            label: 'Anmerkungen als XFDF exportieren', onClick: () => window._exportAnnotationsXFDF?.(), disabled: !pdfDoc },
+    { id: 'importxfdf',  icon: <Upload size={15}/>,              label: 'Anmerkungen aus XFDF importieren', onClick: () => window._importAnnotationsXFDF?.(), disabled: !pdfDoc },
     { id: 'sanitize',    icon: <ShieldCheck size={15}/>,         label: 'Dokument bereinigen',       onClick: openSanitize,                disabled: !pdfDoc },
     { id: 'mailmerge',   icon: <FileSpreadsheet size={15}/>,     label: 'Serienbrief',               onClick: openMailMerge },
     { id: 'pdfa',        icon: <FileCheck2 size={15}/>,          label: 'PDF/A-Export',              onClick: openPdfa,                    disabled: !pdfDoc },

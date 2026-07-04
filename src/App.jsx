@@ -9,6 +9,8 @@ import StatusBar from './components/StatusBar'
 import WelcomeScreen from './components/WelcomeScreen'
 import TabBar from './components/TabBar'
 import CommandPalette from './components/CommandPalette'
+import { buildXfdf } from './lib/xfdfExport'
+import { parseXfdf } from './lib/xfdfImport'
 
 // Modals/overlays are only ever mounted once their `xOpen` flag is true (see
 // the render block below), so lazy-loading them keeps their code out of the
@@ -170,6 +172,48 @@ export default function App() {
       a.href = url; a.download = (fileName || 'anmerkungen').replace('.pdf', '') + '_anmerkungen.txt'
       a.click(); URL.revokeObjectURL(url)
       useStore.getState().setStatus(`${annotations.length} Anmerkung(en) exportiert`)
+    }
+  }, [])
+
+  // ── Export/import annotations as XFDF (Acrobat-compatible interop) ──────
+  const getPageDimensions = async (doc) => {
+    const dims = []
+    for (let p = 1; p <= doc.numPages; p++) {
+      const vp = (await doc.getPage(p)).getViewport({ scale: 1 })
+      dims.push({ width: vp.width, height: vp.height })
+    }
+    return dims
+  }
+
+  useEffect(() => {
+    window._exportAnnotationsXFDF = async () => {
+      const { annotations, fileName, pdfDoc: doc } = useStore.getState()
+      if (!annotations.length) { useStore.getState().setStatus('Keine Anmerkungen vorhanden'); return }
+      const dims = await getPageDimensions(doc)
+      const xml  = buildXfdf(annotations, dims)
+      const blob = new Blob([xml], { type: 'application/vnd.adobe.xfdf' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href = url; a.download = (fileName || 'anmerkungen').replace('.pdf', '') + '.xfdf'
+      a.click(); URL.revokeObjectURL(url)
+      useStore.getState().setStatus(`${annotations.length} Anmerkung(en) als XFDF exportiert`)
+    }
+
+    window._importAnnotationsXFDF = async () => {
+      const { pdfDoc: doc, addAnnotation, setStatus } = useStore.getState()
+      if (!doc) return
+      const r = await window.api?.openXFDF()
+      if (r?.canceled || !r?.filePaths?.[0]) return
+      try {
+        const buf  = await window.api?.readFile(r.filePaths[0])
+        const text = new TextDecoder('utf-8').decode(new Uint8Array(buf))
+        const dims = await getPageDimensions(doc)
+        const parsed = parseXfdf(text, dims)
+        parsed.forEach(a => addAnnotation(a))
+        setStatus(`${parsed.length} Anmerkung(en) aus XFDF importiert`)
+      } catch (e) {
+        setStatus('Fehler beim XFDF-Import: ' + (e.message || 'unbekannt'), 5000)
+      }
     }
   }, [])
 

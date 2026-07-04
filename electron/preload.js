@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   savePDF: (n) => ipcRenderer.invoke('dialog:savePDF', n),
   openCert: () => ipcRenderer.invoke('dialog:openCert'),
   openCSV: () => ipcRenderer.invoke('dialog:openCSV'),
+  openXFDF: () => ipcRenderer.invoke('dialog:openXFDF'),
   openImages: () => ipcRenderer.invoke('dialog:openImages'),
   pickFolder: (title) => ipcRenderer.invoke('dialog:pickFolder', title),
 
