@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { FolderPlus, Trash2, Search, FileText, Tag, Loader2 } from 'lucide-react'
+import { FolderPlus, Trash2, Search, FileText, Tag, Loader2, Cloud } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
@@ -26,6 +26,9 @@ export default function LibraryModal() {
   const [ftLoading, setFtLoading] = useState(false)
   const [ftResults, setFtResults] = useState(null)
   const [tagDrafts, setTagDrafts] = useState({})
+  const [cloudCandidates, setCloudCandidates] = useState(null) // null = not yet checked, [] = checked, none found
+  const [cloudChecked, setCloudChecked] = useState(new Set())
+  const [cloudDetecting, setCloudDetecting] = useState(false)
 
   const scan = async () => {
     if (!libraryFolders.length) { setFiles([]); return }
@@ -44,6 +47,31 @@ export default function LibraryModal() {
   const addFolder = async () => {
     const r = await window.api?.pickFolder('Ordner zur Bibliothek hinzufügen')
     if (!r?.canceled && r?.filePaths?.[0]) addLibraryFolder(r.filePaths[0])
+  }
+
+  const detectCloudFolders = async () => {
+    setCloudDetecting(true)
+    try {
+      const found = await window.api?.detectCloudFolders() || []
+      setCloudCandidates(found.filter(c => !libraryFolders.includes(c.path)))
+      setCloudChecked(new Set())
+    } finally {
+      setCloudDetecting(false)
+    }
+  }
+
+  const toggleCloudChecked = (p) => {
+    setCloudChecked(prev => {
+      const next = new Set(prev)
+      if (next.has(p)) next.delete(p); else next.add(p)
+      return next
+    })
+  }
+
+  const addCheckedCloudFolders = () => {
+    for (const p of cloudChecked) addLibraryFolder(p)
+    setCloudCandidates(null)
+    setCloudChecked(new Set())
   }
 
   const filtered = useMemo(() => {
@@ -125,6 +153,33 @@ export default function LibraryModal() {
             className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-clover-600 hover:bg-clover-700 text-white transition-colors">
             <FolderPlus size={13}/> Ordner hinzufügen
           </button>
+          <button onClick={detectCloudFolders} disabled={cloudDetecting}
+            className={`w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-colors disabled:opacity-50
+              ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            {cloudDetecting ? <Loader2 size={12} className="animate-spin"/> : <Cloud size={12}/>} Cloud-Ordner erkennen
+          </button>
+
+          {cloudCandidates !== null && (
+            <div className={`rounded-lg border p-2 space-y-1.5 ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-gray-50 border-gray-200'}`}>
+              {cloudCandidates.length === 0 ? (
+                <div className={`text-[11px] text-center ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Keine neuen Cloud-Ordner gefunden</div>
+              ) : (
+                <>
+                  {cloudCandidates.map(c => (
+                    <label key={c.path} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                      <input type="checkbox" checked={cloudChecked.has(c.path)} onChange={() => toggleCloudChecked(c.path)} className="accent-clover-500 flex-shrink-0"/>
+                      <span className={`truncate ${isDark ? 'text-zinc-300' : 'text-gray-700'}`} title={c.path}>{c.label}</span>
+                    </label>
+                  ))}
+                  <button onClick={addCheckedCloudFolders} disabled={cloudChecked.size === 0}
+                    className="w-full px-2 py-1 rounded text-[11px] bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-40">
+                    Hinzufügen ({cloudChecked.size})
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <div className={`text-[11px] ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>{files.length} PDF(s) gefunden</div>
         </div>
 

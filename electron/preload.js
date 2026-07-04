@@ -53,4 +53,5 @@ contextBridge.exposeInMainWorld('api', {
 
   // Document library
   libraryScan:      (folders) => ipcRenderer.invoke('library:scan', folders),
+  detectCloudFolders: () => ipcRenderer.invoke('library:detectCloudFolders'),
 })

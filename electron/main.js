@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const path = require('path')
 const fs   = require('fs')
+const os   = require('os')
 const { execFile } = require('child_process')
 
 const isDev = !app.isPackaged
@@ -407,6 +408,46 @@ ipcMain.handle('library:scan', (_, folders) => {
     scanFolder(folder, results)
   }
   return results
+})
+
+// Auto-detects common local cloud-sync folders (OneDrive/Google Drive/Dropbox)
+// so the user can add them to the library with one click instead of hunting
+// through a folder picker. Purely local-folder detection - no cloud API/OAuth.
+ipcMain.handle('library:detectCloudFolders', () => {
+  const home = os.homedir()
+  const candidates = []
+
+  // OneDrive: personal is just "OneDrive"; business/school tenants are named
+  // "OneDrive - <Organization>" and vary per install, so scan for the prefix
+  // rather than guessing an exact name.
+  try {
+    for (const entry of fs.readdirSync(home)) {
+      if (entry.startsWith('OneDrive')) candidates.push({ label: entry, path: path.join(home, entry) })
+    }
+  } catch {}
+
+  candidates.push({ label: 'Google Drive', path: path.join(home, 'Google Drive') })
+  candidates.push({ label: 'Dropbox', path: path.join(home, 'Dropbox') })
+
+  // Dropbox can be configured to sync to a custom location - if so, the real
+  // path is recorded in this per-user info file rather than the default above.
+  try {
+    const infoPath = path.join(process.env.LOCALAPPDATA || '', 'Dropbox', 'info.json')
+    if (fs.existsSync(infoPath)) {
+      const info = JSON.parse(fs.readFileSync(infoPath, 'utf8'))
+      for (const key of Object.keys(info)) {
+        if (info[key]?.path) candidates.push({ label: `Dropbox (${key})`, path: info[key].path })
+      }
+    }
+  } catch {}
+
+  const seen = new Set()
+  return candidates.filter(c => {
+    const key = path.resolve(c.path)
+    if (seen.has(key) || !fs.existsSync(c.path)) return false
+    seen.add(key)
+    return true
+  })
 })
 
 // ── Default app ────────────────────────────────────────────────────────────
