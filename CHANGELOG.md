@@ -5,6 +5,14 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.6.0] – 2026-07-04
+
+### Hinzugefügt
+- PDF reparieren: nutzt das bereits gebündelte `qpdf`, um eine beschädigte Datei (defekte Xref-Tabelle, abgebrochene Linearisierung, verkürzte startxref) neu zu schreiben. Schreibt wie Verschlüsseln direkt in eine neue Datei; das geöffnete Dokument bleibt unverändert.
+- Tabellen als CSV exportieren: erkennt klar ausgerichtete Tabellen (sichtbare Spaltenabstände, z. B. Rechnungen/Berichte) anhand der Textposition und exportiert jede gefundene Tabelle als eigene CSV-Datei. Verschmolzene Zellen, verschachtelte Tabellen oder Tabellen ohne sichtbare Abstände werden u. U. nicht oder falsch erkannt.
+- Formularfeld-Designer: neues Werkzeug erstellt Textfelder und Kontrollkästchen direkt auf der Seite (aufziehen, benennen, mit dem Hand-Werkzeug verschieben/vergrößern) – zusätzlich zum bisherigen reinen Ausfüllen bereits vorhandener Formularfelder.
+- PDF-Vergleich: neuer Modus "Visueller Vergleich" zeigt Unterschiede zwischen zwei Dokumenten direkt farblich markiert auf der gerenderten Seite (blockweiser Pixel-Vergleich statt Text-Diff), inklusive Erkennung von nicht vergleichbaren Seitengrößen und fehlenden Seiten im Vergleichsdokument.
+
 ## [1.5.0] – 2026-07-04
 
 ### Sicherheit
