@@ -6,6 +6,7 @@ import MagnifierLens from './MagnifierLens'
 import { flattenAnnotations } from '../lib/annotationFlatten'
 import { findPIIRedactions, findTextRedactions } from '../lib/piiDetection'
 import { chunk } from '../lib/chunk'
+import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
 
 // Shared fill for both the live-drag redaction preview and the confirmed
 // pending-redaction overlay, so drawing a box looks the same before and after mouseup.
@@ -239,11 +240,17 @@ function PDFPage({ pageNum }) {
     pdfDoc.getPage(pageNum).then(async (page) => {
       const vp   = page.getViewport({ scale: 1 })  // PDF units
       const anns = await page.getAnnotations()
-      setFormFields(
-        anns
-          .filter(a => a.subtype === 'Widget' && a.fieldType)
-          .map(f => ({ ...f, _pdfW: vp.width, _pdfH: vp.height }))
+      const widgets = anns
+        .filter(a => a.subtype === 'Widget' && a.fieldType)
+        .map(f => ({ ...f, _pdfW: vp.width, _pdfH: vp.height }))
+      // Reading-order tab index: PDF y increases upward, so a smaller `top`
+      // (= larger rect[3]/y2, negated) means visually higher on the page.
+      // This sort key is scale-independent - correct regardless of current
+      // zoom - so it doesn't need the live CSS `size` used for rendering.
+      const sorted = sortFieldsReadingOrder(
+        widgets.map(f => ({ ...f, top: f.rect ? -f.rect[3] : 0, left: f.rect ? f.rect[0] : 0 }))
       )
+      setFormFields(sorted)
     }).catch(() => {})
   }, [pdfDoc, pageNum, activeTool])
 
@@ -641,6 +648,11 @@ function PDFPage({ pageNum }) {
         const height = (y2 - y1) * scaleY
         const key    = field.fieldName || String(i)
         const isCheckbox = field.fieldType === 'Btn' && !field.radioButton
+        // Reading-order tab index, offset per page so Tab crosses page
+        // boundaries into the topmost field of the next page (pages already
+        // mount in DOM order 1..N). 1000 is safe headroom per page for any
+        // realistic form field count.
+        const tabIndex = pageNum * 1000 + i
         return (
           <div key={key} className="absolute z-20" style={{ left, top, width, height }}>
             {field.fieldType === 'Tx' && (
@@ -648,6 +660,7 @@ function PDFPage({ pageNum }) {
                 value={formValues[key] || ''}
                 onChange={e => setFormValue(key, e.target.value)}
                 placeholder={field.alternativeText || ''}
+                tabIndex={tabIndex}
                 className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
                 style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}
               />
@@ -656,6 +669,7 @@ function PDFPage({ pageNum }) {
               <input type="checkbox"
                 checked={!!formValues[key]}
                 onChange={e => setFormValue(key, e.target.checked)}
+                tabIndex={tabIndex}
                 className="w-full h-full accent-clover-500 cursor-pointer"
               />
             )}
