@@ -5,6 +5,8 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.1] – 2026-07-04
+
 ### Hinzugefügt
 - `scripts/verify-release.js` (`npm run verify:release`): prüft nach einem Publish live, ob für den aktuellen Versions-Tag genau ein GitHub-Release existiert, alle Update-Dateien hochgeladen sind und die von electron-updater genutzten Download-URLs wirklich erreichbar sind.
 - Test-Tooling: Vitest (Node-Umgebung, kein jsdom) mit 64 Tests für bisher ungetestete Logik — Store-Reducer (Undo/Redo, Zoom, Rotation, Tab-Verwaltung), PDF/A-/Barrierefreiheits-Prüfungen, Annotation-Flattening, PII-/Volltext-Schwärzungserkennung, Sidebar-Seitenoperationen. `npm run test` / `npm run test:watch`.
