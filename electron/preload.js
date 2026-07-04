@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // PDF encryption (bundled qpdf)
   encryptPDF: (pdfBytes, opts) => ipcRenderer.invoke('pdf:encrypt', pdfBytes, opts),
+  repairPDF:  (pdfBytes) => ipcRenderer.invoke('pdf:repair', pdfBytes),
 
   // File I/O
   readFile:     (p)    => ipcRenderer.invoke('fs:read', p),

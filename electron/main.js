@@ -421,6 +421,35 @@ ipcMain.handle('pdf:encrypt', async (_, pdfBytes, opts) => {
   }
 })
 
+// PDF reparieren: qpdf ohne besondere Flags liest und schreibt die Datei neu,
+// was die Xref-Tabelle normalisiert und viele Beschädigungsklassen (defekte
+// Xref, abgebrochene Linearisierung, verkürzte startxref) als Nebeneffekt
+// behebt. Kein eigenes "--check" vorab nötig - execFile schlägt bei einer
+// tatsächlich nicht reparierbaren Datei bereits selbst mit stderr fehl.
+ipcMain.handle('pdf:repair', async (_, pdfBytes) => {
+  const qpdfExe = getQpdfExe()
+  if (!fs.existsSync(qpdfExe)) return { available: false }
+
+  const tmpIn  = path.join(app.getPath('temp'), `clover-repair-in-${Date.now()}.pdf`)
+  const tmpOut = path.join(app.getPath('temp'), `clover-repair-out-${Date.now()}.pdf`)
+  fs.writeFileSync(tmpIn, Buffer.from(pdfBytes))
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(qpdfExe, [tmpIn, tmpOut], (err, _stdout, stderr) => {
+        if (err) reject(new Error(stderr || err.message))
+        else resolve()
+      })
+    })
+    const bytes = fs.readFileSync(tmpOut)
+    return { available: true, success: true, bytes: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
+  } catch (e) {
+    return { available: true, success: false, error: e.message || 'Unbekannter Fehler bei der Reparatur' }
+  } finally {
+    fs.unlink(tmpIn, () => {})
+    fs.unlink(tmpOut, () => {})
+  }
+})
+
 // ── Persistent storage ─────────────────────────────────────────────────────
 const recentPath   = path.join(app.getPath('userData'), 'recent.json')
 const settingsPath = path.join(app.getPath('userData'), 'settings.json')

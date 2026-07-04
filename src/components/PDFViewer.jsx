@@ -128,6 +128,28 @@ export default function PDFViewer() {
     }
   }, [])
 
+  // ── Repair (bundled qpdf) ────────────────────────────────────────────────
+  // Terminal action like encryption, not a live reload: writes straight to a
+  // new file via "Speichern unter" instead of replacing the open document -
+  // keeps this simple/consistent with EncryptModal's flow rather than
+  // introducing a second "repaired bytes replace the live doc" code path.
+  useEffect(() => {
+    window._repairPDF = async () => {
+      const { pdfBytes: b, fileName: fn } = useStore.getState()
+      if (!b) return
+      try {
+        setStatus('Repariere …')
+        const result = await window.api?.repairPDF(b)
+        if (!result?.available) { setStatus('qpdf ist nicht gebündelt (nur in Entwicklung ohne npm run setup:qpdf)'); return }
+        if (!result.success) { setStatus('Fehler: ' + (result.error || 'Reparatur fehlgeschlagen')); return }
+        const r = await window.api?.savePDF(fn)
+        if (r?.canceled || !r?.filePath) { setStatus(''); return }
+        await window.api?.writeFile(r.filePath, result.bytes)
+        setStatus('Repariert gespeichert: ' + r.filePath.split(/[\/]/).pop())
+      } catch (e) { setStatus('Fehler: ' + e.message) }
+    }
+  }, [])
+
   // ── Apply redactions ─────────────────────────────────────────────────────
   // True redaction, not just a black overlay: a rectangle drawn on top of the
   // existing content stream (the old approach) leaves the original text/image
