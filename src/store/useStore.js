@@ -101,6 +101,9 @@ export const useStore = create((set, get) => ({
   pdfaOpen:         false,
   a11yOpen:         false,
   libraryOpen:      false,
+  encryptOpen:      false,
+  imagesToPdfOpen:  false,
+  altTextOpen:      false,
 
   // ── Document library (folders watched for PDFs, tags per file path) ──────
   libraryFolders: [],
@@ -349,6 +352,12 @@ export const useStore = create((set, get) => ({
   closeA11y:          () => set({ a11yOpen: false }),
   openLibrary:        () => set({ libraryOpen: true }),
   closeLibrary:       () => set({ libraryOpen: false }),
+  openEncrypt:        () => set({ encryptOpen: true }),
+  closeEncrypt:       () => set({ encryptOpen: false }),
+  openImagesToPdf:    () => set({ imagesToPdfOpen: true }),
+  closeImagesToPdf:   () => set({ imagesToPdfOpen: false }),
+  openAltText:        () => set({ altTextOpen: true }),
+  closeAltText:       () => set({ altTextOpen: false }),
 
   // ── Actions: document library ───────────────────────────────────────────
   setLibraryFolders: (folders) => {

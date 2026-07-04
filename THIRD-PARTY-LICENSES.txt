@@ -1489,3 +1489,14 @@ Wird als eigenstaendiger Java-Prozess aufgerufen (kein Linking in den eigenen
 Code) fuer die optionale echte PDF/A-Konformitaetspruefung im PDF/A-Export-Dialog.
 Der Quellcode ist unveraendert und oeffentlich unter obiger Adresse verfuegbar.
 
+----------------------------------------------------------------------
+qpdf 12.3.2 (vendor/qpdf-runtime/, nicht im Repository, per
+'npm run setup:qpdf' geladen und in den Installer gebuendelt)
+Lizenz: Apache-2.0
+Quelle: https://github.com/qpdf/qpdf
+Publisher: Jay Berkenbilt und qpdf-Mitwirkende
+
+Wird als eigenstaendiger Prozess aufgerufen (kein Linking in den eigenen Code)
+fuer die PDF-Verschluesselung (Passwort/Berechtigungen) im Verschluesseln-Dialog,
+da pdf-lib selbst keine PDF-Verschluesselung unterstuetzt.
+

@@ -67,6 +67,16 @@ checker.init({ start: path.join(__dirname, ".."), production: true, excludePacka
   out += "Code) fuer die optionale echte PDF/A-Konformitaetspruefung im PDF/A-Export-Dialog.\n";
   out += "Der Quellcode ist unveraendert und oeffentlich unter obiger Adresse verfuegbar.\n\n";
 
+  out += "----------------------------------------------------------------------\n";
+  out += "qpdf 12.3.2 (vendor/qpdf-runtime/, nicht im Repository, per\n";
+  out += "'npm run setup:qpdf' geladen und in den Installer gebuendelt)\n";
+  out += "Lizenz: Apache-2.0\n";
+  out += "Quelle: https://github.com/qpdf/qpdf\n";
+  out += "Publisher: Jay Berkenbilt und qpdf-Mitwirkende\n\n";
+  out += "Wird als eigenstaendiger Prozess aufgerufen (kein Linking in den eigenen Code)\n";
+  out += "fuer die PDF-Verschluesselung (Passwort/Berechtigungen) im Verschluesseln-Dialog,\n";
+  out += "da pdf-lib selbst keine PDF-Verschluesselung unterstuetzt.\n\n";
+
   fs.writeFileSync(outputPath, out);
   console.log("THIRD-PARTY-LICENSES.txt geschrieben:", keys.length, "Pakete");
 });

@@ -9,7 +9,7 @@ import {
   Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
   BookmarkPlus, Package2, Keyboard, CornerDownLeft,
-  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library,
+  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -129,6 +129,8 @@ export default function CommandPalette() {
     { group: 'Dokument', label: 'PDF/A-Export', icon: <FileCheck2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openPdfa()) },
     { group: 'Dokument', label: 'Barrierefreiheits-Check', icon: <Accessibility size={15}/>, disabled: !pdfDoc, action: run(() => s.openA11y()) },
     { group: 'Dokument', label: 'Bibliothek', icon: <Library size={15}/>, action: run(() => s.openLibrary()) },
+    { group: 'Dokument', label: 'Verschlüsseln', icon: <Lock size={15}/>, disabled: !pdfDoc, action: run(() => s.openEncrypt()) },
+    { group: 'Dokument', label: 'Bilder zu PDF', icon: <Images size={15}/>, action: run(() => s.openImagesToPdf()) },
 
     // ── Ansicht ────────────────────────────────────────────────────────
     { group: 'Ansicht', label: 'Nachtmodus umschalten', icon: <Moon size={15}/>, disabled: !pdfDoc, active: nightMode,

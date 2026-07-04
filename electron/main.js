@@ -168,10 +168,16 @@ ipcMain.handle('dialog:pickFolder', (_, title) => dialog.showOpenDialog(mainWind
   properties: ['openDirectory'],
 }))
 
+ipcMain.handle('dialog:openImages', () => dialog.showOpenDialog(mainWindow, {
+  title: 'Bilder auswählen',
+  properties: ['openFile', 'multiSelections'],
+  filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg'] }],
+}))
+
 // ── File I/O ───────────────────────────────────────────────────────────────
 // Extension allowlist: renderer-controlled paths must not be able to read/write
 // arbitrary files on disk (defense in depth in case of a future renderer compromise).
-const READABLE_EXTENSIONS = new Set(['.pdf', '.csv'])
+const READABLE_EXTENSIONS = new Set(['.pdf', '.csv', '.png', '.jpg', '.jpeg'])
 const WRITABLE_EXTENSIONS  = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
 
 function assertExtension(filePath, allowed) {
@@ -300,6 +306,51 @@ ipcMain.handle('pdfa:validate', async (_, pdfBytes) => {
     return { available: true, success: false, error: e.message || 'Unbekannter Fehler bei der veraPDF-Prüfung' }
   } finally {
     fs.unlink(tmpFile, () => {})
+  }
+})
+
+// ── PDF encryption (bundled qpdf) ───────────────────────────────────────────
+// pdf-lib has no encryption support, so — same pattern as veraPDF above —
+// this shells out to the qpdf CLI as a separate process. Bundled via
+// `npm run setup:qpdf` into vendor/qpdf-runtime/ (gitignored, populated at
+// build time), see scripts/setup-qpdf.js for the Apache-2.0 licensing note.
+function getQpdfExe() {
+  const base = isDev
+    ? path.join(__dirname, '..', 'vendor', 'qpdf-runtime')
+    : path.join(process.resourcesPath, 'qpdf-runtime')
+  return path.join(base, 'bin', 'qpdf.exe')
+}
+
+ipcMain.handle('pdf:encrypt', async (_, pdfBytes, opts) => {
+  const qpdfExe = getQpdfExe()
+  if (!fs.existsSync(qpdfExe)) return { available: false }
+
+  const tmpIn  = path.join(app.getPath('temp'), `clover-encrypt-in-${Date.now()}.pdf`)
+  const tmpOut = path.join(app.getPath('temp'), `clover-encrypt-out-${Date.now()}.pdf`)
+  fs.writeFileSync(tmpIn, Buffer.from(pdfBytes))
+  try {
+    const { userPassword = '', ownerPassword = '', allowPrint = true, allowCopy = true, allowModify = true } = opts || {}
+    const args = [
+      '--encrypt', userPassword, ownerPassword || userPassword, '256',
+      `--print=${allowPrint ? 'full' : 'none'}`,
+      `--extract=${allowCopy ? 'y' : 'n'}`,
+      `--modify=${allowModify ? 'all' : 'none'}`,
+      '--',
+      tmpIn, tmpOut,
+    ]
+    await new Promise((resolve, reject) => {
+      execFile(qpdfExe, args, (err, _stdout, stderr) => {
+        if (err) reject(new Error(stderr || err.message))
+        else resolve()
+      })
+    })
+    const bytes = fs.readFileSync(tmpOut)
+    return { available: true, success: true, bytes: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
+  } catch (e) {
+    return { available: true, success: false, error: e.message || 'Unbekannter Fehler bei der Verschlüsselung' }
+  } finally {
+    fs.unlink(tmpIn, () => {})
+    fs.unlink(tmpOut, () => {})
   }
 })
 

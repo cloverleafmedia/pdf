@@ -20,7 +20,7 @@ function Row({ status, title, detail, isDark }) {
 }
 
 export default function AccessibilityCheckModal() {
-  const { pdfBytes, theme, closeA11y, fileName } = useStore()
+  const { pdfBytes, theme, closeA11y, fileName, openAltText } = useStore()
   const isDark = theme === 'dark'
   const [checks, setChecks] = useState(null)
   const [running, setRunning] = useState(false)
@@ -106,6 +106,11 @@ export default function AccessibilityCheckModal() {
             <div className="space-y-1.5">
               {checks.map((c, i) => <Row key={i} {...c} isDark={isDark}/>)}
             </div>
+            <button onClick={openAltText}
+              className={`w-full px-3 py-1.5 rounded-lg text-xs border transition-colors
+                ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+              Alt-Texte bearbeiten …
+            </button>
           </>
         )}
       </div>

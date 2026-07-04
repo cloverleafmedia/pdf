@@ -97,7 +97,10 @@ const PII_PATTERNS = [
   { label: 'Telefonnummer',  re: /(?:\+49[\s\-/]?|\b0)[1-9][0-9\s\-/()]{5,14}[0-9]\b/g },
 ]
 
-async function findPIIRedactions(pdfDoc, pageRotations) {
+// Shared by PII auto-detection and free-text "Suchen & Schwärzen" — scans
+// every page's text items against a list of {label, re} patterns and returns
+// viewport-space boxes for each match.
+async function findTextMatches(pdfDoc, pageRotations, patterns) {
   const found = []
   for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
     const page = await pdfDoc.getPage(pageNum)
@@ -108,11 +111,12 @@ async function findPIIRedactions(pdfDoc, pageRotations) {
       const str = item.str
       if (!str || !str.trim() || !item.width) continue
 
-      for (const pattern of PII_PATTERNS) {
+      for (const pattern of patterns) {
         pattern.re.lastIndex = 0
         let m
         while ((m = pattern.re.exec(str))) {
           const matched = m[0]
+          if (!matched.length) break // zero-width match (e.g. empty regex group) would loop forever
           if (pattern.label === 'Telefonnummer' && (matched.match(/\d/g) || []).length < 7) continue
 
           // Equal-width char estimate is imprecise for proportional fonts — pad
@@ -138,6 +142,20 @@ async function findPIIRedactions(pdfDoc, pageRotations) {
     }
   }
   return found
+}
+
+function findPIIRedactions(pdfDoc, pageRotations) {
+  return findTextMatches(pdfDoc, pageRotations, PII_PATTERNS)
+}
+
+// Escapes regex metacharacters so a literal search term can't be
+// misinterpreted as a pattern unless the user explicitly asked for regex mode.
+function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+
+function findTextRedactions(pdfDoc, pageRotations, query, { regex = false, caseSensitive = false } = {}) {
+  const source = regex ? query : escapeRegExp(query)
+  const re = new RegExp(source, caseSensitive ? 'g' : 'gi')
+  return findTextMatches(pdfDoc, pageRotations, [{ label: 'Suchtreffer', re }])
 }
 
 export default function PDFViewer() {
@@ -274,6 +292,23 @@ export default function PDFViewer() {
         }))
         setStatus(matches.length ? `${matches.length} Treffer gefunden` : 'Keine Treffer gefunden')
       } catch (e) { setStatus('Fehler: ' + e.message) }
+    }
+  }, [])
+
+  // ── Search & mark for redaction (free-text / regex) ────────────────────
+  useEffect(() => {
+    window._searchRedact = async (query, opts) => {
+      const { pdfDoc: doc, pageRotations: rot, addRedaction: addRect } = useStore.getState()
+      if (!doc || !query?.trim()) return
+      try {
+        setStatus(`Suche nach "${query}" …`)
+        const matches = await findTextRedactions(doc, rot, query, opts)
+        matches.forEach(m => addRect({
+          pageNum: m.pageNum, x: m.x, y: m.y, w: m.w, h: m.h,
+          logicalW: m.logicalW, logicalH: m.logicalH,
+        }))
+        setStatus(matches.length ? `${matches.length} Treffer gefunden` : 'Keine Treffer gefunden')
+      } catch (e) { setStatus('Fehler: ' + (opts?.regex ? 'Ungültiger regulärer Ausdruck' : e.message)) }
     }
   }, [])
 

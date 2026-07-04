@@ -28,6 +28,9 @@ import MailMergeModal from './components/modals/MailMergeModal'
 import PdfaExportModal from './components/modals/PdfaExportModal'
 import AccessibilityCheckModal from './components/modals/AccessibilityCheckModal'
 import LibraryModal from './components/modals/LibraryModal'
+import EncryptModal from './components/modals/EncryptModal'
+import ImagesToPdfModal from './components/modals/ImagesToPdfModal'
+import AltTextModal from './components/modals/AltTextModal'
 import PresentationMode from './components/PresentationMode'
 import CompareView from './components/CompareView'
 import CommandPalette from './components/CommandPalette'
@@ -43,6 +46,7 @@ export default function App() {
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
     compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
     sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen,
+    encryptOpen, imagesToPdfOpen, altTextOpen,
     presentationMode,
     updateAvailable, updateDownloaded,
     openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
@@ -277,6 +281,9 @@ export default function App() {
       {pdfaOpen          && <PdfaExportModal />}
       {a11yOpen          && <AccessibilityCheckModal />}
       {libraryOpen       && <LibraryModal />}
+      {encryptOpen       && <EncryptModal />}
+      {imagesToPdfOpen   && <ImagesToPdfModal />}
+      {altTextOpen       && <AltTextModal />}
       <CommandPalette />
     </div>
   )

@@ -5,6 +5,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.0] – 2026-07-04
+
+### Hinzugefügt
+- PDF verschlüsseln: 256-Bit-AES-Verschlüsselung mit Öffnen-/Eigentümer-Passwort und Berechtigungen (Drucken/Kopieren/Bearbeiten sperren), per gebündeltem `qpdf` (pdf-lib selbst unterstützt keine Verschlüsselung). Schreibt wie die digitale Signatur direkt in eine neue Datei; das geöffnete Dokument bleibt unverschlüsselt bearbeitbar.
+- Bilder zu PDF: mehrere JPG/PNG-Bilder zu einem neuen PDF zusammenfügen, eine Seite pro Bild, mit Umsortieren/Entfernen vor dem Erstellen.
+- Suchen & Schwärzen: die bestehende IBAN/E-Mail/Telefon-Auto-Erkennung um einen freien Suchbegriff (optional Regex, Groß-/Kleinschreibung) erweitert, der alle Fundstellen im Dokument zur Schwärzung markiert.
+- Alt-Texte für Bilder: neuer Editor im Barrierefreiheits-Check, der fehlenden Alternativtext an Bildern nachträgt (minimale Figure/Alt-Tag-Struktur je Bildvorkommen, wiederkehrende Bilder wie Logos nur einmal abgefragt).
+
+### Hinweise
+- Für `npm run dist` ist zusätzlich `npm run setup:qpdf` einmalig nötig (analog zu `setup:verapdf`), lädt ein portables qpdf (Apache-2.0) nach `vendor/qpdf-runtime/`.
+
 ## [1.2.2] – 2026-07-04
 
 ### Geändert

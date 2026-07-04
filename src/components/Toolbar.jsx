@@ -10,7 +10,7 @@ import {
   Square, AlertTriangle, CheckCheck, Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
   Wrench, Eye, Pin, Terminal, Keyboard,
-  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library
+  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -84,10 +84,13 @@ export default function Toolbar() {
     openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare,
     openCommandPalette, openShortcuts, openPrintDialog,
     openSanitize, openMailMerge, openPdfa, openA11y, openLibrary,
+    openEncrypt, openImagesToPdf,
   } = useStore()
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
   const [zoomInput, setZoomInput]     = useState(String(Math.round(zoom)))
+  const [searchRedactQuery, setSearchRedactQuery] = useState('')
+  const [searchRedactRegex, setSearchRedactRegex] = useState(false)
   const isDark = theme === 'dark'
 
   const zoomMenu  = useFloatingMenu()
@@ -155,6 +158,8 @@ export default function Toolbar() {
     { id: 'pdfa',        icon: <FileCheck2 size={15}/>,          label: 'PDF/A-Export',              onClick: openPdfa,                    disabled: !pdfDoc },
     { id: 'a11y',        icon: <Accessibility size={15}/>,       label: 'Barrierefreiheits-Check',   onClick: openA11y,                    disabled: !pdfDoc },
     { id: 'library',     icon: <Library size={15}/>,             label: 'Bibliothek',                onClick: openLibrary },
+    { id: 'encrypt',     icon: <Lock size={15}/>,                label: 'Verschlüsseln',             onClick: openEncrypt,                 disabled: !pdfDoc },
+    { id: 'imagestopdf', icon: <Images size={15}/>,              label: 'Bilder zu PDF',             onClick: openImagesToPdf },
   ]
 
   const viewItems = [
@@ -352,6 +357,21 @@ export default function Toolbar() {
                 : 'Bereiche zum Schwärzen aufziehen, oder automatisch nach Mustern suchen.'}
             </span>
             <div className="flex-1"/>
+            <input value={searchRedactQuery} onChange={e => setSearchRedactQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && searchRedactQuery.trim() && window._searchRedact?.(searchRedactQuery, { regex: searchRedactRegex })}
+              placeholder="Suchbegriff …"
+              className={`w-36 px-2 py-0.5 rounded text-xs border outline-none focus:border-clover-500
+                ${isDark ? 'bg-zinc-900 border-red-900/50 text-zinc-100 placeholder-zinc-600' : 'bg-white border-red-200 text-gray-900 placeholder-gray-400'}`}/>
+            <label className="flex items-center gap-1 cursor-pointer select-none">
+              <input type="checkbox" checked={searchRedactRegex} onChange={e => setSearchRedactRegex(e.target.checked)} className="accent-clover-500"/>
+              Regex
+            </label>
+            <button onClick={() => searchRedactQuery.trim() && window._searchRedact?.(searchRedactQuery, { regex: searchRedactRegex })}
+              disabled={!searchRedactQuery.trim()}
+              className={`flex items-center gap-1.5 px-3 py-0.5 rounded text-xs transition-colors disabled:opacity-40
+                ${isDark ? 'hover:bg-red-900/40' : 'hover:bg-red-100'}`}>
+              <Search size={12}/> Suchen & markieren
+            </button>
             <button onClick={() => window._autoDetectPII?.()}
               className={`flex items-center gap-1.5 px-3 py-0.5 rounded text-xs transition-colors
                 ${isDark ? 'hover:bg-red-900/40' : 'hover:bg-red-100'}`}>

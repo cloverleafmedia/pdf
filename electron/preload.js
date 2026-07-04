@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   savePDF: (n) => ipcRenderer.invoke('dialog:savePDF', n),
   openCert: () => ipcRenderer.invoke('dialog:openCert'),
   openCSV: () => ipcRenderer.invoke('dialog:openCSV'),
+  openImages: () => ipcRenderer.invoke('dialog:openImages'),
   pickFolder: (title) => ipcRenderer.invoke('dialog:pickFolder', title),
 
   // Digital signature (certificate never leaves the main process)
@@ -27,6 +28,9 @@ contextBridge.exposeInMainWorld('api', {
 
   // PDF/A validation (bundled veraPDF)
   validatePdfA: (pdfBytes) => ipcRenderer.invoke('pdfa:validate', pdfBytes),
+
+  // PDF encryption (bundled qpdf)
+  encryptPDF: (pdfBytes, opts) => ipcRenderer.invoke('pdf:encrypt', pdfBytes, opts),
 
   // File I/O
   readFile:     (p)    => ipcRenderer.invoke('fs:read', p),

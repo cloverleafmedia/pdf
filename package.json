@@ -1,6 +1,6 @@
 {
   "name": "cloverleaf-pdf",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "CloverleafPDF – Professional PDF Suite",
   "author": "CloverleafPDF",
   "license": "MIT",
@@ -8,10 +8,11 @@
   "scripts": {
     "dev": "concurrently -k -n VITE,ELECTRON -c cyan,magenta \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "build": "vite build",
-    "dist": "node scripts/check-verapdf-bundled.js && npm run build && electron-builder --win",
-    "dist:dir": "node scripts/check-verapdf-bundled.js && npm run build && electron-builder --win --dir",
+    "dist": "node scripts/check-verapdf-bundled.js && node scripts/check-qpdf-bundled.js && npm run build && electron-builder --win",
+    "dist:dir": "node scripts/check-verapdf-bundled.js && node scripts/check-qpdf-bundled.js && npm run build && electron-builder --win --dir",
     "licenses": "node scripts/build-licenses.js",
-    "setup:verapdf": "node scripts/setup-verapdf.js"
+    "setup:verapdf": "node scripts/setup-verapdf.js",
+    "setup:qpdf": "node scripts/setup-qpdf.js"
   },
   "dependencies": {
     "@signpdf/placeholder-plain": "^3.3.0",
@@ -66,6 +67,10 @@
       {
         "from": "vendor/verapdf-runtime",
         "to": "verapdf-runtime"
+      },
+      {
+        "from": "vendor/qpdf-runtime",
+        "to": "qpdf-runtime"
       }
     ],
     "win": {
