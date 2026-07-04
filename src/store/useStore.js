@@ -62,7 +62,8 @@ export const useStore = create((set, get) => ({
   recentFiles: [],
 
   // ── Settings ────────────────────────────────────────────────────────────
-  theme:       'dark',
+  theme:       'dark',        // resolved dark/light value every component actually reads
+  themeMode:   'dark',        // user preference: 'dark' | 'light' | 'system' - default matches prior behavior
   language:    'de',
   defaultZoom: 100,
 
@@ -301,6 +302,15 @@ export const useStore = create((set, get) => ({
     set({ theme })
     if (theme === 'dark') document.documentElement.classList.add('dark')
     else document.documentElement.classList.remove('dark')
+  },
+  // Persists the user's mode preference only ('dark' | 'light' | 'system').
+  // Does NOT resolve/apply 'system' itself - the caller must also call
+  // setTheme(isDark ? 'dark' : 'light') right after with a value obtained via
+  // window.api.getSystemTheme(), since resolving 'system' needs an async IPC
+  // round-trip this action can't perform on its own.
+  setThemeMode: (mode) => {
+    set({ themeMode: mode })
+    window.api?.saveSettings({ themeMode: mode })
   },
   setLanguage: (lang) => {
     set({ language: lang })

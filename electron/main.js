@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const os   = require('os')
@@ -62,6 +62,12 @@ function createWindow() {
   mainWindow.on('unmaximize',  () => mainWindow.webContents.send('window-state-change', false))
   mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('fullscreen-change', true))
   mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('fullscreen-change', false))
+
+  // Pushes live OS theme changes to the renderer - only applied there when
+  // the user has opted into "System" theme mode (see useStore.js themeMode).
+  nativeTheme.on('updated', () => {
+    mainWindow?.webContents.send('system-theme-changed', nativeTheme.shouldUseDarkColors)
+  })
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
@@ -138,6 +144,9 @@ ipcMain.handle('win:print', async (_, opts = {}) => {
   })
 })
 ipcMain.handle('win:installUpdate',   () => autoUpdater?.quitAndInstall())
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+ipcMain.handle('theme:getSystem', () => nativeTheme.shouldUseDarkColors)
 
 // ── File dialogs ───────────────────────────────────────────────────────────
 ipcMain.handle('dialog:openPDF', () => dialog.showOpenDialog(mainWindow, {

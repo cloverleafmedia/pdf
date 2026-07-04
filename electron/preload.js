@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld('api', {
   onUpdateAvailable:  (cb) => ipcRenderer.on('update-available',  () => cb()),
   onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
 
+  // Theme
+  getSystemTheme:     () => ipcRenderer.invoke('theme:getSystem'),
+  onSystemThemeChange: (cb) => ipcRenderer.on('system-theme-changed', (_, isDark) => cb(isDark)),
+
   // Dialogs
   openPDF: () => ipcRenderer.invoke('dialog:openPDF'),
   savePDF: (n) => ipcRenderer.invoke('dialog:savePDF', n),

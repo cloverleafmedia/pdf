@@ -70,6 +70,12 @@ export default function App() {
         window.api?.loadRecent() || [],
       ])
       setTheme(settings.theme || 'dark')
+      const themeMode = settings.themeMode || 'dark'
+      useStore.setState({ themeMode })
+      if (themeMode === 'system') {
+        const isSystemDark = await window.api?.getSystemTheme()
+        if (isSystemDark !== undefined) setTheme(isSystemDark ? 'dark' : 'light')
+      }
       if (settings.language) setLanguage(settings.language)
       if (settings.toolbarLabels) useStore.setState({ toolbarLabels: true })
       if (Array.isArray(settings.pinnedTools)) useStore.setState({ pinnedTools: settings.pinnedTools })
@@ -86,6 +92,13 @@ export default function App() {
   useEffect(() => {
     window.api?.onUpdateAvailable?.(() => setUpdateAvailable(true))
     window.api?.onUpdateDownloaded?.(() => setUpdateDownloaded(true))
+  }, [])
+
+  // ── Live OS theme changes - only applied while themeMode is 'system' ──
+  useEffect(() => {
+    window.api?.onSystemThemeChange?.((isDark) => {
+      if (useStore.getState().themeMode === 'system') setTheme(isDark ? 'dark' : 'light')
+    })
   }, [])
 
   // ── Load PDF helper ───────────────────────────────────────────────────

@@ -5,18 +5,22 @@ import { useStore } from '../../store/useStore'
 
 export default function SettingsModal() {
   const { t } = useTranslation()
-  const { theme, language, defaultZoom, closeSettings, setTheme, setLanguage, setDefaultZoom } = useStore()
-  const [localTheme, setLocalTheme]   = useState(theme)
+  const { theme, themeMode, language, defaultZoom, closeSettings, setTheme, setThemeMode, setLanguage, setDefaultZoom } = useStore()
+  const [localThemeMode, setLocalThemeMode] = useState(themeMode)
   const [localLang,  setLocalLang]    = useState(language)
   const [localZoom,  setLocalZoom]    = useState(defaultZoom)
   const [tab, setTab] = useState('appearance')
   const isDark = theme === 'dark'
 
   const save = async () => {
-    setTheme(localTheme)
+    const resolvedTheme = localThemeMode === 'system'
+      ? ((await window.api?.getSystemTheme()) ? 'dark' : 'light')
+      : localThemeMode
+    setThemeMode(localThemeMode)
+    setTheme(resolvedTheme)
     setLanguage(localLang)
     setDefaultZoom(localZoom)
-    await window.api?.saveSettings({ theme: localTheme, language: localLang, defaultZoom: localZoom })
+    await window.api?.saveSettings({ theme: resolvedTheme, themeMode: localThemeMode, language: localLang, defaultZoom: localZoom })
     closeSettings()
   }
 
@@ -54,10 +58,11 @@ export default function SettingsModal() {
                   {[
                     { id: 'dark',   icon: <Moon size={14}/>,    label: t('settings.themeDark') },
                     { id: 'light',  icon: <Sun size={14}/>,     label: t('settings.themeLight') },
+                    { id: 'system', icon: <Monitor size={14}/>, label: 'System' },
                   ].map(opt => (
-                    <button key={opt.id} onClick={() => setLocalTheme(opt.id)}
+                    <button key={opt.id} onClick={() => setLocalThemeMode(opt.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors
-                        ${localTheme === opt.id
+                        ${localThemeMode === opt.id
                           ? 'border-clover-500 bg-clover-600 text-white'
                           : isDark ? 'border-zinc-700 text-zinc-300 hover:border-zinc-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
                         }`}>
