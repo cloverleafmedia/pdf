@@ -8,6 +8,8 @@
 $ErrorActionPreference = "Stop"
 $projectDir = Split-Path -Parent $PSScriptRoot
 $tokenFile  = Join-Path $env:APPDATA "CloverleafPDF\gh-token.dat"
+$lockFile   = Join-Path $env:TEMP "CloverleafPDF-publish.lock"
+$lockMaxAgeMinutes = 20
 
 Set-Location $projectDir
 
@@ -17,6 +19,22 @@ if (-not (Test-Path $tokenFile)) {
     Read-Host "Enter zum Schliessen"
     exit 1
 }
+
+# Verhindert den Bug vom 2026-07-04: zwei gleichzeitige Publish-Laeufe legten
+# je ein eigenes GitHub-Release mit demselben Tag an, die Assets wurden auf
+# beide verteilt - electron-updater fand das Update dadurch nicht mehr (404).
+if (Test-Path $lockFile) {
+    $age = (Get-Date) - (Get-Item $lockFile).LastWriteTime
+    if ($age.TotalMinutes -lt $lockMaxAgeMinutes) {
+        Write-Host "Es laeuft bereits ein anderer Release-Vorgang (Lock von vor $([int]$age.TotalMinutes) Min.)." -ForegroundColor Red
+        Write-Host "Bitte warten, bis der andere Vorgang fertig ist - sonst entsteht wieder ein Doppel-Release."
+        Read-Host "Enter zum Schliessen"
+        exit 1
+    } else {
+        Write-Host "Alte Lock-Datei (vermutlich abgestuerzter Lauf) wird ignoriert und ueberschrieben." -ForegroundColor DarkYellow
+    }
+}
+Set-Content -Path $lockFile -Value (Get-Date).ToString("o")
 
 try {
     $secureToken = Get-Content $tokenFile | ConvertTo-SecureString
@@ -56,10 +74,15 @@ try {
     npx electron-builder --win --publish always
     if ($LASTEXITCODE -ne 0) { throw "electron-builder fehlgeschlagen (Exit $LASTEXITCODE)" }
 
-    Write-Host "`nFertig. Auf GitHub pruefen: Release ist kein Draft, Tag passt (v$version), Prerelease = None." -ForegroundColor Green
+    Write-Host "`n--- Release-Pruefung (node scripts/verify-release.js) ---" -ForegroundColor DarkGray
+    node scripts/verify-release.js
+    if ($LASTEXITCODE -ne 0) { throw "Release-Pruefung fehlgeschlagen - electron-updater wird das Update vermutlich nicht finden. Siehe Ausgabe oben." }
+
+    Write-Host "`nFertig. Release v$version ist veroeffentlicht und funktionsfaehig." -ForegroundColor Green
 } catch {
     Write-Host "`nFEHLER: $($_.Exception.Message)" -ForegroundColor Red
 } finally {
     Remove-Item Env:\GH_TOKEN -ErrorAction SilentlyContinue
+    Remove-Item $lockFile -ErrorAction SilentlyContinue
     Read-Host "`nEnter zum Schliessen"
 }

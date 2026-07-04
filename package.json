@@ -12,7 +12,8 @@
     "dist:dir": "node scripts/check-verapdf-bundled.js && node scripts/check-qpdf-bundled.js && npm run build && electron-builder --win --dir",
     "licenses": "node scripts/build-licenses.js",
     "setup:verapdf": "node scripts/setup-verapdf.js",
-    "setup:qpdf": "node scripts/setup-qpdf.js"
+    "setup:qpdf": "node scripts/setup-qpdf.js",
+    "verify:release": "node scripts/verify-release.js"
   },
   "dependencies": {
     "@signpdf/placeholder-plain": "^3.3.0",

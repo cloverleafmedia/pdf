@@ -5,6 +5,12 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- `scripts/verify-release.js` (`npm run verify:release`): prüft nach einem Publish live, ob für den aktuellen Versions-Tag genau ein GitHub-Release existiert, alle Update-Dateien hochgeladen sind und die von electron-updater genutzten Download-URLs wirklich erreichbar sind.
+
+### Behoben
+- `scripts/publish-release.ps1` legte bei zwei gleichzeitigen/schnell hintereinander gestarteten Läufen zwei GitHub-Releases mit demselben Tag an, wodurch Update-Dateien auf beide verteilt wurden und electron-updater sie nicht mehr fand (404). Skript hat jetzt eine Lock-Datei gegen Doppel-Läufe und ruft am Ende automatisch `verify-release.js` auf.
+
 ## [1.3.0] – 2026-07-04
 
 ### Hinzugefügt
