@@ -10,7 +10,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
   BookmarkPlus, Package2, Keyboard, CornerDownLeft,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck,
+  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -110,9 +110,12 @@ export default function CommandPalette() {
       action: run(() => s.setActiveTool('redact')) },
     { group: 'Werkzeuge', label: 'Formular ausfüllen', icon: <FileText size={15}/>, disabled: !pdfDoc, active: activeTool === 'form',
       action: run(() => s.setActiveTool(activeTool === 'form' ? 'hand' : 'form')) },
+    { group: 'Werkzeuge', label: 'Formularfeld erstellen', icon: <SquarePlus size={15}/>, disabled: !pdfDoc, active: activeTool === 'newfield',
+      action: run(() => s.setActiveTool(activeTool === 'newfield' ? 'hand' : 'newfield')) },
 
     // ── Dokument ───────────────────────────────────────────────────────
     { group: 'Dokument', label: t('toolbar.merge'), icon: <Merge size={15}/>, disabled: !pdfDoc, action: run(() => window._mergePDF?.()) },
+    { group: 'Dokument', label: 'PDF reparieren', icon: <Stethoscope size={15}/>, disabled: !pdfDoc, action: run(() => window._repairPDF?.()) },
     { group: 'Dokument', label: t('toolbar.split'), icon: <Scissors size={15}/>, disabled: !pdfDoc, action: run(() => s.openSplit()) },
     { group: 'Dokument', label: 'OCR', icon: <ScanText size={15}/>, disabled: !pdfDoc, action: run(() => s.openOCR()) },
     { group: 'Dokument', label: 'Wasserzeichen', icon: <Stamp size={15}/>, disabled: !pdfDoc, action: run(() => s.openWatermark()) },
@@ -135,6 +138,7 @@ export default function CommandPalette() {
     { group: 'Dokument', label: 'Bibliothek', icon: <Library size={15}/>, action: run(() => s.openLibrary()) },
     { group: 'Dokument', label: 'Verschlüsseln', icon: <Lock size={15}/>, disabled: !pdfDoc, action: run(() => s.openEncrypt()) },
     { group: 'Dokument', label: 'Bilder zu PDF', icon: <Images size={15}/>, action: run(() => s.openImagesToPdf()) },
+    { group: 'Dokument', label: 'Tabellen als CSV exportieren', icon: <Table2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openTableExtract()) },
 
     // ── Ansicht ────────────────────────────────────────────────────────
     { group: 'Ansicht', label: 'Nachtmodus umschalten', icon: <Moon size={15}/>, disabled: !pdfDoc, active: nightMode,

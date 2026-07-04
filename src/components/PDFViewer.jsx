@@ -9,6 +9,7 @@ import { chunk } from '../lib/chunk'
 import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
 import { renderPageToCanvas } from '../lib/renderPage'
 import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
+import { defaultFieldName, dedupeFieldName } from '../lib/formFieldCreate'
 
 // DPI redacted pages are rasterized at before being flattened into the PDF -
 // high enough to stay legible/printable, matching ExportImagesModal's top DPI option.
@@ -18,10 +19,14 @@ const REDACTION_RASTER_DPI = 300
 // pending-redaction overlay, so drawing a box looks the same before and after mouseup.
 const REDACTION_FILL = 'rgba(0,0,0,0.55)'
 
+// Live-drag preview for placing a new form field - blue, distinct from
+// redaction's red, so the two drag-tools are visually distinguishable.
+const NEW_FIELD_FILL = 'rgba(59,130,246,0.25)'
+
 // Tool-id groups checked in multiple places below (text-selection annotations
 // vs. freehand-drag tools) — kept as single constants so both checks can't drift.
 const HIGHLIGHT_TOOLS = ['highlight', 'underline', 'strikethrough']
-const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser']
+const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield']
 
 // Post-redaction confirmation: reload the freshly-redacted bytes and confirm
 // the pages we just rasterized really carry no extractable text anymore.
@@ -84,12 +89,20 @@ export default function PDFViewer() {
   // ── Save (with annotation flattening) ────────────────────────────────────
   useEffect(() => {
     window._savePDF = async (forceDialog = false) => {
-      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, annotationOpacity } = useStore.getState()
+      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, annotationOpacity, pendingFormFields } = useStore.getState()
       if (!b) return
       try {
         setStatus('Speichern …')
-        // Embed all UI annotations + filled form field values permanently into PDF bytes before writing
-        const bytes = await flattenAnnotations(b, annotations, formValues, annotationOpacity)
+        // Embed all UI annotations + filled form field values + newly-created
+        // form fields permanently into PDF bytes before writing. newFields
+        // drafts are NOT cleared after saving - every save re-derives from the
+        // same pristine pdfBytes (below), so a repeated save re-creates the
+        // exact same fields on top of the same base rather than duplicating them.
+        const newFields = pendingFormFields.map(f => ({
+          page: f.pageNum, type: f.type, name: f.name,
+          x: f.x, y: f.y, w: f.w, h: f.h, pageW: f.logicalW, pageH: f.logicalH,
+        }))
+        const bytes = await flattenAnnotations(b, annotations, formValues, annotationOpacity, newFields)
         let target = fp
         if (!target || forceDialog) {
           const r = await window.api?.savePDF(fn)
@@ -145,7 +158,7 @@ export default function PDFViewer() {
         const r = await window.api?.savePDF(fn)
         if (r?.canceled || !r?.filePath) { setStatus(''); return }
         await window.api?.writeFile(r.filePath, result.bytes)
-        setStatus('Repariert gespeichert: ' + r.filePath.split(/[\/]/).pop())
+        setStatus('Repariert gespeichert: ' + r.filePath.split(/[\\/]/).pop())
       } catch (e) { setStatus('Fehler: ' + e.message) }
     }
   }, [])
@@ -296,6 +309,7 @@ function PDFPage({ pageNum }) {
     drawColor, drawWidth, annotationOpacity, annotations,
     pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation,
     formValues, setFormValue,
+    pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft,
   } = useStore()
 
   const canvasRef     = useRef(null)
@@ -311,6 +325,9 @@ function PDFPage({ pageNum }) {
   const [inlineInput, setInline]  = useState(null)
   // Dragging a placed annotation (hand tool)
   const [annotDrag, setAnnotDrag] = useState(null) // { id, sx, sy, ox, oy }
+  // Dragging / resizing a pending new-field draft (hand tool)
+  const [fieldDrag, setFieldDrag]     = useState(null) // { id, sx, sy, ox, oy }
+  const [fieldResize, setFieldResize] = useState(null) // { id, sx, sy, ow, oh }
 
   // ── Form fields overlay ─────────────────────────────────────────────────
   const [formFields, setFormFields] = useState([])
@@ -347,6 +364,34 @@ function PDFPage({ pageNum }) {
     window.addEventListener('mouseup',   onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [annotDrag, updateAnnotation])
+
+  // ── New-field draft drag (hand tool) ─────────────────────────────────────
+  useEffect(() => {
+    if (!fieldDrag) return
+    const onMove = (e) => {
+      const dx = e.clientX - fieldDrag.sx
+      const dy = e.clientY - fieldDrag.sy
+      updateFormFieldDraft(fieldDrag.id, { x: fieldDrag.ox + dx, y: fieldDrag.oy + dy })
+    }
+    const onUp = () => setFieldDrag(null)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [fieldDrag, updateFormFieldDraft])
+
+  // ── New-field draft resize (hand tool) ───────────────────────────────────
+  useEffect(() => {
+    if (!fieldResize) return
+    const onMove = (e) => {
+      const dx = e.clientX - fieldResize.sx
+      const dy = e.clientY - fieldResize.sy
+      updateFormFieldDraft(fieldResize.id, { w: Math.max(20, fieldResize.ow + dx), h: Math.max(14, fieldResize.oh + dy) })
+    }
+    const onUp = () => setFieldResize(null)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [fieldResize, updateFormFieldDraft])
 
   const isDark   = theme === 'dark'
   const rotation = pageRotations[pageNum] || 0
@@ -569,6 +614,13 @@ function PDFPage({ pageNum }) {
       return
     }
 
+    // ── New form field → start rect ───────────────────────────────────
+    if (tool === 'newfield') {
+      rectStartRef.current = getPos(e)
+      drawingRef.current = true
+      return
+    }
+
     // ── Freehand drawing ──────────────────────────────────────────────
     drawingRef.current = true
     pathRef.current = [getPos(e)]
@@ -586,6 +638,21 @@ function PDFPage({ pageNum }) {
       ctx.save()
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.fillStyle = REDACTION_FILL; ctx.strokeStyle = '#ef4444'
+      ctx.lineWidth = 2; ctx.setLineDash([6, 3])
+      ctx.fillRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
+      ctx.strokeRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
+      ctx.restore()
+      return
+    }
+
+    if (activeTool === 'newfield' && rectStartRef.current) {
+      redraw()
+      const dpr = window.devicePixelRatio || 1
+      const ctx = overlayRef.current.getContext('2d')
+      const s   = rectStartRef.current
+      ctx.save()
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.fillStyle = NEW_FIELD_FILL; ctx.strokeStyle = '#3b82f6'
       ctx.lineWidth = 2; ctx.setLineDash([6, 3])
       ctx.fillRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
       ctx.strokeRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
@@ -622,6 +689,22 @@ function PDFPage({ pageNum }) {
       const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
       const w = Math.abs(pos.x - s.x),  h = Math.abs(pos.y - s.y)
       if (w > 5 && h > 5) addRedaction({ pageNum, x, y, w, h, logicalW: size.w, logicalH: size.h })
+      rectStartRef.current = null
+      redraw()
+      return
+    }
+
+    if (activeTool === 'newfield' && rectStartRef.current) {
+      const pos = getPos(e)
+      const s   = rectStartRef.current
+      const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
+      const w = Math.abs(pos.x - s.x),  h = Math.abs(pos.y - s.y)
+      if (w > 10 && h > 10) {
+        const existingNames = useStore.getState().pendingFormFields.map(f => f.name)
+        const n = useStore.getState().pendingFormFields.filter(f => f.type === newFieldType).length + 1
+        const name = dedupeFieldName(defaultFieldName(newFieldType, n), existingNames)
+        addFormFieldDraft({ pageNum, type: newFieldType, name, x, y, w, h, logicalW: size.w, logicalH: size.h })
+      }
       rectStartRef.current = null
       redraw()
       return
@@ -757,6 +840,16 @@ function PDFPage({ pageNum }) {
         )
       })}
 
+      {/* 7b. Pending new-field drafts (visible whenever pending, like sticky notes) */}
+      {pendingFormFields.filter(f => f.pageNum === pageNum).map(f => (
+        <DraggableFieldBox key={f.id} field={f} activeTool={activeTool} isDark={isDark}
+          onDragStart={(e) => setFieldDrag({ id: f.id, sx: e.clientX, sy: e.clientY, ox: f.x, oy: f.y })}
+          onResizeStart={(e) => setFieldResize({ id: f.id, sx: e.clientX, sy: e.clientY, ow: f.w, oh: f.h })}
+          onRename={(name) => updateFormFieldDraft(f.id, { name })}
+          onRemove={() => removeFormFieldDraft(f.id)}
+        />
+      ))}
+
       {/* 8. Page badge */}
       <div className={`absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded-full pointer-events-none select-none
         ${isDark ? 'bg-black/40 text-zinc-400' : 'bg-black/10 text-gray-500'}`}>
@@ -777,6 +870,39 @@ function DraggableAnnotationMarker({ activeTool, className, style, title, onDrag
       } : undefined}
       onContextMenu={activeTool === 'hand' ? (e) => { e.preventDefault(); onRemove() } : undefined}>
       {children}
+    </div>
+  )
+}
+
+// A pending new-field draft: a positioned, draggable/resizable/renameable box
+// (not canvas-painted like the redaction preview, since it must stay editable
+// until the document is saved). Visible whenever pending, draggable/resizable
+// only with the hand tool active - same convention as sticky notes/text boxes.
+function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeStart, onRename, onRemove }) {
+  const isHand = activeTool === 'hand'
+  return (
+    <div className="absolute z-20 border-2 border-dashed border-blue-500 bg-blue-500/10"
+      style={{ left: field.x, top: field.y, width: field.w, height: field.h,
+        cursor: isHand ? 'grab' : 'default' }}
+      onMouseDown={isHand ? (e) => { e.preventDefault(); e.stopPropagation(); onDragStart(e) } : undefined}
+      onContextMenu={isHand ? (e) => { e.preventDefault(); onRemove() } : undefined}
+      title={isHand ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : undefined}>
+      <input
+        value={field.name}
+        onChange={(e) => onRename(e.target.value)}
+        onMouseDown={(e) => e.stopPropagation()}
+        className={`absolute -top-6 left-0 w-full text-[11px] px-1 py-0.5 rounded outline-none border
+          ${isDark ? 'bg-zinc-800 text-zinc-100 border-zinc-600' : 'bg-white text-gray-900 border-gray-300'}`}
+      />
+      {field.type === 'checkbox' && (
+        <div className="absolute inset-1 border border-blue-400 rounded-sm"/>
+      )}
+      {isHand && (
+        <div
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onResizeStart(e) }}
+          className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-blue-500 cursor-nwse-resize"
+        />
+      )}
     </div>
   )
 }

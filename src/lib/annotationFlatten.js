@@ -1,9 +1,14 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
-// ── Flatten all UI annotations + form field values into PDF bytes via pdf-lib ──
-export async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35) {
+// ── Flatten all UI annotations + form field values + newly-created form fields into PDF bytes via pdf-lib ──
+// newFields: [{ page, type: 'text'|'checkbox', name, x, y, w, h, pageW, pageH }]
+// in the same CSS-pixel space as `annotations` (name is expected to already
+// be unique - the caller dedupes against known field names when the draft is
+// placed; a stale collision here is simply skipped, same tolerance as formValues).
+export async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35, newFields = []) {
   const hasFormValues = Object.keys(formValues).length > 0
-  if (!annotations.length && !hasFormValues) return pdfBytes
+  const hasNewFields  = newFields.length > 0
+  if (!annotations.length && !hasFormValues && !hasNewFields) return pdfBytes
   const doc  = await PDFDocument.load(pdfBytes)
   let   font = null
   const getFont = async () => { if (!font) font = await doc.embedFont(StandardFonts.Helvetica); return font }
@@ -65,21 +70,43 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
     }
   }
 
-  if (hasFormValues) {
+  if (hasFormValues || hasNewFields) {
     try {
-      const form = doc.getForm()
-      for (const [key, value] of Object.entries(formValues)) {
-        try {
-          if (typeof value === 'boolean') {
-            const cb = form.getCheckBox(key)
-            if (value) cb.check(); else cb.uncheck()
-          } else {
-            const tf = form.getTextField(key)
-            tf.setText(String(value ?? ''))
-          }
-        } catch (_) { /* field not found on this document, or wrong widget type — skip */ }
+      const form = doc.getForm() // auto-creates an empty AcroForm if the PDF doesn't have one yet
+
+      if (hasFormValues) {
+        for (const [key, value] of Object.entries(formValues)) {
+          try {
+            if (typeof value === 'boolean') {
+              const cb = form.getCheckBox(key)
+              if (value) cb.check(); else cb.uncheck()
+            } else {
+              const tf = form.getTextField(key)
+              tf.setText(String(value ?? ''))
+            }
+          } catch (_) { /* field not found on this document, or wrong widget type — skip */ }
+        }
       }
-    } catch (_) { /* PDF has no AcroForm */ }
+
+      if (hasNewFields) {
+        for (const nf of newFields) {
+          const pageIndex = nf.page - 1
+          if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
+          try {
+            const page = doc.getPage(pageIndex)
+            const { width: pw, height: ph } = page.getSize()
+            const sx = pw / (nf.pageW || pw)
+            const sy = ph / (nf.pageH || ph)
+            const x = nf.x * sx
+            const w = nf.w * sx
+            const h = nf.h * sy
+            const y = ph - (nf.y + nf.h) * sy
+            const field = nf.type === 'checkbox' ? form.createCheckBox(nf.name) : form.createTextField(nf.name)
+            field.addToPage(page, { x, y, width: w, height: h })
+          } catch (_) { /* name collision, out-of-range page, or other pdf-lib error — skip */ }
+        }
+      }
+    } catch (_) { /* unexpected AcroForm error */ }
   }
 
   return doc.save()

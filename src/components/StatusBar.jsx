@@ -19,6 +19,7 @@ export default function StatusBar() {
   const toolLabels = {
     hand: 'Hand', select: 'Auswahl', highlight: 'Markieren', underline: 'Unterstreichen',
     strikethrough: 'Durchstreichen', note: 'Notiz', text: 'Textfeld', draw: 'Zeichnen', eraser: 'Radierer',
+    newfield: 'Formularfeld erstellen',
   }
 
   return (

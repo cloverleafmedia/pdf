@@ -112,4 +112,55 @@ describe('flattenAnnotations', () => {
     const bytes = await makePdfBytes()
     await expect(flattenAnnotations(bytes, [], { doesNotExist: 'x' })).resolves.toBeTruthy()
   })
+
+  it('creates a new, blank text field from newFields', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'text', name: 'Neues Textfeld', x: 10, y: 10, w: 80, h: 20, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const field = reloaded.getForm().getTextField('Neues Textfeld')
+    expect(field).toBeTruthy()
+    expect(field.getText() || '').toBe('')
+  })
+
+  it('creates a new, unchecked checkbox from newFields', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'checkbox', name: 'Neue Checkbox', x: 10, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getCheckBox('Neue Checkbox').isChecked()).toBe(false)
+  })
+
+  it('silently skips a newFields entry targeting an out-of-range page', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 5, type: 'text', name: 'X', x: 0, y: 0, w: 10, h: 10, pageW: 200, pageH: 200 }]
+    await expect(flattenAnnotations(bytes, [], {}, 0.35, newFields)).resolves.toBeTruthy()
+  })
+
+  it('does not crash when two newFields entries share the same name (second is skipped)', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [
+      { page: 1, type: 'text', name: 'Dupe', x: 0, y: 0, w: 40, h: 20, pageW: 200, pageH: 200 },
+      { page: 1, type: 'text', name: 'Dupe', x: 50, y: 0, w: 40, h: 20, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getFields().filter(f => f.getName() === 'Dupe')).toHaveLength(1)
+  })
+
+  it('bakes newFields and formValues together in the same save', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([200, 200])
+    const form = doc.getForm()
+    const existing = form.createTextField('vorhanden')
+    existing.addToPage(page)
+    const bytes = await doc.save()
+
+    const newFields = [{ page: 1, type: 'checkbox', name: 'Neu', x: 10, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], { vorhanden: 'Wert' }, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const reloadedForm = reloaded.getForm()
+    expect(reloadedForm.getTextField('vorhanden').getText()).toBe('Wert')
+    expect(reloadedForm.getCheckBox('Neu').isChecked()).toBe(false)
+  })
 })

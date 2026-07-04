@@ -38,6 +38,10 @@ export const useStore = create((set, get) => ({
   // ── Form fields (AcroForm values, keyed by field name) ──────────────────
   formValues: {},
 
+  // ── New form-field drafts (pending, not yet baked in on save) ───────────
+  pendingFormFields: [],
+  newFieldType: 'text', // 'text' | 'checkbox' - which type the next drag-to-place placement creates
+
   // ── Reusable templates (Wasserzeichen / Kopf-Fußzeile) ──────────────────
   watermarkTemplates:    [],
   headerFooterTemplates: [],
@@ -126,6 +130,7 @@ export const useStore = create((set, get) => ({
     annotationHistory: [],
     annotationFuture: [],
     pendingRedactions: [],
+    pendingFormFields: [],
     formValues: {},
     pageRotations: {},
     isDirty: false,
@@ -135,7 +140,7 @@ export const useStore = create((set, get) => ({
 
   closeDocument: () => set({
     pdfDoc: null, pdfBytes: null, filePath: null, fileName: null, fileSize: 0,
-    currentPage: 1, totalPages: 0, annotations: [], pendingRedactions: [], formValues: {}, pageRotations: {}, isDirty: false,
+    currentPage: 1, totalPages: 0, annotations: [], pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
   }),
 
   setPdfBytes:  (b) => set({ pdfBytes: b, isDirty: true }),
@@ -235,6 +240,14 @@ export const useStore = create((set, get) => ({
   addRedaction:    (r) => set(s => ({ pendingRedactions: [...s.pendingRedactions, { ...r, id: Date.now() }] })),
   removeRedaction: (id) => set(s => ({ pendingRedactions: s.pendingRedactions.filter(r => r.id !== id) })),
   clearRedactions: ()  => set({ pendingRedactions: [] }),
+
+  addFormFieldDraft:    (f) => set(s => ({ pendingFormFields: [...s.pendingFormFields, { ...f, id: Date.now() }] })),
+  updateFormFieldDraft: (id, updates) => set(s => ({
+    pendingFormFields: s.pendingFormFields.map(f => f.id === id ? { ...f, ...updates } : f),
+  })),
+  removeFormFieldDraft: (id) => set(s => ({ pendingFormFields: s.pendingFormFields.filter(f => f.id !== id) })),
+  clearFormFieldDrafts: ()  => set({ pendingFormFields: [] }),
+  setNewFieldType:      (t) => set({ newFieldType: t }),
 
   // ── Actions: form fields ────────────────────────────────────────────────
   setFormValue: (key, value) => set(s => ({ formValues: { ...s.formValues, [key]: value }, isDirty: true })),
@@ -409,7 +422,7 @@ export const useStore = create((set, get) => ({
       currentPage: s.currentPage, totalPages: s.totalPages,
       annotations: s.annotations, annotationHistory: s.annotationHistory,
       annotationFuture: s.annotationFuture, pendingRedactions: s.pendingRedactions,
-      formValues: s.formValues,
+      formValues: s.formValues, pendingFormFields: s.pendingFormFields,
       pageRotations: s.pageRotations, zoom: s.zoom,
     }
   },
@@ -423,7 +436,7 @@ export const useStore = create((set, get) => ({
       pdfDoc, pdfBytes, filePath, fileName, fileSize,
       currentPage: 1, totalPages: pdfDoc.numPages,
       annotations: [], annotationHistory: [], annotationFuture: [],
-      pendingRedactions: [], formValues: {}, pageRotations: {}, isDirty: false,
+      pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
       zoom: get().defaultZoom,
     })
   },
@@ -440,7 +453,7 @@ export const useStore = create((set, get) => ({
       currentPage: target.currentPage, totalPages: target.totalPages,
       annotations: target.annotations, annotationHistory: target.annotationHistory,
       annotationFuture: target.annotationFuture, pendingRedactions: target.pendingRedactions,
-      formValues: target.formValues || {},
+      formValues: target.formValues || {}, pendingFormFields: target.pendingFormFields || [],
       pageRotations: target.pageRotations, zoom: target.zoom,
     })
   },
@@ -459,14 +472,14 @@ export const useStore = create((set, get) => ({
           currentPage: prev.currentPage, totalPages: prev.totalPages,
           annotations: prev.annotations, annotationHistory: prev.annotationHistory,
           annotationFuture: prev.annotationFuture, pendingRedactions: prev.pendingRedactions,
-          formValues: prev.formValues || {},
+          formValues: prev.formValues || {}, pendingFormFields: prev.pendingFormFields || [],
           pageRotations: prev.pageRotations, zoom: prev.zoom,
         })
       } else {
         set({
           tabs: [], activeTabId: null,
           pdfDoc: null, pdfBytes: null, filePath: null, fileName: null, fileSize: 0,
-          currentPage: 1, totalPages: 0, annotations: [], pendingRedactions: [], formValues: {}, pageRotations: {}, isDirty: false,
+          currentPage: 1, totalPages: 0, annotations: [], pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
         })
       }
     } else {

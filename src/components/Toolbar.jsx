@@ -11,7 +11,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
   Wrench, Eye, Pin, Terminal, Keyboard,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck
+  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { navigateToPage } from '../lib/navigate'
@@ -76,17 +76,17 @@ export default function Toolbar() {
   const {
     pdfDoc, currentPage, totalPages, zoom, theme, sidebarOpen, nightMode, twoPageView, magnifierActive,
     activeTool, lastAnnotateTool, drawColor, drawWidth, pendingRedactions, annotationHistory, annotationFuture,
-    toolbarLabels, pinnedTools,
+    toolbarLabels, pinnedTools, pendingFormFields, newFieldType,
     setActiveTool, setZoom, zoomIn, zoomOut, setDrawColor, setDrawWidth,
     setCurrentPage, toggleSidebar, openSettings, openProperties, openSplit, openOCR,
-    rotatePageLeft, rotatePageRight, clearRedactions,
+    rotatePageLeft, rotatePageRight, clearRedactions, setNewFieldType, clearFormFieldDrafts,
     toggleNightMode, openWatermark, openSignature, openHeaderFooter, togglePresentation,
     undoAnnotation, redoAnnotation,
     setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool,
     openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare,
     openCommandPalette, openShortcuts, openPrintDialog,
     openSanitize, openMailMerge, openPdfa, openA11y, openLibrary,
-    openEncrypt, openImagesToPdf, openSignatureVerify,
+    openEncrypt, openImagesToPdf, openSignatureVerify, openTableExtract,
   } = useStore()
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
@@ -125,6 +125,7 @@ export default function Toolbar() {
 
   // Redaction bar shown when redact tool active and pending redactions exist
   const showRedactBar = activeTool === 'redact'
+  const showNewFieldBar = activeTool === 'newfield'
 
   const isAnnotateColorTool = ['highlight', 'underline', 'strikethrough', 'draw', 'note', 'text'].includes(activeTool)
 
@@ -141,6 +142,7 @@ export default function Toolbar() {
 
   const documentItems = [
     { id: 'merge',       icon: <Merge size={15}/>,               label: t('toolbar.merge'),         onClick: () => window._mergePDF?.(),  disabled: !pdfDoc },
+    { id: 'repair',      icon: <Stethoscope size={15}/>,         label: 'PDF reparieren',           onClick: () => window._repairPDF?.(), disabled: !pdfDoc },
     { id: 'split',       icon: <Scissors size={15}/>,            label: t('toolbar.split'),          onClick: openSplit,                   disabled: !pdfDoc },
     { id: 'ocr',         icon: <ScanText size={15}/>,            label: 'OCR',                       onClick: openOCR,                     disabled: !pdfDoc },
     { id: 'watermark',   icon: <Stamp size={15}/>,               label: 'Wasserzeichen',             onClick: openWatermark,               disabled: !pdfDoc },
@@ -163,6 +165,7 @@ export default function Toolbar() {
     { id: 'library',     icon: <Library size={15}/>,             label: 'Bibliothek',                onClick: openLibrary },
     { id: 'encrypt',     icon: <Lock size={15}/>,                label: 'Verschlüsseln',             onClick: openEncrypt,                 disabled: !pdfDoc },
     { id: 'imagestopdf', icon: <Images size={15}/>,              label: 'Bilder zu PDF',             onClick: openImagesToPdf },
+    { id: 'tableextract', icon: <Table2 size={15}/>,             label: 'Tabellen als CSV exportieren', onClick: openTableExtract, disabled: !pdfDoc },
   ]
 
   const viewItems = [
@@ -278,6 +281,10 @@ export default function Toolbar() {
             active={activeTool === 'form'} onClick={() => setActiveTool(activeTool === 'form' ? 'hand' : 'form')}>
             <FileText size={16}/>
           </TBtn>
+          <TBtn title="Formularfeld erstellen" isDark={isDark} disabled={!pdfDoc}
+            active={activeTool === 'newfield'} onClick={() => setActiveTool(activeTool === 'newfield' ? 'hand' : 'newfield')}>
+            <SquarePlus size={16}/>
+          </TBtn>
           <Sep isDark={isDark}/>
 
           {/* Document tools group — group itself stays enabled even without a doc, since
@@ -392,6 +399,32 @@ export default function Toolbar() {
                   <CheckCheck size={12}/> Anwenden
                 </button>
               </>
+            )}
+          </div>
+        )}
+
+        {/* New form-field action bar */}
+        {showNewFieldBar && (
+          <div className={`flex items-center gap-3 px-4 py-1.5 text-xs border-b
+            ${isDark ? 'bg-blue-950/40 border-blue-900/50 text-blue-300' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
+            <SquarePlus size={13}/>
+            <span>Bereich für ein neues Formularfeld aufziehen. Name direkt im Feld bearbeitbar, Position/Größe mit dem Hand-Werkzeug anpassbar.</span>
+            <div className="flex-1"/>
+            <div className="flex gap-1">
+              {[['text', 'Textfeld'], ['checkbox', 'Kontrollkästchen']].map(([v, l]) => (
+                <button key={v} onClick={() => setNewFieldType(v)}
+                  className={`px-3 py-0.5 rounded text-xs transition-colors
+                    ${newFieldType === v ? 'bg-blue-600 text-white' : isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-100'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            {pendingFormFields.length > 0 && (
+              <button onClick={clearFormFieldDrafts}
+                className={`px-3 py-0.5 rounded text-xs transition-colors
+                  ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-100'}`}>
+                Alle verwerfen ({pendingFormFields.length})
+              </button>
             )}
           </div>
         )}
