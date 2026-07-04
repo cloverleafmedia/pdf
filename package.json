@@ -14,6 +14,7 @@
     "setup:verapdf": "node scripts/setup-verapdf.js",
     "setup:qpdf": "node scripts/setup-qpdf.js",
     "verify:release": "node scripts/verify-release.js",
+    "audit:deps": "node scripts/audit-deps.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

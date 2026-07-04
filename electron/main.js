@@ -54,6 +54,7 @@ function createWindow() {
       preload:          path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration:  false,
+      sandbox:          true,
       webSecurity:      !isDev,
     },
   })
@@ -62,6 +63,23 @@ function createWindow() {
   mainWindow.on('unmaximize',  () => mainWindow.webContents.send('window-state-change', false))
   mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('fullscreen-change', true))
   mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('fullscreen-change', false))
+
+  // Defense-in-depth: nothing today renders clickable links from a PDF
+  // (PDFViewer.jsx only calls page.getAnnotations() for form-field discovery,
+  // never a pdf.js AnnotationLayer/link surface), but a malicious PDF or a
+  // future feature could introduce one - so navigation away from the app's
+  // own UI, and any attempt to spawn a new window, is blocked by default and
+  // routed to the OS browser instead.
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    if (isDev && url.startsWith('http://localhost:5173')) return
+    if (url.startsWith('file://')) return
+    e.preventDefault()
+    shell.openExternal(url)
+  })
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
 
   // Pushes live OS theme changes to the renderer - only applied there when
   // the user has opted into "System" theme mode (see useStore.js themeMode).
