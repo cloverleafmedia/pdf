@@ -1,12 +1,18 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
-import { PDFDocument, rgb } from 'pdf-lib'
+import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../store/useStore'
 import MagnifierLens from './MagnifierLens'
 import { flattenAnnotations } from '../lib/annotationFlatten'
 import { findPIIRedactions, findTextRedactions } from '../lib/piiDetection'
 import { chunk } from '../lib/chunk'
 import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
+import { renderPageToCanvas } from '../lib/renderPage'
+import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
+
+// DPI redacted pages are rasterized at before being flattened into the PDF -
+// high enough to stay legible/printable, matching ExportImagesModal's top DPI option.
+const REDACTION_RASTER_DPI = 300
 
 // Shared fill for both the live-drag redaction preview and the confirmed
 // pending-redaction overlay, so drawing a box looks the same before and after mouseup.
@@ -16,6 +22,19 @@ const REDACTION_FILL = 'rgba(0,0,0,0.55)'
 // vs. freehand-drag tools) — kept as single constants so both checks can't drift.
 const HIGHLIGHT_TOOLS = ['highlight', 'underline', 'strikethrough']
 const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser']
+
+// Post-redaction confirmation: reload the freshly-redacted bytes and confirm
+// the pages we just rasterized really carry no extractable text anymore.
+async function verifyNoResidualText(newBytes, redactedPages) {
+  const doc = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+  const dirtyPages = []
+  for (const pageNum of redactedPages) {
+    const page = await doc.getPage(pageNum)
+    const { items } = await page.getTextContent()
+    if (!isTextContentEmpty(items)) dirtyPages.push(pageNum)
+  }
+  return { ok: dirtyPages.length === 0, dirtyPages }
+}
 
 export default function PDFViewer() {
   const {
@@ -110,29 +129,68 @@ export default function PDFViewer() {
   }, [])
 
   // ── Apply redactions ─────────────────────────────────────────────────────
+  // True redaction, not just a black overlay: a rectangle drawn on top of the
+  // existing content stream (the old approach) leaves the original text/image
+  // data fully intact and extractable underneath - the classic real-world PDF
+  // redaction failure. Instead, any page with a redaction gets rasterized to
+  // an image with the black boxes baked into its pixels, then that image
+  // becomes the page's entire content; pages without redactions are copied
+  // through unchanged (so text/search/selection elsewhere is unaffected).
+  // Known, accepted tradeoff: form fields/links on a redacted page are lost
+  // along with the text (see the warning banner in Toolbar.jsx).
+  // Note: like the previous implementation, this does not account for
+  // pageRotations - a pre-existing gap, out of scope here.
   useEffect(() => {
     window._applyRedactions = async () => {
-      const { pendingRedactions: rects, pdfBytes: b, filePath: fp, fileName: fn } = useStore.getState()
+      const { pendingRedactions: rects, pdfDoc: doc, pdfBytes: b, filePath: fp, fileName: fn, totalPages: n } = useStore.getState()
       if (!rects.length) return
       try {
         setStatus('Schwärze …')
-        const doc = await PDFDocument.load(b)
-        for (const rect of rects) {
-          const page = doc.getPage(rect.pageNum - 1)
-          const { width: pw, height: ph } = page.getSize()
-          page.drawRectangle({
-            x:      (rect.x / rect.logicalW) * pw,
-            y:      ph - ((rect.y + rect.h) / rect.logicalH) * ph,
-            width:  (rect.w / rect.logicalW) * pw,
-            height: (rect.h / rect.logicalH) * ph,
-            color: rgb(0, 0, 0),
-          })
+        const byPage = new Map()
+        for (const r of rects) {
+          if (!byPage.has(r.pageNum)) byPage.set(r.pageNum, [])
+          byPage.get(r.pageNum).push(r)
         }
-        const newB = await doc.save()
+
+        const srcDoc = await PDFDocument.load(b)
+        const outDoc = await PDFDocument.create()
+        const scale = REDACTION_RASTER_DPI / 72
+
+        for (let pageNum = 1; pageNum <= n; pageNum++) {
+          if (!byPage.has(pageNum)) {
+            const [copied] = await outDoc.copyPages(srcDoc, [pageNum - 1])
+            outDoc.addPage(copied)
+            continue
+          }
+          const srcPage = srcDoc.getPage(pageNum - 1)
+          const { width: pw, height: ph } = srcPage.getSize()
+
+          const canvas = await renderPageToCanvas(doc, pageNum, scale)
+          const ctx = canvas.getContext('2d')
+          ctx.fillStyle = '#000'
+          for (const rect of byPage.get(pageNum)) {
+            const pdfRect = rectToPdfPoints(rect, pw, ph)
+            const px = pdfPointRectToRasterPixels(pdfRect, ph, scale)
+            ctx.fillRect(px.x, px.y, px.width, px.height)
+          }
+
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
+          const pngBytes = new Uint8Array(await blob.arrayBuffer())
+          const pngImage = await outDoc.embedPng(pngBytes)
+          const newPage = outDoc.addPage([pw, ph])
+          newPage.drawImage(pngImage, { x: 0, y: 0, width: pw, height: ph })
+        }
+
+        const newB = await outDoc.save()
+        const redactedPages = [...byPage.keys()]
+        const verification = await verifyNoResidualText(newB, redactedPages)
+
         const reloaded = await pdfjsLib.getDocument({ data: newB.slice() }).promise
         openDocument(reloaded, newB, fp, fn, newB.byteLength)
         clearRedactions()
-        setStatus('Schwärzung angewendet')
+        setStatus(verification.ok
+          ? `✓ ${redactedPages.length} Seite(n) geprüft — kein Restdaten gefunden`
+          : `⚠ Achtung: Textreste gefunden auf Seite(n) ${verification.dirtyPages.join(', ')}`)
       } catch (e) { setStatus('Fehler: ' + e.message) }
     }
   }, [])

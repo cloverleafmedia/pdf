@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { ScanText, Copy, Download, ChevronDown, FileSearch } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { renderPageToCanvas } from '../../lib/renderPage'
 
 const LANGS = [
   { id: 'deu',     label: 'Deutsch' },
@@ -13,16 +14,6 @@ const LANGS = [
 ]
 
 const OCR_SCALE = 2
-
-async function pageToCanvas(pdfDoc, pageNum, scale = OCR_SCALE) {
-  const page = pdfDoc.getPage(pageNum)
-  const vp   = (await page).getViewport({ scale })
-  const canvas = document.createElement('canvas')
-  canvas.width  = vp.width
-  canvas.height = vp.height
-  await (await page).render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
-  return canvas
-}
 
 // Tesseract.js v7 only returns plain text by default (`blocks: false`) — word-level
 // bounding boxes (needed to place an invisible text layer) require the lower-level
@@ -128,7 +119,7 @@ export default function OCRModal() {
         currentRecognizingPage.current = pageNum
 
         // Render page to canvas element
-        const canvas = await pageToCanvas(pdfDoc, pageNum)
+        const canvas = await renderPageToCanvas(pdfDoc, pageNum, OCR_SCALE)
         const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true })
 
         pageWordsRef.current[pageNum] = extractWords(data)

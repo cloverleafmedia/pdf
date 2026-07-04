@@ -355,7 +355,7 @@ export default function Toolbar() {
             <AlertTriangle size={13}/>
             <span>
               {pendingRedactions.length > 0
-                ? `${pendingRedactions.length} Schwärzung(en) ausstehend — Schwärzung ist permanent!`
+                ? `${pendingRedactions.length} Schwärzung(en) ausstehend — Schwärzung ist permanent! Geschwärzte Seiten werden zu einem Bild: Text, Formularfelder und Verknüpfungen auf diesen Seiten gehen dabei verloren.`
                 : 'Bereiche zum Schwärzen aufziehen, oder automatisch nach Mustern suchen.'}
             </span>
             <div className="flex-1"/>
