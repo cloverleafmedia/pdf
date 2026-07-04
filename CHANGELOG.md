@@ -7,9 +7,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### Hinzugefügt
 - `scripts/verify-release.js` (`npm run verify:release`): prüft nach einem Publish live, ob für den aktuellen Versions-Tag genau ein GitHub-Release existiert, alle Update-Dateien hochgeladen sind und die von electron-updater genutzten Download-URLs wirklich erreichbar sind.
+- Test-Tooling: Vitest (Node-Umgebung, kein jsdom) mit 64 Tests für bisher ungetestete Logik — Store-Reducer (Undo/Redo, Zoom, Rotation, Tab-Verwaltung), PDF/A-/Barrierefreiheits-Prüfungen, Annotation-Flattening, PII-/Volltext-Schwärzungserkennung, Sidebar-Seitenoperationen. `npm run test` / `npm run test:watch`.
+
+### Geändert
+- Code-Cleanup vor v1.4.0: reine Logik aus `PDFViewer.jsx` und `Sidebar.jsx` nach `src/lib/` extrahiert (`annotationFlatten.js`, `piiDetection.js`, `chunk.js`, `pdfPageOps.js`, `navigate.js`), doppelte Button-Klassen-Logik und Sticky-Note/Textfeld-Drag-Handler in Toolbar/PDFViewer zusammengefasst.
+- Alle ~25 Modal-Komponenten werden jetzt per `React.lazy()` nachgeladen statt statisch gebündelt — Hauptchunk sinkt von 507KB auf 339KB, die "Chunk größer als 500kB"-Build-Warnung ist behoben.
 
 ### Behoben
 - `scripts/publish-release.ps1` legte bei zwei gleichzeitigen/schnell hintereinander gestarteten Läufen zwei GitHub-Releases mit demselben Tag an, wodurch Update-Dateien auf beide verteilt wurden und electron-updater sie nicht mehr fand (404). Skript hat jetzt eine Lock-Datei gegen Doppel-Läufe und ruft am Ende automatisch `verify-release.js` auf.
+- Gespeicherte Highlight-Deckkraft war fest auf 0,35 codiert statt den einstellbaren Opacity-Regler zu nutzen — was auf dem Bildschirm zu sehen war und was gespeichert wurde, konnte dadurch auseinanderlaufen.
+- Schwärzungs-Rechtecke nutzten beim Ziehen (0,4) und im bestätigten/wartenden Zustand (0,55) unterschiedliche Deckkraft — jetzt vereinheitlicht.
+- Eine Annotation, die auf eine inzwischen gelöschte Seite zeigte, ließ das Speichern abstürzen (`doc.getPage()` wirft bei ungültigem Index eine Exception statt `null`) statt sie stillschweigend zu ignorieren.
 
 ## [1.3.0] – 2026-07-04
 
