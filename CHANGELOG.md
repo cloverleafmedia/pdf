@@ -5,6 +5,8 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.4.0] – 2026-07-04
+
 ### Hinzugefügt
 - Cloud-Sync-Ordner erkennen: Button in der Dokumenten-Bibliothek findet lokale OneDrive-/Google-Drive-/Dropbox-Ordner (inkl. "OneDrive - Firma"-Varianten und Dropbox-Custom-Pfaden) und fügt sie per Checkliste zur Bibliothek hinzu.
 - Design-Option "System": App folgt live dem Windows-Hell/Dunkel-Modus, sofern nicht ausdrücklich Dunkel/Hell gewählt wurde.
