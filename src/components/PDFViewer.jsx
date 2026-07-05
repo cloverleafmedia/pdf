@@ -13,14 +13,12 @@ import { defaultFieldName, dedupeFieldName } from '../lib/formFieldCreate'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 import { saveAsNewFile } from '../lib/saveAsNewFile'
 import { useEraserTool } from './pdf-tools/useEraserTool'
+import { useRedactTool } from './pdf-tools/useRedactTool'
+import { REDACTION_FILL } from './pdf-tools/constants'
 
 // DPI redacted pages are rasterized at before being flattened into the PDF -
 // high enough to stay legible/printable, matching ExportImagesModal's top DPI option.
 const REDACTION_RASTER_DPI = 300
-
-// Shared fill for both the live-drag redaction preview and the confirmed
-// pending-redaction overlay, so drawing a box looks the same before and after mouseup.
-const REDACTION_FILL = 'rgba(0,0,0,0.55)'
 
 // Live-drag preview for placing a new form field - blue, distinct from
 // redaction's red, so the two drag-tools are visually distinguishable.
@@ -613,6 +611,7 @@ function PDFPage({ pageNum }) {
   }
 
   const eraserTool = useEraserTool({ annotations, pageNum, getPos, removeAnnotation })
+  const redactTool = useRedactTool({ pageNum, size, getPos, overlayRef, redraw, addRedaction })
 
   // ── Apply text-selection annotation (highlight / underline / strikethrough) ──
   const applyTextAnnotation = useCallback(() => {
@@ -666,8 +665,7 @@ function PDFPage({ pageNum }) {
 
     // ── Redact → start rect ───────────────────────────────────────────
     if (tool === 'redact') {
-      rectStartRef.current = getPos(e)
-      drawingRef.current = true
+      redactTool.onMouseDown(e)
       return
     }
 
@@ -726,23 +724,10 @@ function PDFPage({ pageNum }) {
       return
     }
 
+    if (activeTool === 'redact') { redactTool.onMouseMove(e); return }
+
     if (!drawingRef.current) return
     const pos = getPos(e)
-
-    if (activeTool === 'redact' && rectStartRef.current) {
-      redraw()
-      const dpr = window.devicePixelRatio || 1
-      const ctx = overlayRef.current.getContext('2d')
-      const s   = rectStartRef.current
-      ctx.save()
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.fillStyle = REDACTION_FILL; ctx.strokeStyle = '#ef4444'
-      ctx.lineWidth = 2; ctx.setLineDash([6, 3])
-      ctx.fillRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
-      ctx.strokeRect(s.x, s.y, pos.x - s.x, pos.y - s.y)
-      ctx.restore()
-      return
-    }
 
     if (activeTool === 'newfield' && rectStartRef.current) {
       redraw()
@@ -800,19 +785,10 @@ function PDFPage({ pageNum }) {
   }
 
   const onMouseUp = (e) => {
+    if (activeTool === 'redact') { redactTool.onMouseUp(e); return }
+
     if (!drawingRef.current) return
     drawingRef.current = false
-
-    if (activeTool === 'redact' && rectStartRef.current) {
-      const pos = getPos(e)
-      const s   = rectStartRef.current
-      const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
-      const w = Math.abs(pos.x - s.x),  h = Math.abs(pos.y - s.y)
-      if (w > 5 && h > 5) addRedaction({ pageNum, x, y, w, h, logicalW: size.w, logicalH: size.h })
-      rectStartRef.current = null
-      redraw()
-      return
-    }
 
     if (activeTool === 'newfield' && rectStartRef.current) {
       const pos = getPos(e)
