@@ -5,6 +5,8 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.7.5] – 2026-07-05
+
 ### Geändert
 - Code-Cleanup: drei divergierende `fmt(bytes)`-Implementierungen (StatusBar, Eigenschaften, Komprimieren) zu einem gemeinsamen `formatBytes()` in `src/lib/` vereinheitlicht.
 - Code-Cleanup: das ~14-fach duplizierte "PDF speichern → pdf.js neu laden"-Muster zu `reloadPdfDoc()` extrahiert; das ~8-fach duplizierte "Datei speichern unter"-Muster zu `saveAsNewFile()` extrahiert.
