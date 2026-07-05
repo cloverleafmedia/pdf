@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Lock, AlertTriangle } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
 // Encryption is deliberately a TERMINAL action — writes straight to a new
 // file via Speichern-unter, same reasoning as the certificate signature in
@@ -41,10 +42,9 @@ export default function EncryptModal() {
         setError(result.error || 'Verschlüsselung fehlgeschlagen')
         return
       }
-      const saveRes = await window.api?.savePDF(fileName)
-      if (saveRes?.canceled || !saveRes?.filePath) return
-      await window.api?.writeFile(saveRes.filePath, result.bytes)
-      setStatus('Verschlüsselt gespeichert: ' + saveRes.filePath.split(/[\\/]/).pop())
+      const savedPath = await saveAsNewFile(fileName, result.bytes)
+      if (!savedPath) return
+      setStatus('Verschlüsselt gespeichert: ' + savedPath.split(/[\\/]/).pop())
       closeEncrypt()
     } catch (e) {
       setError(e.message || 'Unbekannter Fehler')

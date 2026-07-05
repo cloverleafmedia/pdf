@@ -3,6 +3,7 @@ import { Images, ArrowUp, ArrowDown, X, FilePlus } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
 // Images are assumed scanned/exported at 96 DPI (the same convention the
 // screen uses) so a typical photo becomes a plausible physical page size
@@ -50,10 +51,9 @@ export default function ImagesToPdfModal() {
       }
       const pdfBytes = await doc.save()
 
-      const saveRes = await window.api?.savePDF('bilder.pdf')
-      if (saveRes?.canceled || !saveRes?.filePath) { setStatus(''); return }
-      await window.api?.writeFile(saveRes.filePath, pdfBytes)
-      window._loadPDF?.(saveRes.filePath, !!fileName)
+      const savedPath = await saveAsNewFile('bilder.pdf', pdfBytes)
+      if (!savedPath) { setStatus(''); return }
+      window._loadPDF?.(savedPath, !!fileName)
       setStatus(`PDF aus ${files.length} Bild(ern) erstellt`)
       closeImagesToPdf()
     } catch (e) {

@@ -10,6 +10,8 @@ import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
 import { renderPageToCanvas } from '../lib/renderPage'
 import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
 import { defaultFieldName, dedupeFieldName } from '../lib/formFieldCreate'
+import { reloadPdfDoc } from '../lib/reloadPdfDoc'
+import { saveAsNewFile } from '../lib/saveAsNewFile'
 
 // DPI redacted pages are rasterized at before being flattened into the PDF -
 // high enough to stay legible/printable, matching ExportImagesModal's top DPI option.
@@ -64,7 +66,7 @@ function distToSegment(p, a, b) {
 // Post-redaction confirmation: reload the freshly-redacted bytes and confirm
 // the pages we just rasterized really carry no extractable text anymore.
 async function verifyNoResidualText(newBytes, redactedPages) {
-  const doc = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+  const doc = await reloadPdfDoc(newBytes)
   const dirtyPages = []
   for (const pageNum of redactedPages) {
     const page = await doc.getPage(pageNum)
@@ -167,7 +169,7 @@ export default function PDFViewer() {
           pages.forEach(p => base.addPage(p))
         }
         const merged = await base.save()
-        const reloaded = await pdfjsLib.getDocument({ data: merged.slice() }).promise
+        const reloaded = await reloadPdfDoc(merged)
         openDocument(reloaded, merged, fp, fn, merged.byteLength)
         setStatus('Zusammengeführt')
       } catch (e) { setStatus('Fehler: ' + e.message) }
@@ -188,10 +190,9 @@ export default function PDFViewer() {
         const result = await window.api?.repairPDF(b)
         if (!result?.available) { setStatus('qpdf ist nicht gebündelt (nur in Entwicklung ohne npm run setup:qpdf)'); return }
         if (!result.success) { setStatus('Fehler: ' + (result.error || 'Reparatur fehlgeschlagen')); return }
-        const r = await window.api?.savePDF(fn)
-        if (r?.canceled || !r?.filePath) { setStatus(''); return }
-        await window.api?.writeFile(r.filePath, result.bytes)
-        setStatus('Repariert gespeichert: ' + r.filePath.split(/[\\/]/).pop())
+        const savedPath = await saveAsNewFile(fn, result.bytes)
+        if (!savedPath) { setStatus(''); return }
+        setStatus('Repariert gespeichert: ' + savedPath.split(/[\\/]/).pop())
       } catch (e) { setStatus('Fehler: ' + e.message) }
     }
   }, [])
@@ -253,7 +254,7 @@ export default function PDFViewer() {
         const redactedPages = [...byPage.keys()]
         const verification = await verifyNoResidualText(newB, redactedPages)
 
-        const reloaded = await pdfjsLib.getDocument({ data: newB.slice() }).promise
+        const reloaded = await reloadPdfDoc(newB)
         openDocument(reloaded, newB, fp, fn, newB.byteLength)
         clearRedactions()
         setStatus(verification.ok

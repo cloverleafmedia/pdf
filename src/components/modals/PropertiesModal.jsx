@@ -2,13 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
-
-function fmt(bytes) {
-  if (!bytes) return '—'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / 1048576).toFixed(2) + ' MB'
-}
+import { formatBytes } from '../../lib/formatBytes'
 
 export default function PropertiesModal() {
   const { t } = useTranslation()
@@ -31,7 +25,7 @@ export default function PropertiesModal() {
     { label: t('document.created'),  value: meta.CreationDate },
     { label: t('document.modified'), value: meta.ModDate  },
     { label: t('document.pages'),    value: pdfDoc?.numPages },
-    { label: t('document.fileSize'), value: fmt(fileSize) },
+    { label: t('document.fileSize'), value: formatBytes(fileSize) },
     { label: t('document.version'),  value: meta.PDFFormatVersion },
     { label: t('document.encrypted'),value: meta.IsEncrypted ? t('document.yes') : t('document.no') },
   ]

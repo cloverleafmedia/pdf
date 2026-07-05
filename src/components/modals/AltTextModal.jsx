@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Image as ImageIcon, AlertTriangle } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import { listImagesForAltText, setImageAltText } from '../../lib/pdfCompliance'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 export default function AltTextModal() {
   const { pdfBytes, filePath, fileName, theme, closeAltText, setStatus, openDocument } = useStore()
@@ -39,7 +39,7 @@ export default function AltTextModal() {
       const withDrafts = images.map((img, i) => ({ ...img, alt: drafts[i] ?? img.alt }))
       setImageAltText(doc, withDrafts)
       const newBytes = await doc.save()
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('Alt-Texte gespeichert')
       closeAltText()

@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { Trash2, Check, PenTool, ShieldCheck, FileKey, FolderOpen, History } from 'lucide-react'
 import { PDFDocument, PDFName, PDFString, StandardFonts, rgb } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
+import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
 const AUDIT_KEY = 'CloverleafAuditTrail'
 
@@ -175,8 +176,7 @@ export default function SignatureModal() {
       writeAuditTrail(doc, entries)
 
       const newBytes = await doc.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('Unterschrift eingebettet')
       closeSignature()
@@ -209,10 +209,9 @@ export default function SignatureModal() {
         setSignError(result?.error || 'Signieren fehlgeschlagen')
         return
       }
-      const saveRes = await window.api?.savePDF(fileName)
-      if (saveRes?.canceled || !saveRes?.filePath) return
-      await window.api?.writeFile(saveRes.filePath, result.bytes)
-      setStatus('Digital signiert und gespeichert: ' + saveRes.filePath.split(/[\\/]/).pop())
+      const savedPath = await saveAsNewFile(fileName, result.bytes)
+      if (!savedPath) return
+      setStatus('Digital signiert und gespeichert: ' + savedPath.split(/[\\/]/).pop())
       closeSignature()
     } catch (e) {
       setSignError(e.message || 'Unbekannter Fehler')

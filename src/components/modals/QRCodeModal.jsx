@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 const POSITIONS = [
   { id: 'top-left',     label: 'Oben links' },
@@ -59,8 +59,7 @@ export default function QRCodeModal() {
       }
 
       const newBytes = await doc.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('QR-Code eingebettet')
       closeQRCode()

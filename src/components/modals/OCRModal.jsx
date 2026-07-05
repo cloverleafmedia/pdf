@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
 import { ScanText, Copy, Download, ChevronDown, FileSearch } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import { renderPageToCanvas } from '../../lib/renderPage'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 const LANGS = [
   { id: 'deu',     label: 'Deutsch' },
@@ -158,7 +158,7 @@ export default function OCRModal() {
     try {
       setStatus('Durchsuchbare PDF wird erstellt …')
       const newBytes = await embedSearchableLayer(pdfBytes, pageWordsRef.current)
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('Text-Ebene eingebettet — jetzt speichern (Strg+S) um es dauerhaft zu machen')
       closeOCR()

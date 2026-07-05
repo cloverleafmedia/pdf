@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 const ALIGN_OPTS = [
   { id: 'left',   icon: <AlignLeft size={13}/> },
@@ -81,8 +81,7 @@ export default function HeaderFooterModal() {
       }
 
       const newBytes = await doc.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('Kopf-/Fußzeile eingebettet')
       closeHeaderFooter()

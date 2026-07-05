@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck } from 'lucide-react'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../store/useStore'
 import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
 import { navigateToPage } from '../lib/navigate'
+import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 
 // Fixed thumbnail render width — also used to pre-compute placeholder height
 // (see ThumbPage) so the reserved space matches what renderThumb() ends up
@@ -89,9 +89,8 @@ function Thumbnails({ isDark }) {
 
   const scrollToPage = (n) => navigateToPage(n)
 
-  // getDocument() transfers/detaches the buffer it's given — pass a copy.
   const reloadDocument = async (bytes) => {
-    const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
+    const reloaded = await reloadPdfDoc(bytes)
     openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
   }
 

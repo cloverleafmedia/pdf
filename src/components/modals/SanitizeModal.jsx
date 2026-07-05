@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { ShieldCheck, CheckCircle2, MinusCircle } from 'lucide-react'
 import { PDFDocument, PDFName } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 const OPTIONS = [
   { id: 'metadata',     label: 'Metadaten entfernen',            hint: 'Titel, Autor, Thema, Stichwörter, Programm' },
@@ -70,7 +70,7 @@ export default function SanitizeModal() {
     try {
       const opts = Object.fromEntries(OPTIONS.map(o => [o.id, selected.has(o.id)]))
       const { bytes, report } = await sanitizePdf(pdfBytes, opts)
-      const reloaded = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(bytes)
       openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
       setReport(report)
       setStatus('Dokument bereinigt')

@@ -3,13 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ShieldCheck, TriangleAlert } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import pkg from '../../package.json'
-
-function fmt(bytes) {
-  if (!bytes) return ''
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / 1048576).toFixed(1) + ' MB'
-}
+import { formatBytes } from '../lib/formatBytes'
 
 export default function StatusBar() {
   const { t } = useTranslation()
@@ -39,7 +33,7 @@ export default function StatusBar() {
               <span className="truncate max-w-xs">{fileName}</span>
             </>
           )}
-          {fileSize > 0 && <span>{fmt(fileSize)}</span>}
+          {fileSize > 0 && <span>{formatBytes(fileSize)}</span>}
           <span>|</span>
           <span>{toolLabels[activeTool] || activeTool}</span>
           {hasSignatures && (

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { formatBytes } from '../../lib/formatBytes'
 
 export default function CompressModal() {
   const { pdfBytes, filePath, fileName, theme, closeCompress, setStatus, openDocument } = useStore()
@@ -31,10 +32,9 @@ export default function CompressModal() {
       const newBytes = await doc.save({ useObjectStreams: objectStreams })
       setResultSize(newBytes.byteLength)
 
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
-      setStatus(`Komprimiert: ${fmt(pdfBytes.byteLength)} → ${fmt(newBytes.byteLength)}`)
+      setStatus(`Komprimiert: ${formatBytes(pdfBytes.byteLength)} → ${formatBytes(newBytes.byteLength)}`)
       closeCompress()
     } catch (e) {
       setStatus('Fehler: ' + e.message)
@@ -50,7 +50,7 @@ export default function CompressModal() {
     <Modal isDark={isDark} onClose={closeCompress} title="PDF komprimieren">
       <div className="p-5 space-y-4 max-w-sm">
         <div className={`text-sm ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
-          Aktuelle Größe: <span className="font-semibold">{fmt(pdfBytes?.byteLength || 0)}</span>
+          Aktuelle Größe: <span className="font-semibold">{formatBytes(pdfBytes?.byteLength)}</span>
         </div>
 
         <Option isDark={isDark} checked={removeMetadata} onChange={setRemoveMeta}
@@ -68,7 +68,7 @@ export default function CompressModal() {
 
         {resultSize && (
           <div className={`text-sm rounded-lg px-3 py-2 font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-            Ersparnis: {fmt(saved)} ({pct}% kleiner)
+            Ersparnis: {formatBytes(saved)} ({pct}% kleiner)
           </div>
         )}
       </div>
@@ -98,10 +98,4 @@ function Option({ isDark, checked, onChange, label, hint }) {
       </div>
     </label>
   )
-}
-
-function fmt(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
 }

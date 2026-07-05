@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 const HANDLE = 10   // handle square size in px
 
@@ -102,8 +102,7 @@ export default function CropModal() {
         )
       }
       const newBytes = await doc.save()
-      // getDocument() transfers/detaches the buffer it's given — pass a copy.
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setStatus('Beschnitt angewendet (nicht-destruktiv)')
       closeCrop()

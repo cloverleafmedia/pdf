@@ -2,9 +2,9 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Scissors } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
 function parseRanges(input, total) {
   const pages = new Set()
@@ -49,8 +49,7 @@ export default function SplitModal() {
           const [copied] = await out.copyPages(src, [p - 1])
           out.addPage(copied)
           const bytes = await out.save()
-          const r = await window.api?.savePDF(`${fileName?.replace('.pdf','')||'dokument'}_Seite${p}.pdf`)
-          if (!r?.canceled && r?.filePath) await window.api?.writeFile(r.filePath, bytes)
+          await saveAsNewFile(`${fileName?.replace('.pdf','')||'dokument'}_Seite${p}.pdf`, bytes)
         }
       } else {
         const pages = parseRanges(rangeInput, totalPages)
@@ -60,11 +59,8 @@ export default function SplitModal() {
         const copied = await out.copyPages(src, pages.map(p => p - 1))
         copied.forEach(pg => out.addPage(pg))
         const bytes = await out.save()
-        const r = await window.api?.savePDF(`${fileName?.replace('.pdf','')||'dokument'}_Split.pdf`)
-        if (!r?.canceled && r?.filePath) {
-          await window.api?.writeFile(r.filePath, bytes)
-          setStatus(`${pages.length} Seite(n) extrahiert`)
-        }
+        const savedPath = await saveAsNewFile(`${fileName?.replace('.pdf','')||'dokument'}_Split.pdf`, bytes)
+        if (savedPath) setStatus(`${pages.length} Seite(n) extrahiert`)
       }
       setLoading(false)
       closeSplit()

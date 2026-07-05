@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { FileCheck2, AlertTriangle, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react'
 import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import { checkFontEmbedding, checkStructure } from '../../lib/pdfCompliance'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import iccUrl from '../../assets/sRGB2014.icc?url'
 
 // sRGB2014 ICC v2 profile, International Color Consortium — freely licensed
@@ -114,7 +114,7 @@ export default function PdfaExportModal() {
       if (structure.hasEncryption) foundGaps.push('Dokument ist verschlüsselt (PDF/A erlaubt keine Verschlüsselung)')
 
       const newBytes = await doc.save({ useObjectStreams: false })
-      const reloaded = await pdfjsLib.getDocument({ data: newBytes.slice() }).promise
+      const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
       setGaps(foundGaps)
       setStatus('PDF/A-Metadaten eingebettet')
