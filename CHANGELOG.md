@@ -8,6 +8,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ### Geändert
 - Code-Cleanup: drei divergierende `fmt(bytes)`-Implementierungen (StatusBar, Eigenschaften, Komprimieren) zu einem gemeinsamen `formatBytes()` in `src/lib/` vereinheitlicht.
 - Code-Cleanup: das ~14-fach duplizierte "PDF speichern → pdf.js neu laden"-Muster zu `reloadPdfDoc()` extrahiert; das ~8-fach duplizierte "Datei speichern unter"-Muster zu `saveAsNewFile()` extrahiert.
+- Store-Aufräumung: `sidebarWidth` und die Anmerkungs-Deckkraft sind jetzt einfache Konstanten statt (nie tatsächlich geänderter) Store-Felder; nie gelesener `compareBytes`-Wert aus dem Store entfernt; verwaiste `hasJavaScript`-Berechnung in der Struktur-Prüfung entfernt (durch die eigenständige JS-Erkennung aus v1.7.0 ersetzt).
 
 ## [1.7.0] – 2026-07-04
 

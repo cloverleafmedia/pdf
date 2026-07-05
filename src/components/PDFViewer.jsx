@@ -34,6 +34,11 @@ const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield', 'sha
 // from redaction's red and new-field's blue.
 const SHAPE_STROKE = '#8b5cf6'
 
+// Opacity for freehand-drawn/highlight annotation strokes when rendered and
+// when flattened into the saved PDF. No settings UI exposes this - it is a
+// fixed value, not user-configurable state.
+const ANNOTATION_OPACITY = 0.4
+
 // Draws a line with a small 2-stroke arrowhead at (x2,y2), angle derived via atan2.
 // Used for both the live 2-click arrow preview and the committed arrow annotation.
 function drawArrowOnCanvas(ctx, x1, y1, x2, y2) {
@@ -124,7 +129,7 @@ export default function PDFViewer() {
   // ── Save (with annotation flattening) ────────────────────────────────────
   useEffect(() => {
     window._savePDF = async (forceDialog = false) => {
-      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, annotationOpacity, pendingFormFields } = useStore.getState()
+      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, pendingFormFields } = useStore.getState()
       if (!b) return
       try {
         setStatus('Speichern …')
@@ -137,7 +142,7 @@ export default function PDFViewer() {
           page: f.pageNum, type: f.type, name: f.name,
           x: f.x, y: f.y, w: f.w, h: f.h, pageW: f.logicalW, pageH: f.logicalH,
         }))
-        const bytes = await flattenAnnotations(b, annotations, formValues, annotationOpacity, newFields)
+        const bytes = await flattenAnnotations(b, annotations, formValues, ANNOTATION_OPACITY, newFields)
         let target = fp
         if (!target || forceDialog) {
           const r = await window.api?.savePDF(fn)
@@ -340,7 +345,7 @@ export default function PDFViewer() {
 function PDFPage({ pageNum }) {
   const {
     pdfDoc, zoom, pageRotations, theme, activeTool, nightMode,
-    drawColor, drawWidth, annotationOpacity, annotations,
+    drawColor, drawWidth, annotations,
     pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation,
     formValues, setFormValue,
     pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft,
@@ -526,7 +531,7 @@ function PDFPage({ pageNum }) {
         for (const rect of a.rects) {
           switch (a.type) {
             case 'highlight':
-              ctx.globalAlpha = annotationOpacity
+              ctx.globalAlpha = ANNOTATION_OPACITY
               ctx.fillStyle = a.color || '#fbbf24'
               ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
               break
@@ -592,7 +597,7 @@ function PDFPage({ pageNum }) {
       ctx.strokeRect(r.x, r.y, r.w, r.h)
       ctx.restore()
     }
-  }, [annotations, pendingRedactions, pageNum, size, annotationOpacity])
+  }, [annotations, pendingRedactions, pageNum, size])
 
   useEffect(() => { redraw() }, [redraw])
 

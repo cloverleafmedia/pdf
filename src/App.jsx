@@ -50,9 +50,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).href
 
+const SIDEBAR_WIDTH = 264
+
 export default function App() {
   const {
-    pdfDoc, pdfBytes, theme, sidebarOpen, sidebarWidth,
+    pdfDoc, pdfBytes, theme, sidebarOpen,
     settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
     compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
     sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen,
@@ -357,7 +359,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="no-print sidebar-transition overflow-hidden flex-shrink-0"
-          style={{ width: sidebarOpen ? sidebarWidth : 0 }}>
+          style={{ width: sidebarOpen ? SIDEBAR_WIDTH : 0 }}>
           <Sidebar />
         </div>
 

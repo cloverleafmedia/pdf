@@ -39,11 +39,7 @@ export function checkStructure(doc) {
   const langObj = catalog.lookup(PDFName.of('Lang'))
   const lang = langObj?.decodeText ? langObj.decodeText() : (langObj?.asString ? langObj.asString() : '')
   const hasEncryption = !!catalog.context.trailerInfo?.Encrypt
-  const hasJavaScript = (() => {
-    const names = catalog.lookup(PDFName.of('Names'))
-    return !!(names instanceof PDFDict && names.lookup(PDFName.of('JavaScript')))
-  })()
-  return { isMarked, hasStructTree, lang, hasEncryption, hasJavaScript }
+  return { isMarked, hasStructTree, lang, hasEncryption }
 }
 
 // Walks the struct tree (not the page content) because image alt text lives

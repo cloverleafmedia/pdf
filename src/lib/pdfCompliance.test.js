@@ -64,7 +64,7 @@ describe('checkStructure', () => {
   it('reports an untagged, unencrypted document with no flags set', async () => {
     const doc = await makeDoc()
     const result = checkStructure(doc)
-    expect(result).toEqual({ isMarked: false, hasStructTree: false, lang: '', hasEncryption: false, hasJavaScript: false })
+    expect(result).toEqual({ isMarked: false, hasStructTree: false, lang: '', hasEncryption: false })
   })
 
   it('detects MarkInfo/Marked, Lang and a StructTreeRoot once set', async () => {
@@ -77,12 +77,6 @@ describe('checkStructure', () => {
     expect(result.isMarked).toBe(true)
     expect(result.hasStructTree).toBe(true)
     expect(result.lang).toBe('de')
-  })
-
-  it('detects a Names/JavaScript entry', async () => {
-    const doc = await makeDoc()
-    doc.catalog.set(PDFName.of('Names'), doc.context.obj({ JavaScript: doc.context.obj({}) }))
-    expect(checkStructure(doc).hasJavaScript).toBe(true)
   })
 })
 

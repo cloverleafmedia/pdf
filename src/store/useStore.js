@@ -25,7 +25,6 @@ export const useStore = create((set, get) => ({
   lastAnnotateTool:   'highlight',
   drawColor:          '#f59e0b',
   drawWidth:          3,
-  annotationOpacity:  0.4,
 
   // ── Annotations ─────────────────────────────────────────────────────────
   annotations:        [],
@@ -51,7 +50,6 @@ export const useStore = create((set, get) => ({
 
   // ── UI state ────────────────────────────────────────────────────────────
   sidebarOpen:  true,
-  sidebarWidth: 264,
   sidebarTab:   'thumbnails',
   statusMessage: '',
   toolbarLabels: false,
@@ -102,7 +100,6 @@ export const useStore = create((set, get) => ({
   batchOpen:        false,
   compareOpen:      false,
   compareDoc:       null,
-  compareBytes:     null,
   printDialogOpen:  false,
   sanitizeOpen:     false,
   mailMergeOpen:    false,
@@ -369,8 +366,8 @@ export const useStore = create((set, get) => ({
   openBatch:          () => set({ batchOpen: true }),
   closeBatch:         () => set({ batchOpen: false }),
   openCompare:        () => set({ compareOpen: true }),
-  closeCompare:       () => set({ compareOpen: false, compareDoc: null, compareBytes: null }),
-  setCompareDoc:      (doc, bytes) => set({ compareDoc: doc, compareBytes: bytes }),
+  closeCompare:       () => set({ compareOpen: false, compareDoc: null }),
+  setCompareDoc:      (doc) => set({ compareDoc: doc }),
   openPrintDialog:    () => set({ printDialogOpen: true }),
   closePrintDialog:   () => set({ printDialogOpen: false }),
   openSanitize:       () => set({ sanitizeOpen: true }),

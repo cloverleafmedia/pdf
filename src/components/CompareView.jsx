@@ -52,7 +52,7 @@ export default function CompareView() {
       const bytes = new Uint8Array(buf)
       // getDocument() transfers/detaches the buffer it's given — pass a copy.
       const doc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
-      setCompareDoc(doc, bytes)
+      setCompareDoc(doc)
     } catch (e) {
       useStore.getState().setStatus('Fehler: ' + e.message)
     }
