@@ -4,6 +4,9 @@
 #
 # Bumpt KEINE Versionsnummer - package.json "version" muss vor dem Klick
 # bereits auf die neue Release-Version stehen.
+#
+# Signiert den Installer NICHT automatisch - siehe CODE-SIGNING.md, falls
+# CSC_LINK/CSC_KEY_PASSWORD gesetzt werden sollen.
 
 $ErrorActionPreference = "Stop"
 $projectDir = Split-Path -Parent $PSScriptRoot

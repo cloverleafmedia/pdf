@@ -11,6 +11,15 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Store-Aufräumung: `sidebarWidth` und die Anmerkungs-Deckkraft sind jetzt einfache Konstanten statt (nie tatsächlich geänderter) Store-Felder; nie gelesener `compareBytes`-Wert aus dem Store entfernt; verwaiste `hasJavaScript`-Berechnung in der Struktur-Prüfung entfernt (durch die eigenständige JS-Erkennung aus v1.7.0 ersetzt).
 - `electron/main.js`: reine Logik (Dateityp-Prüfung, Kommandozeilen-Datei-Erkennung, Bibliotheks-Ordner-Scan) nach `electron/mainUtils.js` extrahiert und erstmals mit Tests abgesichert.
 
+### Sicherheit
+- CSV-Export (Tabellenextraktion): Zellen, die mit `=`, `+`, `-` oder `@` beginnen, werden jetzt escaped — Schutz vor Formel-Injection, falls eine präparierte PDF-Tabelle beim Öffnen der exportierten CSV in Excel/Sheets eine Formel ausführen sollte.
+- Content-Security-Policy in `index.html` verfeinert: statt einer einzigen `default-src` jetzt separate `script-src`/`style-src`/`font-src`/`img-src`/`connect-src`/`worker-src`, zusätzlich `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`. `unsafe-inline` gilt dadurch nicht mehr für Skripte, nur noch für Inline-Styles (Tailwind/React). Geprüft: App-Start, Google-Fonts-Laden und OCR (tesseract.js/jsdelivr) funktionieren unverändert.
+- Datei-I/O (`fs:read`/`fs:write`): zusätzlich zur bestehenden Dateityp-Positivliste jetzt eine Sperre gegen Lese-/Schreibzugriffe innerhalb des Installationsverzeichnisses der App selbst (Pfad wird vor der Prüfung normalisiert, damit `..`-Segmente sie nicht umgehen können) — reine Härtung für den Fall eines künftigen Renderer-Sicherheitslecks, keine bekannte aktive Lücke.
+- Vorbereitung für Windows-Codesignierung (siehe `CODE-SIGNING.md`): `electron-builder` signiert automatisch, sobald `CSC_LINK`/`CSC_KEY_PASSWORD` gesetzt sind — ohne diese Variablen unverändert unsigniert wie bisher (geprüft).
+
+### Hinweise
+- `npm run audit:deps`-Hinweis zu `crypto-js`/`pdfkit` erneut geprüft, weiterhin nur transitiv vorhanden und im tatsächlich genutzten Codepfad nicht ausnutzbar (siehe v1.5.0).
+
 ## [1.7.0] – 2026-07-04
 
 ### Hinzugefügt

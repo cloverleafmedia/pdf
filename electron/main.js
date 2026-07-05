@@ -2,8 +2,9 @@ const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('ele
 const path = require('path')
 const fs   = require('fs')
 const os   = require('os')
+const crypto = require('crypto')
 const { execFile } = require('child_process')
-const { assertExtension, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT } = require('./mainUtils')
+const { assertExtension, isPathDenied, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT } = require('./mainUtils')
 
 const isDev = !app.isPackaged
 
@@ -209,15 +210,25 @@ ipcMain.handle('dialog:openImages', () => dialog.showOpenDialog(mainWindow, {
 const READABLE_EXTENSIONS = new Set(['.pdf', '.csv', '.png', '.jpg', '.jpeg', '.xfdf', '.fdf'])
 const WRITABLE_EXTENSIONS  = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
 
+// Even a matching-extension path must not resolve inside the app's own
+// install/resource directories - no legitimate feature ever reads/writes
+// there via these generic channels, so this can only ever reject a
+// compromised-renderer attempt to tamper with (or exfiltrate) the app itself.
+const DENIED_ROOTS = [app.getAppPath(), process.resourcesPath]
+
 ipcMain.handle('fs:read', (_, filePath) => {
-  assertExtension(filePath, READABLE_EXTENSIONS)
-  const data = fs.readFileSync(filePath)
+  const resolved = path.resolve(filePath)
+  assertExtension(resolved, READABLE_EXTENSIONS)
+  if (isPathDenied(resolved, DENIED_ROOTS)) throw new Error('Zugriff auf diesen Pfad ist nicht erlaubt.')
+  const data = fs.readFileSync(resolved)
   return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
 })
 
 ipcMain.handle('fs:write', (_, filePath, data) => {
-  assertExtension(filePath, WRITABLE_EXTENSIONS)
-  fs.writeFileSync(filePath, Buffer.from(data))
+  const resolved = path.resolve(filePath)
+  assertExtension(resolved, WRITABLE_EXTENSIONS)
+  if (isPathDenied(resolved, DENIED_ROOTS)) throw new Error('Zugriff auf diesen Pfad ist nicht erlaubt.')
+  fs.writeFileSync(resolved, Buffer.from(data))
   return true
 })
 
@@ -318,7 +329,7 @@ ipcMain.handle('pdfa:validate', async (_, pdfBytes) => {
     return { available: false }
   }
 
-  const tmpFile = path.join(app.getPath('temp'), `clover-pdfa-check-${Date.now()}.pdf`)
+  const tmpFile = path.join(app.getPath('temp'), `clover-pdfa-check-${crypto.randomUUID()}.pdf`)
   fs.writeFileSync(tmpFile, Buffer.from(pdfBytes))
   try {
     const classpath = `${path.join(verapdfDir, 'etc')};${path.join(verapdfDir, 'bin', '*')}`
@@ -380,8 +391,8 @@ ipcMain.handle('pdf:encrypt', async (_, pdfBytes, opts) => {
   const qpdfExe = getQpdfExe()
   if (!fs.existsSync(qpdfExe)) return { available: false }
 
-  const tmpIn  = path.join(app.getPath('temp'), `clover-encrypt-in-${Date.now()}.pdf`)
-  const tmpOut = path.join(app.getPath('temp'), `clover-encrypt-out-${Date.now()}.pdf`)
+  const tmpIn  = path.join(app.getPath('temp'), `clover-encrypt-in-${crypto.randomUUID()}.pdf`)
+  const tmpOut = path.join(app.getPath('temp'), `clover-encrypt-out-${crypto.randomUUID()}.pdf`)
   fs.writeFileSync(tmpIn, Buffer.from(pdfBytes))
   try {
     const { userPassword = '', ownerPassword = '', allowPrint = true, allowCopy = true, allowModify = true } = opts || {}
@@ -418,8 +429,8 @@ ipcMain.handle('pdf:repair', async (_, pdfBytes) => {
   const qpdfExe = getQpdfExe()
   if (!fs.existsSync(qpdfExe)) return { available: false }
 
-  const tmpIn  = path.join(app.getPath('temp'), `clover-repair-in-${Date.now()}.pdf`)
-  const tmpOut = path.join(app.getPath('temp'), `clover-repair-out-${Date.now()}.pdf`)
+  const tmpIn  = path.join(app.getPath('temp'), `clover-repair-in-${crypto.randomUUID()}.pdf`)
+  const tmpOut = path.join(app.getPath('temp'), `clover-repair-out-${crypto.randomUUID()}.pdf`)
   fs.writeFileSync(tmpIn, Buffer.from(pdfBytes))
   try {
     await new Promise((resolve, reject) => {

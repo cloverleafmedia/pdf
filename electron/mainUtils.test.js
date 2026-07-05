@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { describe, it, expect, afterEach } from 'vitest'
-import { assertExtension, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT, LIBRARY_SCAN_DEPTH } from './mainUtils.js'
+import { assertExtension, isPathDenied, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT, LIBRARY_SCAN_DEPTH } from './mainUtils.js'
 
 describe('assertExtension', () => {
   const allowed = new Set(['.pdf', '.csv'])
@@ -17,6 +17,39 @@ describe('assertExtension', () => {
 
   it('rejects a disallowed extension', () => {
     expect(() => assertExtension('C:/docs/file.exe', allowed)).toThrow(/nicht erlaubt/)
+  })
+})
+
+describe('isPathDenied', () => {
+  const denied = [path.join('C:', 'Program Files', 'CloverleafPDF', 'resources')]
+
+  it('denies a path exactly matching a denied root', () => {
+    expect(isPathDenied(denied[0], denied)).toBe(true)
+  })
+
+  it('denies a path nested inside a denied root', () => {
+    expect(isPathDenied(path.join(denied[0], 'app.asar'), denied)).toBe(true)
+  })
+
+  it('allows a sibling path that merely shares a string prefix', () => {
+    // "CloverleafPDF-Backup" starts with the same characters as "CloverleafPDF"
+    // but is a different directory - a naive startsWith(root) check (without
+    // path.sep) would wrongly deny this.
+    const sibling = path.join('C:', 'Program Files', 'CloverleafPDF-Backup', 'file.pdf')
+    expect(isPathDenied(sibling, denied)).toBe(false)
+  })
+
+  it('allows an unrelated path', () => {
+    expect(isPathDenied(path.join('C:', 'Users', 'max', 'Documents', 'file.pdf'), denied)).toBe(false)
+  })
+
+  it('resolves ".." segments before comparing', () => {
+    const escaped = path.join(denied[0], '..', '..', 'Users', 'max', 'file.pdf')
+    expect(isPathDenied(escaped, denied)).toBe(false)
+  })
+
+  it('ignores falsy roots (e.g. an undefined process.resourcesPath in some environments)', () => {
+    expect(isPathDenied('C:/Users/max/file.pdf', [undefined, null, ''])).toBe(false)
   })
 })
 

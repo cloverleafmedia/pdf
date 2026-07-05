@@ -26,6 +26,22 @@ describe('csvEscapeField', () => {
   it('coerces numbers to strings', () => {
     expect(csvEscapeField(42)).toBe('42')
   })
+
+  it('guards against formula injection for =, +, -, @ prefixes', () => {
+    expect(csvEscapeField('=SUM(A1:A9)')).toBe("'=SUM(A1:A9)")
+    expect(csvEscapeField('+1234567')).toBe("'+1234567")
+    expect(csvEscapeField('-1234567')).toBe("'-1234567")
+    expect(csvEscapeField('@cmd|calc')).toBe("'@cmd|calc")
+  })
+
+  it('does not guard values that merely contain, but do not start with, those characters', () => {
+    expect(csvEscapeField('Preis = 5€')).toBe('Preis = 5€')
+    expect(csvEscapeField('a+b')).toBe('a+b')
+  })
+
+  it('quotes a formula-guarded field that also contains a comma', () => {
+    expect(csvEscapeField('=A1,A2')).toBe('"\'=A1,A2"')
+  })
 })
 
 describe('csvRow', () => {

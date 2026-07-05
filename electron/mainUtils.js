@@ -10,6 +10,21 @@ function assertExtension(filePath, allowed) {
   }
 }
 
+// Defense-in-depth on top of the extension allowlist above: even a
+// matching-extension path must not resolve inside one of the app's own
+// install/resource directories, so a compromised renderer can't overwrite
+// (or read) the app's own files via the generic fs:read/fs:write channels.
+// filePath is resolved first so a ".."-segment can't walk out of a denied
+// root while still textually starting with it (or vice versa).
+function isPathDenied(filePath, deniedRoots) {
+  const resolved = path.resolve(filePath)
+  return deniedRoots.some(root => {
+    if (!root) return false
+    const resolvedRoot = path.resolve(root)
+    return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep)
+  })
+}
+
 // In production: argv = [exe, file?]; in dev: argv = [electron, main.js, file?]
 function getInitialFile(argv, isDev) {
   const args = argv.slice(isDev ? 2 : 1)
@@ -42,4 +57,4 @@ function scanFolder(root, results) {
   walk(root, 0)
 }
 
-module.exports = { assertExtension, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT, LIBRARY_SCAN_DEPTH }
+module.exports = { assertExtension, isPathDenied, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT, LIBRARY_SCAN_DEPTH }
