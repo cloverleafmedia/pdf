@@ -15,6 +15,7 @@ import { useEraserTool } from './pdf-tools/useEraserTool'
 import { useRedactTool } from './pdf-tools/useRedactTool'
 import { useFormFieldTool } from './pdf-tools/useFormFieldTool'
 import { useShapeTool } from './pdf-tools/useShapeTool'
+import { useDrawTool } from './pdf-tools/useDrawTool'
 import { REDACTION_FILL, SHAPE_STROKE } from './pdf-tools/constants'
 
 // DPI redacted pages are rasterized at before being flattened into the PDF -
@@ -353,8 +354,6 @@ function PDFPage({ pageNum }) {
   const overlayRef    = useRef(null)
   const renderTaskRef = useRef(null)
   const textLayerInst = useRef(null)
-  const drawingRef    = useRef(false)
-  const pathRef       = useRef([])
 
   const [size, setSize]           = useState({ w: 0, h: 0 })
   const [inlineInput, setInline]  = useState(null)
@@ -605,6 +604,7 @@ function PDFPage({ pageNum }) {
   const redactTool = useRedactTool({ pageNum, size, getPos, overlayRef, redraw, addRedaction })
   const formFieldTool = useFormFieldTool({ pageNum, size, getPos, overlayRef, redraw, newFieldType, addFormFieldDraft })
   const shapeTool = useShapeTool({ pageNum, size, getPos, overlayRef, redraw, shapeType, drawColor, drawWidth, addAnnotation })
+  const drawTool = useDrawTool({ pageNum, size, getPos, overlayRef, redraw, drawColor, drawWidth, addAnnotation })
 
   // ── Apply text-selection annotation (highlight / underline / strikethrough) ──
   const applyTextAnnotation = useCallback(() => {
@@ -675,8 +675,7 @@ function PDFPage({ pageNum }) {
     }
 
     // ── Freehand drawing ──────────────────────────────────────────────
-    drawingRef.current = true
-    pathRef.current = [getPos(e)]
+    drawTool.onMouseDown(e)
   }
 
   const onMouseMove = (e) => {
@@ -685,40 +684,14 @@ function PDFPage({ pageNum }) {
     if (activeTool === 'redact') { redactTool.onMouseMove(e); return }
     if (activeTool === 'newfield') { formFieldTool.onMouseMove(e); return }
     if (activeTool === 'shape') { shapeTool.onMouseMove(e); return }
-
-    if (!drawingRef.current) return
-    const pos = getPos(e)
-
-    pathRef.current.push(pos)
-    redraw()
-
-    const dpr = window.devicePixelRatio || 1
-    const ctx = overlayRef.current.getContext('2d')
-    ctx.save()
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    const path = pathRef.current
-    ctx.globalAlpha  = 1
-    ctx.strokeStyle  = drawColor
-    ctx.lineWidth    = drawWidth
-    ctx.lineCap      = 'round'; ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(path[0].x, path[0].y)
-    for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y)
-    ctx.stroke()
-    ctx.restore()
+    if (activeTool === 'draw') { drawTool.onMouseMove(e); return }
   }
 
   const onMouseUp = (e) => {
     if (activeTool === 'redact') { redactTool.onMouseUp(e); return }
     if (activeTool === 'newfield') { formFieldTool.onMouseUp(e); return }
     if (activeTool === 'shape') { shapeTool.onMouseUp(e); return }
-
-    if (!drawingRef.current) return
-    drawingRef.current = false
-
-    if (pathRef.current.length > 1)
-      addAnnotation({ type: activeTool, page: pageNum, path: [...pathRef.current], color: drawColor, width: drawWidth, pageW: size.w, pageH: size.h })
-    pathRef.current = []
+    if (activeTool === 'draw') { drawTool.onMouseUp(e); return }
   }
 
   const isDrawTool     = DRAW_TOOLS.includes(activeTool)
