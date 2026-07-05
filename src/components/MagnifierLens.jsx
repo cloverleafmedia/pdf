@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 
 const LENS_SIZE   = 200
 const ZOOM_FACTOR = 3
 
 export default function MagnifierLens({ containerRef }) {
-  const { magnifierActive } = useStore()
+  const {
+    magnifierActive,
+  } = useStore(useShallow(state => ({ magnifierActive: state.magnifierActive })))
   const [pos,     setPos]     = useState({ x: 0, y: 0 })
   const [visible, setVisible] = useState(false)
   const lensRef               = useRef(null)

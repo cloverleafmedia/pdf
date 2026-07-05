@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useState, Suspense, lazy } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from './store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import TitleBar from './components/TitleBar'
 import Toolbar from './components/Toolbar'
 import Sidebar from './components/Sidebar'
@@ -54,17 +55,8 @@ const SIDEBAR_WIDTH = 264
 
 export default function App() {
   const {
-    pdfDoc, pdfBytes, theme, sidebarOpen,
-    settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen,
-    compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen,
-    sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen,
-    encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen, tableExtractOpen,
-    presentationMode,
-    updateAvailable, updateDownloaded,
-    openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus,
-    setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels,
-    toggleCommandPalette, openShortcuts, setHasSignatures, setHasJavaScriptActions,
-  } = useStore()
+    pdfDoc, pdfBytes, theme, sidebarOpen, settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen, compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen, sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen, encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen, tableExtractOpen, presentationMode, updateAvailable, updateDownloaded, openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus, setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels, toggleCommandPalette, openShortcuts, setHasSignatures, setHasJavaScriptActions,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, theme: state.theme, sidebarOpen: state.sidebarOpen, settingsOpen: state.settingsOpen, propertiesOpen: state.propertiesOpen, passwordOpen: state.passwordOpen, splitOpen: state.splitOpen, ocrOpen: state.ocrOpen, watermarkOpen: state.watermarkOpen, signatureOpen: state.signatureOpen, headerFooterOpen: state.headerFooterOpen, compressOpen: state.compressOpen, exportImagesOpen: state.exportImagesOpen, qrCodeOpen: state.qrCodeOpen, cropOpen: state.cropOpen, batchOpen: state.batchOpen, compareOpen: state.compareOpen, shortcutsOpen: state.shortcutsOpen, printDialogOpen: state.printDialogOpen, sanitizeOpen: state.sanitizeOpen, mailMergeOpen: state.mailMergeOpen, pdfaOpen: state.pdfaOpen, a11yOpen: state.a11yOpen, libraryOpen: state.libraryOpen, encryptOpen: state.encryptOpen, imagesToPdfOpen: state.imagesToPdfOpen, altTextOpen: state.altTextOpen, signatureVerifyOpen: state.signatureVerifyOpen, tableExtractOpen: state.tableExtractOpen, presentationMode: state.presentationMode, updateAvailable: state.updateAvailable, updateDownloaded: state.updateDownloaded, openDocument: state.openDocument, openTab: state.openTab, addRecentFile: state.addRecentFile, setRecentFiles: state.setRecentFiles, setTheme: state.setTheme, setLanguage: state.setLanguage, setStatus: state.setStatus, setUpdateAvailable: state.setUpdateAvailable, setUpdateDownloaded: state.setUpdateDownloaded, togglePresentation: state.togglePresentation, setToolbarLabels: state.setToolbarLabels, toggleCommandPalette: state.toggleCommandPalette, openShortcuts: state.openShortcuts, setHasSignatures: state.setHasSignatures, setHasJavaScriptActions: state.setHasJavaScriptActions })))
 
   const [isDragging, setIsDragging] = useState(false)
 

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Minus, Square, X, Maximize2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import cloverIcon from '../assets/clover-icon.png'
 
 export default function TitleBar() {
-  const { fileName, isDirty, theme } = useStore()
+  const {
+    fileName, isDirty, theme,
+  } = useStore(useShallow(state => ({ fileName: state.fileName, isDirty: state.isDirty, theme: state.theme })))
   const [isMax, setIsMax] = useState(false)
   const isDark = theme === 'dark'
 

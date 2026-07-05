@@ -2,12 +2,15 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ShieldCheck, TriangleAlert } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import pkg from '../../package.json'
 import { formatBytes } from '../lib/formatBytes'
 
 export default function StatusBar() {
   const { t } = useTranslation()
-  const { pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage, hasSignatures, openSignatureVerify, hasJavaScriptActions } = useStore()
+  const {
+    pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage, hasSignatures, openSignatureVerify, hasJavaScriptActions,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, totalPages: state.totalPages, zoom: state.zoom, fileName: state.fileName, fileSize: state.fileSize, theme: state.theme, statusMessage: state.statusMessage, activeTool: state.activeTool, language: state.language, setLanguage: state.setLanguage, hasSignatures: state.hasSignatures, openSignatureVerify: state.openSignatureVerify, hasJavaScriptActions: state.hasJavaScriptActions })))
   const isDark = theme === 'dark'
 
   const toolLabels = {

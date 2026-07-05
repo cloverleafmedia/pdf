@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { PDFDocument, rgb } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
@@ -27,9 +28,8 @@ function TextRow({ label, value, onChange, isDark }) {
 
 export default function HeaderFooterModal() {
   const {
-    pdfBytes, filePath, fileName, totalPages, theme, closeHeaderFooter, setStatus, openDocument,
-    headerFooterTemplates, saveHeaderFooterTemplate, deleteHeaderFooterTemplate,
-  } = useStore()
+    pdfBytes, filePath, fileName, totalPages, theme, closeHeaderFooter, setStatus, openDocument, headerFooterTemplates, saveHeaderFooterTemplate, deleteHeaderFooterTemplate,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, totalPages: state.totalPages, theme: state.theme, closeHeaderFooter: state.closeHeaderFooter, setStatus: state.setStatus, openDocument: state.openDocument, headerFooterTemplates: state.headerFooterTemplates, saveHeaderFooterTemplate: state.saveHeaderFooterTemplate, deleteHeaderFooterTemplate: state.deleteHeaderFooterTemplate })))
   const isDark = theme === 'dark'
 
   const [headerText,  setHeader]  = useState('{n} / {total}')

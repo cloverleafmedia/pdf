@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { X, FolderOpen, SplitSquareHorizontal, Loader2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { extractPageWords, buildPageAttributedDiff } from '../lib/textDiff'
 import { renderPageToCanvas } from '../lib/renderPage'
 import { computeDiffMask, renderDiffOverlay, pagesComparable } from '../lib/pixelDiff'
@@ -12,7 +13,9 @@ import { computeDiffMask, renderDiffOverlay, pagesComparable } from '../lib/pixe
 const DIFF_SCALE = 2
 
 export default function CompareView() {
-  const { pdfDoc, currentPage, zoom, theme, compareDoc, setCompareDoc, closeCompare } = useStore()
+  const {
+    pdfDoc, currentPage, zoom, theme, compareDoc, setCompareDoc, closeCompare,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, zoom: state.zoom, theme: state.theme, compareDoc: state.compareDoc, setCompareDoc: state.setCompareDoc, closeCompare: state.closeCompare })))
   const isDark = theme === 'dark'
   const [split,   setSplit]   = useState(50)     // % of width for left panel
   const [syncScroll, setSync] = useState(true)

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { ScanText, Copy, Download, ChevronDown, FileSearch } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { renderPageToCanvas } from '../../lib/renderPage'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
@@ -67,7 +68,9 @@ async function embedSearchableLayer(pdfBytes, pageWords) {
 }
 
 export default function OCRModal() {
-  const { pdfDoc, pdfBytes, filePath, fileName, totalPages, currentPage, theme, closeOCR, setStatus, openDocument } = useStore()
+  const {
+    pdfDoc, pdfBytes, filePath, fileName, totalPages, currentPage, theme, closeOCR, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, totalPages: state.totalPages, currentPage: state.currentPage, theme: state.theme, closeOCR: state.closeOCR, setStatus: state.setStatus, openDocument: state.openDocument })))
   const [lang,     setLang]     = useState('deu+eng')
   const [scope,    setScope]    = useState('current')
   const [progress, setProgress] = useState(0)

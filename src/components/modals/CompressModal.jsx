@@ -2,11 +2,14 @@ import React, { useState } from 'react'
 import { PDFDocument } from 'pdf-lib'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { formatBytes } from '../../lib/formatBytes'
 
 export default function CompressModal() {
-  const { pdfBytes, filePath, fileName, theme, closeCompress, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, theme, closeCompress, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, theme: state.theme, closeCompress: state.closeCompress, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
   const [removeMetadata,  setRemoveMeta]  = useState(true)
   const [objectStreams,   setObjStreams]   = useState(true)

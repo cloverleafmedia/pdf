@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react'
 import { Image as ImageIcon, AlertTriangle } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { listImagesForAltText, setImageAltText } from '../../lib/pdfCompliance'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 export default function AltTextModal() {
-  const { pdfBytes, filePath, fileName, theme, closeAltText, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, theme, closeAltText, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, theme: state.theme, closeAltText: state.closeAltText, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
 
   const [doc,     setDoc]     = useState(null)

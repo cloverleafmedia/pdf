@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { PDFDocument, degrees, rgb, grayscale } from 'pdf-lib'
 import { Trash2, FolderOpen } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { embedAppFont } from '../../lib/embeddedFont'
 
@@ -14,7 +15,9 @@ const OPERATIONS = [
 ]
 
 export default function BatchModal() {
-  const { theme, closeBatch, setStatus } = useStore()
+  const {
+    theme, closeBatch, setStatus,
+  } = useStore(useShallow(state => ({ theme: state.theme, closeBatch: state.closeBatch, setStatus: state.setStatus })))
   const isDark = theme === 'dark'
   const [files,     setFiles]     = useState([])   // [{name, path}]
   const [op,        setOp]        = useState('compress')

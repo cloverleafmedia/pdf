@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { ChevronLeft, ChevronRight, X, Maximize2 } from 'lucide-react'
 
 export default function PresentationMode() {
-  const { pdfDoc, totalPages, currentPage, togglePresentation, nightMode } = useStore()
+  const {
+    pdfDoc, totalPages, currentPage, togglePresentation, nightMode,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, totalPages: state.totalPages, currentPage: state.currentPage, togglePresentation: state.togglePresentation, nightMode: state.nightMode })))
   const [page, setPage]     = useState(currentPage)
   const [size, setSize]     = useState({ w: 0, h: 0 })
   const [ui,   setUi]       = useState(true)

@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { Trash2, Check, PenTool, ShieldCheck, FileKey, FolderOpen, History } from 'lucide-react'
 import { PDFDocument, PDFName, PDFString, rgb } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
@@ -43,7 +44,9 @@ function calcPos(position, pw, ph, sigW, sigH) {
 }
 
 export default function SignatureModal() {
-  const { pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeSignature, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeSignature, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, currentPage: state.currentPage, totalPages: state.totalPages, theme: state.theme, closeSignature: state.closeSignature, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
 
   const [tab,        setTab]       = useState('draw')

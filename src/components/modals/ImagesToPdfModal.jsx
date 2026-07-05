@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Images, ArrowUp, ArrowDown, X, FilePlus } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
@@ -12,7 +13,9 @@ const ASSUMED_DPI = 96
 const PT_PER_PX = 72 / ASSUMED_DPI
 
 export default function ImagesToPdfModal() {
-  const { theme, closeImagesToPdf, setStatus, fileName } = useStore()
+  const {
+    theme, closeImagesToPdf, setStatus, fileName,
+  } = useStore(useShallow(state => ({ theme: state.theme, closeImagesToPdf: state.closeImagesToPdf, setStatus: state.setStatus, fileName: state.fileName })))
   const isDark = theme === 'dark'
 
   const [files,   setFiles]   = useState([]) // [{ path, name }]

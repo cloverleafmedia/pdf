@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Printer, AlertCircle, ChevronLeft, ChevronRight, Minus, Plus, SlidersHorizontal } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 
 // "1-3,5,7-9" (1-based, as the user types it) -> [{from, to}] 1-based inclusive,
@@ -30,7 +31,9 @@ function expandRanges(ranges) {
 }
 
 export default function PrintDialog() {
-  const { theme, pdfDoc, currentPage, totalPages, closePrintDialog, setStatus } = useStore()
+  const {
+    theme, pdfDoc, currentPage, totalPages, closePrintDialog, setStatus,
+  } = useStore(useShallow(state => ({ theme: state.theme, pdfDoc: state.pdfDoc, currentPage: state.currentPage, totalPages: state.totalPages, closePrintDialog: state.closePrintDialog, setStatus: state.setStatus })))
   const isDark = theme === 'dark'
 
   const [printers,    setPrinters]    = useState(null) // null = still loading

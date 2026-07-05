@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { AlertTriangle, Table2, FolderDown } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { extractTablesFromDocument } from '../../lib/tableDetect'
 import { writeCSV } from '../../lib/csvWrite'
 
 export default function TableExtractModal() {
-  const { pdfDoc, theme, closeTableExtract, setStatus } = useStore()
+  const {
+    pdfDoc, theme, closeTableExtract, setStatus,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, theme: state.theme, closeTableExtract: state.closeTableExtract, setStatus: state.setStatus })))
   const isDark = theme === 'dark'
 
   const [scanning, setScanning] = useState(true)

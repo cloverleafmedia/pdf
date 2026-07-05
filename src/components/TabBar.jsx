@@ -1,9 +1,12 @@
 import React from 'react'
 import { X, Plus } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 
 export default function TabBar() {
-  const { pdfDoc, fileName, filePath, isDirty, activeTabId, tabs, switchTab, closeTab, theme } = useStore()
+  const {
+    pdfDoc, fileName, filePath, isDirty, activeTabId, tabs, switchTab, closeTab, theme,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, fileName: state.fileName, filePath: state.filePath, isDirty: state.isDirty, activeTabId: state.activeTabId, tabs: state.tabs, switchTab: state.switchTab, closeTab: state.closeTab, theme: state.theme })))
   const isDark = theme === 'dark'
 
   // Current document = one virtual tab entry

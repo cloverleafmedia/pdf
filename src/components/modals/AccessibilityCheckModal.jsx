@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Accessibility, CheckCircle2, XCircle, Info } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { checkStructure, checkDisplayDocTitle, checkTransparencyAndColorSpace, checkFormFieldLabels, checkImageAltText } from '../../lib/pdfCompliance'
 
@@ -20,7 +21,9 @@ function Row({ status, title, detail, isDark }) {
 }
 
 export default function AccessibilityCheckModal() {
-  const { pdfBytes, theme, closeA11y, fileName, openAltText } = useStore()
+  const {
+    pdfBytes, theme, closeA11y, fileName, openAltText,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, theme: state.theme, closeA11y: state.closeA11y, fileName: state.fileName, openAltText: state.openAltText })))
   const isDark = theme === 'dark'
   const [checks, setChecks] = useState(null)
   const [running, setRunning] = useState(false)

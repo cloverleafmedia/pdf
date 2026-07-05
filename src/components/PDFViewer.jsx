@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import MagnifierLens from './MagnifierLens'
 import { flattenAnnotations } from '../lib/annotationFlatten'
 import { findPIIRedactions, findTextRedactions } from '../lib/piiDetection'
@@ -65,9 +66,8 @@ async function verifyNoResidualText(newBytes, redactedPages) {
 
 export default function PDFViewer() {
   const {
-    pdfDoc, pdfBytes, filePath, fileName, totalPages, zoom, pageRotations, theme, twoPageView,
-    openDocument, setPdfBytes, setDirty, setZoom, setStatus, clearRedactions,
-  } = useStore()
+    pdfDoc, pdfBytes, filePath, fileName, totalPages, zoom, pageRotations, theme, twoPageView, openDocument, setPdfBytes, setDirty, setZoom, setStatus, clearRedactions,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, totalPages: state.totalPages, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, twoPageView: state.twoPageView, openDocument: state.openDocument, setPdfBytes: state.setPdfBytes, setDirty: state.setDirty, setZoom: state.setZoom, setStatus: state.setStatus, clearRedactions: state.clearRedactions })))
 
   const containerRef = useRef(null)
   const isDark = theme === 'dark'
@@ -341,13 +341,8 @@ export default function PDFViewer() {
 // ── Single PDF page ────────────────────────────────────────────────────────
 function PDFPage({ pageNum }) {
   const {
-    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode,
-    drawColor, drawWidth, annotations,
-    pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation,
-    formValues, setFormValue,
-    pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft,
-    shapeType,
-  } = useStore()
+    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType })))
 
   const canvasRef     = useRef(null)
   const textLayerRef  = useRef(null)

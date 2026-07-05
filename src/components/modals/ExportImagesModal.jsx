@@ -1,11 +1,14 @@
 import React, { useState } from 'react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 
 const DPI_OPTIONS = [72, 96, 150, 300]
 
 export default function ExportImagesModal() {
-  const { pdfDoc, totalPages, currentPage, theme, closeExportImages, setStatus } = useStore()
+  const {
+    pdfDoc, totalPages, currentPage, theme, closeExportImages, setStatus,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, totalPages: state.totalPages, currentPage: state.currentPage, theme: state.theme, closeExportImages: state.closeExportImages, setStatus: state.setStatus })))
   const isDark  = theme === 'dark'
   const [format,   setFormat]  = useState('png')
   const [dpi,      setDpi]     = useState(150)

@@ -14,6 +14,7 @@ import {
   Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { navigateToPage } from '../lib/navigate'
 
 const ZOOM_PRESETS = [25, 50, 75, 100, 125, 150, 175, 200, 300, 400]
@@ -74,20 +75,8 @@ function FloatingMenu({ open, pos, menuRef, children }) {
 export default function Toolbar() {
   const { t } = useTranslation()
   const {
-    pdfDoc, currentPage, totalPages, zoom, theme, sidebarOpen, nightMode, twoPageView, magnifierActive,
-    activeTool, lastAnnotateTool, drawColor, drawWidth, pendingRedactions, annotationHistory, annotationFuture,
-    toolbarLabels, pinnedTools, pendingFormFields, newFieldType, shapeType,
-    setActiveTool, setZoom, zoomIn, zoomOut, setDrawColor, setDrawWidth,
-    setCurrentPage, toggleSidebar, openSettings, openProperties, openSplit, openOCR,
-    rotatePageLeft, rotatePageRight, clearRedactions, setNewFieldType, clearFormFieldDrafts, setShapeType,
-    toggleNightMode, openWatermark, openSignature, openHeaderFooter, togglePresentation,
-    undoAnnotation, redoAnnotation,
-    setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool,
-    openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare,
-    openCommandPalette, openShortcuts, openPrintDialog,
-    openSanitize, openMailMerge, openPdfa, openA11y, openLibrary,
-    openEncrypt, openImagesToPdf, openSignatureVerify, openTableExtract,
-  } = useStore()
+    pdfDoc, currentPage, totalPages, zoom, theme, sidebarOpen, nightMode, twoPageView, magnifierActive, activeTool, lastAnnotateTool, drawColor, drawWidth, pendingRedactions, annotationHistory, annotationFuture, toolbarLabels, pinnedTools, pendingFormFields, newFieldType, shapeType, setActiveTool, setZoom, zoomIn, zoomOut, setDrawColor, setDrawWidth, setCurrentPage, toggleSidebar, openSettings, openProperties, openSplit, openOCR, rotatePageLeft, rotatePageRight, clearRedactions, setNewFieldType, clearFormFieldDrafts, setShapeType, toggleNightMode, openWatermark, openSignature, openHeaderFooter, togglePresentation, undoAnnotation, redoAnnotation, setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool, openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare, openCommandPalette, openShortcuts, openPrintDialog, openSanitize, openMailMerge, openPdfa, openA11y, openLibrary, openEncrypt, openImagesToPdf, openSignatureVerify, openTableExtract,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, totalPages: state.totalPages, zoom: state.zoom, theme: state.theme, sidebarOpen: state.sidebarOpen, nightMode: state.nightMode, twoPageView: state.twoPageView, magnifierActive: state.magnifierActive, activeTool: state.activeTool, lastAnnotateTool: state.lastAnnotateTool, drawColor: state.drawColor, drawWidth: state.drawWidth, pendingRedactions: state.pendingRedactions, annotationHistory: state.annotationHistory, annotationFuture: state.annotationFuture, toolbarLabels: state.toolbarLabels, pinnedTools: state.pinnedTools, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, shapeType: state.shapeType, setActiveTool: state.setActiveTool, setZoom: state.setZoom, zoomIn: state.zoomIn, zoomOut: state.zoomOut, setDrawColor: state.setDrawColor, setDrawWidth: state.setDrawWidth, setCurrentPage: state.setCurrentPage, toggleSidebar: state.toggleSidebar, openSettings: state.openSettings, openProperties: state.openProperties, openSplit: state.openSplit, openOCR: state.openOCR, rotatePageLeft: state.rotatePageLeft, rotatePageRight: state.rotatePageRight, clearRedactions: state.clearRedactions, setNewFieldType: state.setNewFieldType, clearFormFieldDrafts: state.clearFormFieldDrafts, setShapeType: state.setShapeType, toggleNightMode: state.toggleNightMode, openWatermark: state.openWatermark, openSignature: state.openSignature, openHeaderFooter: state.openHeaderFooter, togglePresentation: state.togglePresentation, undoAnnotation: state.undoAnnotation, redoAnnotation: state.redoAnnotation, setTwoPageView: state.setTwoPageView, toggleMagnifier: state.toggleMagnifier, setToolbarLabels: state.setToolbarLabels, togglePinnedTool: state.togglePinnedTool, openCompress: state.openCompress, openExportImages: state.openExportImages, openQRCode: state.openQRCode, openCrop: state.openCrop, openBatch: state.openBatch, openCompare: state.openCompare, openCommandPalette: state.openCommandPalette, openShortcuts: state.openShortcuts, openPrintDialog: state.openPrintDialog, openSanitize: state.openSanitize, openMailMerge: state.openMailMerge, openPdfa: state.openPdfa, openA11y: state.openA11y, openLibrary: state.openLibrary, openEncrypt: state.openEncrypt, openImagesToPdf: state.openImagesToPdf, openSignatureVerify: state.openSignatureVerify, openTableExtract: state.openTableExtract })))
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
   const [zoomInput, setZoomInput]     = useState(String(Math.round(zoom)))

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Scissors } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
@@ -23,7 +24,9 @@ function parseRanges(input, total) {
 
 export default function SplitModal() {
   const { t } = useTranslation()
-  const { pdfBytes, totalPages, fileName, theme, closeSplit, setStatus } = useStore()
+  const {
+    pdfBytes, totalPages, fileName, theme, closeSplit, setStatus,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, totalPages: state.totalPages, fileName: state.fileName, theme: state.theme, closeSplit: state.closeSplit, setStatus: state.setStatus })))
   const [mode, setMode]       = useState('range') // 'range' | 'each'
   const [rangeInput, setRangeInput] = useState('')
   const [loading, setLoading] = useState(false)

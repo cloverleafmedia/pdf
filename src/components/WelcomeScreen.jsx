@@ -2,11 +2,14 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FolderOpen, Eye, Edit3, Layers, Shield, Clock, FileText } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import cloverIcon from '../assets/clover-icon.png'
 
 export default function WelcomeScreen({ loadPDF }) {
   const { t } = useTranslation()
-  const { recentFiles, theme } = useStore()
+  const {
+    recentFiles, theme,
+  } = useStore(useShallow(state => ({ recentFiles: state.recentFiles, theme: state.theme })))
   const isDark = theme === 'dark'
 
   const openDialog = async () => {

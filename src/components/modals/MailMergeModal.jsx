@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { FileSpreadsheet, FolderOpen, Table2, PlayCircle } from 'lucide-react'
 import { PDFDocument, PDFTextField, PDFCheckBox, PDFDropdown, PDFOptionList, PDFRadioGroup } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 
 // Minimal RFC4180-ish CSV parser: handles quoted fields (with embedded commas,
@@ -60,7 +61,9 @@ function resolveFilename(tmpl, row, index) {
 }
 
 export default function MailMergeModal() {
-  const { theme, closeMailMerge, setStatus } = useStore()
+  const {
+    theme, closeMailMerge, setStatus,
+  } = useStore(useShallow(state => ({ theme: state.theme, closeMailMerge: state.closeMailMerge, setStatus: state.setStatus })))
   const isDark = theme === 'dark'
 
   const [templatePath,  setTemplatePath]  = useState('')

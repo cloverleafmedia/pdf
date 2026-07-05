@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 const HANDLE = 10   // handle square size in px
 
 export default function CropModal() {
-  const { pdfDoc, pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeCrop, setStatus, openDocument } = useStore()
+  const {
+    pdfDoc, pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeCrop, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, currentPage: state.currentPage, totalPages: state.totalPages, theme: state.theme, closeCrop: state.closeCrop, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark    = theme === 'dark'
   const canvasRef = useRef(null)
   const wrapRef   = useRef(null)

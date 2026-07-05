@@ -2,11 +2,14 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 
 export default function PasswordModal() {
   const { t } = useTranslation()
-  const { theme, closePassword, passwordCb } = useStore()
+  const {
+    theme, closePassword, passwordCb,
+  } = useStore(useShallow(state => ({ theme: state.theme, closePassword: state.closePassword, passwordCb: state.passwordCb })))
   const [pwd, setPwd] = useState('')
   const [error, setError] = useState(false)
   const inputRef = useRef(null)

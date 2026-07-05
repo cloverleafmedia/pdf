@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { formatBytes } from '../../lib/formatBytes'
 
 export default function PropertiesModal() {
   const { t } = useTranslation()
-  const { pdfDoc, fileSize, fileName, theme, closeProperties } = useStore()
+  const {
+    pdfDoc, fileSize, fileName, theme, closeProperties,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, fileSize: state.fileSize, fileName: state.fileName, theme: state.theme, closeProperties: state.closeProperties })))
   const [meta, setMeta] = useState({})
   const isDark = theme === 'dark'
 

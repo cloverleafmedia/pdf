@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ShieldCheck, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { formatCertificateInfo, summarizeSignatureResult } from '../../lib/signatureVerifyFormat'
 
@@ -26,7 +27,9 @@ function fmtDate(d) {
 }
 
 export default function SignatureVerifyModal() {
-  const { pdfBytes, theme, closeSignatureVerify } = useStore()
+  const {
+    pdfBytes, theme, closeSignatureVerify,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, theme: state.theme, closeSignatureVerify: state.closeSignatureVerify })))
   const isDark = theme === 'dark'
 
   const [running, setRunning] = useState(false)

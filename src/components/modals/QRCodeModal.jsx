@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
@@ -13,7 +14,9 @@ const POSITIONS = [
 ]
 
 export default function QRCodeModal() {
-  const { pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeQRCode, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeQRCode, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, currentPage: state.currentPage, totalPages: state.totalPages, theme: state.theme, closeQRCode: state.closeQRCode, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
   const [text,     setText]    = useState('https://')
   const [size,     setSize]    = useState(80)

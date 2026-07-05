@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Stamp } from 'lucide-react'
 import { PDFDocument, rgb, degrees } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
@@ -16,9 +17,8 @@ const COLORS = [
 
 export default function WatermarkModal() {
   const {
-    pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeWatermark, setStatus, openDocument,
-    watermarkTemplates, saveWatermarkTemplate, deleteWatermarkTemplate,
-  } = useStore()
+    pdfBytes, filePath, fileName, currentPage, totalPages, theme, closeWatermark, setStatus, openDocument, watermarkTemplates, saveWatermarkTemplate, deleteWatermarkTemplate,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, currentPage: state.currentPage, totalPages: state.totalPages, theme: state.theme, closeWatermark: state.closeWatermark, setStatus: state.setStatus, openDocument: state.openDocument, watermarkTemplates: state.watermarkTemplates, saveWatermarkTemplate: state.saveWatermarkTemplate, deleteWatermarkTemplate: state.deleteWatermarkTemplate })))
   const isDark = theme === 'dark'
 
   const [text,     setText]    = useState('VERTRAULICH')

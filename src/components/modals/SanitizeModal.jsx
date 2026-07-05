@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ShieldCheck, CheckCircle2, MinusCircle } from 'lucide-react'
 import { PDFDocument, PDFName } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
@@ -50,7 +51,9 @@ async function sanitizePdf(pdfBytes, opts) {
 }
 
 export default function SanitizeModal() {
-  const { pdfBytes, filePath, fileName, theme, closeSanitize, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, theme, closeSanitize, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, theme: state.theme, closeSanitize: state.closeSanitize, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
 
   const [selected, setSelected] = useState(new Set(OPTIONS.map(o => o.id)))

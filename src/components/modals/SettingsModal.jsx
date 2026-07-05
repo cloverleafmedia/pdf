@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, Moon, Sun, Monitor, Globe, Sliders, Shield } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 
 export default function SettingsModal() {
   const { t } = useTranslation()
-  const { theme, themeMode, language, defaultZoom, closeSettings, setTheme, setThemeMode, setLanguage, setDefaultZoom } = useStore()
+  const {
+    theme, themeMode, language, defaultZoom, closeSettings, setTheme, setThemeMode, setLanguage, setDefaultZoom,
+  } = useStore(useShallow(state => ({ theme: state.theme, themeMode: state.themeMode, language: state.language, defaultZoom: state.defaultZoom, closeSettings: state.closeSettings, setTheme: state.setTheme, setThemeMode: state.setThemeMode, setLanguage: state.setLanguage, setDefaultZoom: state.setDefaultZoom })))
   const [localThemeMode, setLocalThemeMode] = useState(themeMode)
   const [localLang,  setLocalLang]    = useState(language)
   const [localZoom,  setLocalZoom]    = useState(defaultZoom)

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
 import { navigateToPage } from '../lib/navigate'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
@@ -13,7 +14,9 @@ const THUMB_W = 200
 
 export default function Sidebar() {
   const { t } = useTranslation()
-  const { sidebarTab, setSidebarTab, theme } = useStore()
+  const {
+    sidebarTab, setSidebarTab, theme,
+  } = useStore(useShallow(state => ({ sidebarTab: state.sidebarTab, setSidebarTab: state.setSidebarTab, theme: state.theme })))
   const isDark = theme === 'dark'
 
   const tabs = [
@@ -52,7 +55,9 @@ export default function Sidebar() {
 
 // ── Thumbnails with drag-to-reorder ───────────────────────────────────────
 function Thumbnails({ isDark }) {
-  const { pdfDoc, pdfBytes, filePath, fileName, fileSize, currentPage, pageRotations, openDocument, setStatus } = useStore()
+  const {
+    pdfDoc, pdfBytes, filePath, fileName, fileSize, currentPage, pageRotations, openDocument, setStatus,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, fileSize: state.fileSize, currentPage: state.currentPage, pageRotations: state.pageRotations, openDocument: state.openDocument, setStatus: state.setStatus })))
   const [order, setOrder] = useState([])
   const [dragFrom, setDragFrom] = useState(null)
   const [dragOver, setDragOver] = useState(null)
@@ -160,7 +165,9 @@ function Thumbnails({ isDark }) {
 }
 
 function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, baseSize, isDragOver, onDragStart, onDragOver, onDragEnd, onDelete, onDuplicate, onInsertBlank }) {
-  const { pdfDoc } = useStore()
+  const {
+    pdfDoc,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc })))
   const canvasRef = useRef(null)
   const wrapRef   = useRef(null)
   const rendered  = useRef(false)
@@ -276,7 +283,9 @@ async function renderThumb(pageNum, canvas, pdfDoc, rotation, renderRef) {
 
 // ── Bookmarks ──────────────────────────────────────────────────────────────
 function Bookmarks({ isDark }) {
-  const { pdfDoc, currentPage, filePath } = useStore()
+  const {
+    pdfDoc, currentPage, filePath,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, filePath: state.filePath })))
   const [outline,   setOutline]   = useState(null)
   const [userMarks, setUserMarks] = useState([])  // [{page, label}]
   const [adding,    setAdding]    = useState(false)
@@ -383,7 +392,9 @@ function Bookmarks({ isDark }) {
 }
 
 function OutlineItem({ item, isDark, depth }) {
-  const { pdfDoc } = useStore()
+  const {
+    pdfDoc,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc })))
   const [open, setOpen] = useState(depth < 1)
 
   const navigate = async () => {
@@ -421,8 +432,9 @@ function OutlineItem({ item, isDark, depth }) {
 // ── Search ─────────────────────────────────────────────────────────────────
 function SearchPanel({ isDark }) {
   const { t } = useTranslation()
-  const { pdfDoc, totalPages, searchQuery, searchResults, searchIndex, searchCase,
-          setSearchQuery, setSearchResults, setSearchIndex, setSearchCase } = useStore()
+  const {
+    pdfDoc, totalPages, searchQuery, searchResults, searchIndex, searchCase, setSearchQuery, setSearchResults, setSearchIndex, setSearchCase,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, totalPages: state.totalPages, searchQuery: state.searchQuery, searchResults: state.searchResults, searchIndex: state.searchIndex, searchCase: state.searchCase, setSearchQuery: state.setSearchQuery, setSearchResults: state.setSearchResults, setSearchIndex: state.setSearchIndex, setSearchCase: state.setSearchCase })))
   const [loading, setLoading] = useState(false)
   const inputRef = useRef(null)
 
@@ -518,7 +530,9 @@ function SearchPanel({ isDark }) {
 
 // ── Annotations list ───────────────────────────────────────────────────────
 function AnnotationsList({ isDark }) {
-  const { annotations, removeAnnotation, addReply, deleteReply } = useStore()
+  const {
+    annotations, removeAnnotation, addReply, deleteReply,
+  } = useStore(useShallow(state => ({ annotations: state.annotations, removeAnnotation: state.removeAnnotation, addReply: state.addReply, deleteReply: state.deleteReply })))
   const ICONS = { highlight: '🟡', note: '📌', text: '📝', draw: '✏️', underline: '▁', strikethrough: '—' }
   const [expanded, setExpanded] = useState({})
   const [drafts,   setDrafts]   = useState({})

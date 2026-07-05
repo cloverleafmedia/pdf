@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { FileCheck2, AlertTriangle, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react'
 import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { checkFontEmbedding, checkStructure, checkTransparencyAndColorSpace } from '../../lib/pdfCompliance'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
@@ -64,7 +65,9 @@ function buildXmp({ title, producer, isoDate }) {
 }
 
 export default function PdfaExportModal() {
-  const { pdfBytes, filePath, fileName, theme, closePdfa, setStatus, openDocument } = useStore()
+  const {
+    pdfBytes, filePath, fileName, theme, closePdfa, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, fileName: state.fileName, theme: state.theme, closePdfa: state.closePdfa, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
 
   const [running,    setRunning]    = useState(false)

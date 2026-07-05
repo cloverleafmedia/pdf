@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Lock, AlertTriangle } from 'lucide-react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
@@ -11,7 +12,9 @@ import { saveAsNewFile } from '../../lib/saveAsNewFile'
 // subsequent operation (save, annotate, …) rather than just invalidate a
 // signature.
 export default function EncryptModal() {
-  const { pdfBytes, fileName, theme, closeEncrypt, setStatus } = useStore()
+  const {
+    pdfBytes, fileName, theme, closeEncrypt, setStatus,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, fileName: state.fileName, theme: state.theme, closeEncrypt: state.closeEncrypt, setStatus: state.setStatus })))
   const isDark = theme === 'dark'
 
   const [userPassword,  setUserPassword]  = useState('')

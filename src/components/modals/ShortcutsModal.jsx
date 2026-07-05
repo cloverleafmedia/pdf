@@ -1,5 +1,6 @@
 import React from 'react'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 
 const GROUPS = [
@@ -49,7 +50,9 @@ const GROUPS = [
 ]
 
 export default function ShortcutsModal() {
-  const { theme, closeShortcuts } = useStore()
+  const {
+    theme, closeShortcuts,
+  } = useStore(useShallow(state => ({ theme: state.theme, closeShortcuts: state.closeShortcuts })))
   const isDark = theme === 'dark'
 
   return (

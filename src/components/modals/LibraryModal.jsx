@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { FolderPlus, Trash2, Search, FileText, Tag, Loader2, Cloud } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { useStore } from '../../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 
 const FULLTEXT_SCAN_CAP = 40   // bounded so "Volltext durchsuchen" can't hang on huge libraries
@@ -15,9 +16,8 @@ function formatSize(bytes) {
 
 export default function LibraryModal() {
   const {
-    theme, closeLibrary, libraryFolders, libraryTags,
-    addLibraryFolder, removeLibraryFolder, setLibraryTags,
-  } = useStore()
+    theme, closeLibrary, libraryFolders, libraryTags, addLibraryFolder, removeLibraryFolder, setLibraryTags,
+  } = useStore(useShallow(state => ({ theme: state.theme, closeLibrary: state.closeLibrary, libraryFolders: state.libraryFolders, libraryTags: state.libraryTags, addLibraryFolder: state.addLibraryFolder, removeLibraryFolder: state.removeLibraryFolder, setLibraryTags: state.setLibraryTags })))
   const isDark = theme === 'dark'
 
   const [files,    setFiles]    = useState([])
