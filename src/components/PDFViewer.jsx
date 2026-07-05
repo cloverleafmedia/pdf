@@ -14,7 +14,8 @@ import { saveAsNewFile } from '../lib/saveAsNewFile'
 import { useEraserTool } from './pdf-tools/useEraserTool'
 import { useRedactTool } from './pdf-tools/useRedactTool'
 import { useFormFieldTool } from './pdf-tools/useFormFieldTool'
-import { REDACTION_FILL } from './pdf-tools/constants'
+import { useShapeTool } from './pdf-tools/useShapeTool'
+import { REDACTION_FILL, SHAPE_STROKE } from './pdf-tools/constants'
 
 // DPI redacted pages are rasterized at before being flattened into the PDF -
 // high enough to stay legible/printable, matching ExportImagesModal's top DPI option.
@@ -24,10 +25,6 @@ const REDACTION_RASTER_DPI = 300
 // vs. freehand-drag tools) — kept as single constants so both checks can't drift.
 const HIGHLIGHT_TOOLS = ['highlight', 'underline', 'strikethrough']
 const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield', 'shape']
-
-// Live-drag preview stroke for the rectangle/circle shape tool - violet, distinct
-// from redaction's red and new-field's blue.
-const SHAPE_STROKE = '#8b5cf6'
 
 // Opacity for freehand-drawn/highlight annotation strokes when rendered and
 // when flattened into the saved PDF. No settings UI exposes this - it is a
@@ -358,8 +355,6 @@ function PDFPage({ pageNum }) {
   const textLayerInst = useRef(null)
   const drawingRef    = useRef(false)
   const pathRef       = useRef([])
-  const rectStartRef  = useRef(null)
-  const arrowStartRef = useRef(null) // first click of the 2-click arrow gesture
 
   const [size, setSize]           = useState({ w: 0, h: 0 })
   const [inlineInput, setInline]  = useState(null)
@@ -609,6 +604,7 @@ function PDFPage({ pageNum }) {
   const eraserTool = useEraserTool({ annotations, pageNum, getPos, removeAnnotation })
   const redactTool = useRedactTool({ pageNum, size, getPos, overlayRef, redraw, addRedaction })
   const formFieldTool = useFormFieldTool({ pageNum, size, getPos, overlayRef, redraw, newFieldType, addFormFieldDraft })
+  const shapeTool = useShapeTool({ pageNum, size, getPos, overlayRef, redraw, shapeType, drawColor, drawWidth, addAnnotation })
 
   // ── Apply text-selection annotation (highlight / underline / strikethrough) ──
   const applyTextAnnotation = useCallback(() => {
@@ -674,21 +670,7 @@ function PDFPage({ pageNum }) {
 
     // ── Shape: rectangle/circle drag, or arrow's 2-click gesture ───────
     if (tool === 'shape') {
-      const pos = getPos(e)
-      if (shapeType === 'arrow') {
-        if (!arrowStartRef.current) {
-          arrowStartRef.current = pos
-        } else {
-          const s = arrowStartRef.current
-          if (Math.hypot(pos.x - s.x, pos.y - s.y) > 5)
-            addAnnotation({ type: 'arrow', page: pageNum, x1: s.x, y1: s.y, x2: pos.x, y2: pos.y, color: drawColor, width: drawWidth, pageW: size.w, pageH: size.h })
-          arrowStartRef.current = null
-          redraw()
-        }
-        return
-      }
-      rectStartRef.current = pos
-      drawingRef.current = true
+      shapeTool.onMouseDown(e)
       return
     }
 
@@ -700,52 +682,12 @@ function PDFPage({ pageNum }) {
   const onMouseMove = (e) => {
     if (!overlayRef.current) return
 
-    // Arrow's 2-click gesture: live preview line even though drawingRef is
-    // never set (there's no drag between the two clicks).
-    if (activeTool === 'shape' && shapeType === 'arrow' && arrowStartRef.current) {
-      const pos = getPos(e)
-      redraw()
-      const dpr = window.devicePixelRatio || 1
-      const ctx = overlayRef.current.getContext('2d')
-      const s   = arrowStartRef.current
-      ctx.save()
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.strokeStyle = SHAPE_STROKE; ctx.lineWidth = drawWidth || 2
-      ctx.setLineDash([6, 3]); ctx.lineCap = 'round'
-      ctx.beginPath()
-      ctx.moveTo(s.x, s.y)
-      ctx.lineTo(pos.x, pos.y)
-      ctx.stroke()
-      ctx.restore()
-      return
-    }
-
     if (activeTool === 'redact') { redactTool.onMouseMove(e); return }
     if (activeTool === 'newfield') { formFieldTool.onMouseMove(e); return }
+    if (activeTool === 'shape') { shapeTool.onMouseMove(e); return }
 
     if (!drawingRef.current) return
     const pos = getPos(e)
-
-    if (activeTool === 'shape' && shapeType !== 'arrow' && rectStartRef.current) {
-      redraw()
-      const dpr = window.devicePixelRatio || 1
-      const ctx = overlayRef.current.getContext('2d')
-      const s   = rectStartRef.current
-      const w = pos.x - s.x, h = pos.y - s.y
-      ctx.save()
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.strokeStyle = SHAPE_STROKE
-      ctx.lineWidth = 2; ctx.setLineDash([6, 3])
-      if (shapeType === 'rectangle') {
-        ctx.strokeRect(s.x, s.y, w, h)
-      } else {
-        ctx.beginPath()
-        ctx.ellipse(s.x + w / 2, s.y + h / 2, Math.abs(w) / 2, Math.abs(h) / 2, 0, 0, Math.PI * 2)
-        ctx.stroke()
-      }
-      ctx.restore()
-      return
-    }
 
     pathRef.current.push(pos)
     redraw()
@@ -769,20 +711,10 @@ function PDFPage({ pageNum }) {
   const onMouseUp = (e) => {
     if (activeTool === 'redact') { redactTool.onMouseUp(e); return }
     if (activeTool === 'newfield') { formFieldTool.onMouseUp(e); return }
+    if (activeTool === 'shape') { shapeTool.onMouseUp(e); return }
 
     if (!drawingRef.current) return
     drawingRef.current = false
-
-    if (activeTool === 'shape' && shapeType !== 'arrow' && rectStartRef.current) {
-      const pos = getPos(e)
-      const s   = rectStartRef.current
-      const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
-      const w = Math.abs(pos.x - s.x),  h = Math.abs(pos.y - s.y)
-      if (w > 5 && h > 5) addAnnotation({ type: shapeType, page: pageNum, x, y, w, h, color: drawColor, width: drawWidth, pageW: size.w, pageH: size.h })
-      rectStartRef.current = null
-      redraw()
-      return
-    }
 
     if (pathRef.current.length > 1)
       addAnnotation({ type: activeTool, page: pageNum, path: [...pathRef.current], color: drawColor, width: drawWidth, pageW: size.w, pageH: size.h })
