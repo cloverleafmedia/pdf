@@ -5,6 +5,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.7.0] – 2026-07-04
+
+### Hinzugefügt
+- Anmerkungs-Formen: neues Werkzeug für Rechteck, Kreis und Pfeil (Pfeil per Zwei-Klick-Geste statt Ziehen, klarer für eine gerichtete Form).
+- Batch-Verarbeitung: neue Operation "Digital signieren" (nutzt das bestehende Zertifikat-Handling).
+- Vergleichsansicht: Seitenbadges im Textvergleich sind jetzt klickbar und springen zur Seite in der Nebeneinander-Ansicht.
+- Erkennung von eingebettetem JavaScript: reine Info-Anzeige in der Statusleiste (CloverleafPDF führt eingebettetes JavaScript ohnehin nie aus).
+
+### Geändert
+- Batch-Verarbeitung bricht bei einem Fehler in einer Datei nicht mehr den gesamten Lauf ab, sondern sammelt Erfolge/Fehler pro Datei und zeigt am Ende eine Zusammenfassung.
+
 ## [1.6.0] – 2026-07-04
 
 ### Hinzugefügt
