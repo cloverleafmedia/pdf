@@ -4,6 +4,11 @@ import { PDFName, PDFDict, PDFArray, PDFString, PDFBool } from 'pdf-lib'
 // PDF/UA accessibility checker — both need to poke at catalog-level structure
 // that pdf-lib's high-level API doesn't expose helpers for.
 
+function hasFontFile(descriptor) {
+  return descriptor instanceof PDFDict &&
+    !!(descriptor.lookup(PDFName.of('FontFile')) || descriptor.lookup(PDFName.of('FontFile2')) || descriptor.lookup(PDFName.of('FontFile3')))
+}
+
 export function checkFontEmbedding(doc) {
   const seen = new Set()
   let total = 0, embedded = 0
@@ -19,9 +24,17 @@ export function checkFontEmbedding(doc) {
       const fd = doc.context.lookup(ref)
       if (!(fd instanceof PDFDict)) continue
       const baseFont = fd.lookup(PDFName.of('BaseFont'))
-      const descriptor = fd.lookup(PDFName.of('FontDescriptor'))
-      const isEmbedded = descriptor instanceof PDFDict &&
-        !!(descriptor.lookup(PDFName.of('FontFile')) || descriptor.lookup(PDFName.of('FontFile2')) || descriptor.lookup(PDFName.of('FontFile3')))
+      // A Type0 composite font (which is what pdf-lib/fontkit always produces
+      // for an embedded TrueType font, to support full Unicode) carries its
+      // FontDescriptor on the descendant CIDFontType2 dict, not on itself -
+      // fall back to that before concluding there's no embedded font data.
+      let descriptor = fd.lookup(PDFName.of('FontDescriptor'))
+      if (!(descriptor instanceof PDFDict)) {
+        const descendants = fd.lookup(PDFName.of('DescendantFonts'))
+        const descendantDict = descendants instanceof PDFArray ? doc.context.lookup(descendants.get(0)) : null
+        if (descendantDict instanceof PDFDict) descriptor = descendantDict.lookup(PDFName.of('FontDescriptor'))
+      }
+      const isEmbedded = hasFontFile(descriptor)
       total++
       if (isEmbedded) embedded++
       else unembedded.push(baseFont ? baseFont.asString().replace(/^\//, '') : key.asString().replace(/^\//, ''))
@@ -40,6 +53,64 @@ export function checkStructure(doc) {
   const lang = langObj?.decodeText ? langObj.decodeText() : (langObj?.asString ? langObj.asString() : '')
   const hasEncryption = !!catalog.context.trailerInfo?.Encrypt
   return { isMarked, hasStructTree, lang, hasEncryption }
+}
+
+// PDF/UA (ISO 14289) requires /ViewerPreferences/DisplayDocTitle true so
+// compliant viewers show the document's actual /Title instead of the
+// filename - a document can have a perfectly good title set and still fail
+// this because nothing tells the viewer to prefer it.
+export function checkDisplayDocTitle(doc) {
+  const prefs = doc.catalog.lookup(PDFName.of('ViewerPreferences'))
+  const flag = prefs instanceof PDFDict ? prefs.lookup(PDFName.of('DisplayDocTitle')) : undefined
+  return !!(flag && flag.asBoolean && flag.asBoolean())
+}
+
+// Best-effort heuristic, not a conformance check: PDF/A-1 forbids transparency
+// groups and requires every color space to resolve unambiguously against the
+// declared OutputIntent. This walks each page's ExtGState for a real (non-
+// /None) soft mask and its ColorSpace resources for anything other than
+// DeviceGray/DeviceRGB/ICCBased when no OutputIntent is present - a decent
+// proxy for the two most common PDF/A-1 violations in this category. Real
+// conformance is the bundled veraPDF's job (see PdfaExportModal.jsx); this
+// exists so a lighter-weight warning can surface without a full veraPDF run.
+export function checkTransparencyAndColorSpace(doc) {
+  const hasOutputIntent = !!doc.catalog.lookup(PDFName.of('OutputIntents'))
+  let hasTransparency = false
+  const nonStandardColorSpaces = new Set()
+
+  for (const page of doc.getPages()) {
+    const res = page.node.Resources()
+    if (!res) continue
+
+    const extGState = res.lookup(PDFName.of('ExtGState'))
+    if (extGState instanceof PDFDict) {
+      for (const [, ref] of extGState.entries()) {
+        const gs = doc.context.lookup(ref)
+        if (!(gs instanceof PDFDict)) continue
+        const smask = gs.lookup(PDFName.of('SMask'))
+        const smaskName = smask instanceof PDFName ? smask.asString().replace(/^\//, '') : ''
+        if (smask && smaskName !== 'None') hasTransparency = true
+      }
+    }
+
+    const colorSpace = res.lookup(PDFName.of('ColorSpace'))
+    if (colorSpace instanceof PDFDict) {
+      for (const [, ref] of colorSpace.entries()) {
+        const cs = doc.context.lookup(ref)
+        const csName = cs instanceof PDFName ? cs.asString().replace(/^\//, '')
+          : (cs instanceof PDFArray && cs.size() > 0 && cs.lookup(0) instanceof PDFName ? cs.lookup(0).asString().replace(/^\//, '') : 'unknown')
+        if (!['DeviceGray', 'DeviceRGB', 'ICCBased', 'CalRGB', 'CalGray'].includes(csName)) {
+          nonStandardColorSpaces.add(csName)
+        }
+      }
+    }
+  }
+
+  return {
+    hasTransparency,
+    nonStandardColorSpaces: [...nonStandardColorSpaces],
+    colorSpaceRisk: !hasOutputIntent && nonStandardColorSpaces.size > 0,
+  }
 }
 
 // Walks the struct tree (not the page content) because image alt text lives
@@ -82,11 +153,17 @@ export function checkImageAltText(doc) {
 // Enumerates every distinct image XObject across all pages, grouped by
 // object reference — a repeated logo/header image gets one entry (with the
 // list of pages it appears on) instead of one prompt per occurrence.
+// Recurses one level into Form XObjects (common for vector diagrams/grouped
+// content that embed a raster image via their own nested /Resources) - not
+// attempted: images referenced only via an annotation's appearance stream
+// (e.g. a Stamp's /AP /N) or inline images (BI/ID/EI content-stream
+// operators, which have no XObject dict entry at all and would need a full
+// content-stream parser) - documented known limitations, not detectable by
+// walking resource dictionaries the way this function does.
 export function listImagesForAltText(doc) {
   const byKey = new Map() // refString -> { ref, pages: number[], alt: string }
-  doc.getPages().forEach((page, pageIndex) => {
-    const res = page.node.Resources()
-    const xobjDict = res?.lookup(PDFName.of('XObject'))
+
+  const collectImages = (xobjDict, pageIndex, recurseIntoForms) => {
     if (!(xobjDict instanceof PDFDict)) return
     for (const [, ref] of xobjDict.entries()) {
       const obj = doc.context.lookup(ref)
@@ -94,11 +171,22 @@ export function listImagesForAltText(doc) {
       if (!dict) continue
       const subtype = dict.lookup(PDFName.of('Subtype'))
       const subtypeName = subtype instanceof PDFName ? subtype.asString().replace(/^\//, '') : ''
-      if (subtypeName !== 'Image') continue
-      const key = ref.toString()
-      if (!byKey.has(key)) byKey.set(key, { ref, pages: [], alt: '' })
-      byKey.get(key).pages.push(pageIndex)
+      if (subtypeName === 'Image') {
+        const key = ref.toString()
+        if (!byKey.has(key)) byKey.set(key, { ref, pages: [], alt: '' })
+        const entry = byKey.get(key)
+        if (!entry.pages.includes(pageIndex)) entry.pages.push(pageIndex)
+      } else if (subtypeName === 'Form' && recurseIntoForms) {
+        const nestedRes = dict.lookup(PDFName.of('Resources'))
+        const nestedXObj = nestedRes instanceof PDFDict ? nestedRes.lookup(PDFName.of('XObject')) : null
+        collectImages(nestedXObj, pageIndex, false) // one level deep only
+      }
     }
+  }
+
+  doc.getPages().forEach((page, pageIndex) => {
+    const res = page.node.Resources()
+    collectImages(res?.lookup(PDFName.of('XObject')), pageIndex, true)
   })
 
   // Merge in Alt text already present from a previous run of this editor —

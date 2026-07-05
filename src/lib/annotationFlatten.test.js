@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { PDFDocument, PDFName, PDFDict, PDFNumber } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFDict, PDFNumber, StandardFonts } from 'pdf-lib'
 import { flattenAnnotations } from './annotationFlatten.js'
+
+// Stands in for the real embedAppFont() (which fetches the bundled Liberation
+// Sans asset - a browser-only operation) so text-drawing tests can run
+// against a plain StandardFont with no network/asset dependency.
+const embedTestFont = (doc) => doc.embedFont(StandardFonts.Helvetica)
 
 async function makePdfBytes() {
   const doc = await PDFDocument.create()
@@ -80,7 +85,7 @@ describe('flattenAnnotations', () => {
       { type: 'note', page: 1, x: 20, y: 20, text: 'a short note' },
       { type: 'text', page: 1, x: 40, y: 60, text: 'line one\nline two' },
     ]
-    const result = await flattenAnnotations(bytes, annotations, {})
+    const result = await flattenAnnotations(bytes, annotations, {}, 0.35, [], embedTestFont)
     const reloaded = await PDFDocument.load(result)
     expect(reloaded.getPageCount()).toBe(1)
   })

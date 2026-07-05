@@ -214,6 +214,21 @@ export default function PDFViewer() {
   // along with the text (see the warning banner in Toolbar.jsx).
   // Note: like the previous implementation, this does not account for
   // pageRotations - a pre-existing gap, out of scope here.
+  // Known, accepted tradeoff (document-wide, not just redacted pages): outDoc
+  // is a fresh PDFDocument built via outDoc.copyPages(srcDoc, ...) once per
+  // page, each call getting its own internal PDFObjectCopier - the source
+  // document's StructTreeRoot (accessibility tags, including Alt-Text set via
+  // the Alt-Text editor), Outline/bookmarks, and AcroForm catalog dict are
+  // never carried over, so ANY redaction silently un-tags/un-bookmarks the
+  // whole document. Investigated re-attaching the AcroForm dict after the
+  // page loop: pdf-lib's own docs concede copyPages-based rebuilds don't
+  // preserve AcroForm/Outlines, and copying it with a *second*, separate
+  // PDFObjectCopier would produce a disconnected duplicate of each Widget
+  // annotation - unlinked from the (correctly rendering) copy the page's own
+  // copier already made - likely worse than today's honest "no AcroForm"
+  // state. A correct fix means bypassing copyPages() entirely to share one
+  // copier across the whole rebuild; too large/risky for a maintenance
+  // release. Users are warned via the Toolbar.jsx banner instead.
   useEffect(() => {
     window._applyRedactions = async () => {
       const { pendingRedactions: rects, pdfDoc: doc, pdfBytes: b, filePath: fp, fileName: fn, totalPages: n } = useStore.getState()

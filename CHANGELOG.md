@@ -17,8 +17,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Datei-I/O (`fs:read`/`fs:write`): zusätzlich zur bestehenden Dateityp-Positivliste jetzt eine Sperre gegen Lese-/Schreibzugriffe innerhalb des Installationsverzeichnisses der App selbst (Pfad wird vor der Prüfung normalisiert, damit `..`-Segmente sie nicht umgehen können) — reine Härtung für den Fall eines künftigen Renderer-Sicherheitslecks, keine bekannte aktive Lücke.
 - Vorbereitung für Windows-Codesignierung (siehe `CODE-SIGNING.md`): `electron-builder` signiert automatisch, sobald `CSC_LINK`/`CSC_KEY_PASSWORD` gesetzt sind — ohne diese Variablen unverändert unsigniert wie bisher (geprüft).
 
+### Behoben
+- PDF/A-Export: eigene Wasserzeichen, Kopf-/Fußzeilen, Signatur-Beschriftungen, OCR-Textebenen und geflattete Notiz-/Textfeld-Anmerkungen betten jetzt eine echte, lizenzkonform mitgelieferte Schrift (Liberation Sans, SIL Open Font License 1.1) statt der nicht einbettbaren Standard-Helvetica — behebt die letzte verbleibende veraPDF-PDF/A-Regelverletzung. Mit echtem veraPDF-Lauf gegen ein Testdokument bestätigt: 0 Regelverstöße statt vorher 1 (`compliant: true`, 129 von 129 Regeln bestanden).
+- Dabei einen echten Bug in der eigenen Schrift-Einbettungs-Prüfung gefunden und behoben: `checkFontEmbedding()` erkannte eingebettete TrueType-Schriften (Type0-Verbundschriften, wie sie pdf-lib/fontkit für jede eingebettete Schrift erzeugt) fälschlich als nicht eingebettet, weil deren `FontDescriptor` am `DescendantFonts`-Kindobjekt hängt statt am Font-Dict selbst.
+- PDF/A-Export setzt jetzt zusätzlich `/ViewerPreferences/DisplayDocTitle` und pro Seite `/Tabs /R` (PDF/UA-Tab-Reihenfolge).
+- Barrierefreiheits-Prüfung: neue Heuristik erkennt Transparenzgruppen und Farbräume ohne OutputIntent (Warnung, kein Ersatz für die veraPDF-Prüfung).
+- Alt-Text-Editor erkennt jetzt auch Bilder, die eine Ebene tief in Form-XObjects verschachtelt sind (z. B. Rastergrafiken innerhalb gruppierter Vektorgrafiken).
+- Schwärzen-Warnhinweis erweitert: verweist jetzt zusätzlich auf den dokumentweiten Verlust von Barrierefreiheits-Tags und Lesezeichen.
+
 ### Hinweise
 - `npm run audit:deps`-Hinweis zu `crypto-js`/`pdfkit` erneut geprüft, weiterhin nur transitiv vorhanden und im tatsächlich genutzten Codepfad nicht ausnutzbar (siehe v1.5.0).
+- Bekannte, bewusst nicht behobene Lücken: keine Tabellen-/Überschriften-/Listen-Struktur-Tags (echte Tagging-Arbeit bleibt manuell); Alt-Text-Erkennung deckt keine Bilder in Annotation-Appearance-Streams oder Inline-Images ab; Schwärzen verwirft weiterhin den kompletten Struktur-/Lesezeichen-/AcroForm-Baum des Dokuments (kein sicherer Teil-Erhalt mit pdf-lib ohne substanzielles Redesign — siehe Code-Kommentar in `PDFViewer.jsx`).
 
 ## [1.7.0] – 2026-07-04
 

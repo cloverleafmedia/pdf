@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import { renderPageToCanvas } from '../../lib/renderPage'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
+import { embedAppFont } from '../../lib/embeddedFont'
 
 const LANGS = [
   { id: 'deu',     label: 'Deutsch' },
@@ -36,9 +37,9 @@ function extractWords(data) {
 // how it looks. Word bounding boxes come back in canvas-pixel space (at
 // OCR_SCALE); converting to PDF points just undoes that scale and flips Y.
 async function embedSearchableLayer(pdfBytes, pageWords) {
-  const { PDFDocument, StandardFonts } = await import('pdf-lib')
+  const { PDFDocument } = await import('pdf-lib')
   const doc  = await PDFDocument.load(pdfBytes)
-  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const font = await embedAppFont(doc)
 
   for (const [pageNumStr, words] of Object.entries(pageWords)) {
     const page = doc.getPage(Number(pageNumStr) - 1)

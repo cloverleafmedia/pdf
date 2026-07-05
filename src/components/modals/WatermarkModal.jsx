@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { Stamp } from 'lucide-react'
-import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb, degrees } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
+import { embedAppFont } from '../../lib/embeddedFont'
 
 const COLORS = [
   { hex: '#888888', label: 'Grau' },
@@ -33,7 +34,7 @@ export default function WatermarkModal() {
     setRunning(true)
     try {
       const doc  = await PDFDocument.load(pdfBytes)
-      const font = await doc.embedFont(StandardFonts.HelveticaBold)
+      const font = await embedAppFont(doc, true)
       const r = parseInt(colorHex.slice(1, 3), 16) / 255
       const g = parseInt(colorHex.slice(3, 5), 16) / 255
       const b = parseInt(colorHex.slice(5, 7), 16) / 255

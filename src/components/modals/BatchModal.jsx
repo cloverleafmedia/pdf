@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { PDFDocument, StandardFonts, degrees, rgb, grayscale } from 'pdf-lib'
+import { PDFDocument, degrees, rgb, grayscale } from 'pdf-lib'
 import { Trash2, FolderOpen } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
+import { embedAppFont } from '../../lib/embeddedFont'
 
 const OPERATIONS = [
   { id: 'compress',   label: 'Komprimieren',    hint: 'Objekt-Streams + Metadaten entfernen' },
@@ -101,7 +102,7 @@ export default function BatchModal() {
               doc.setTitle(''); doc.setAuthor(''); doc.setSubject(''); doc.setProducer(''); doc.setCreator('')
             }
             if (op === 'watermark') {
-              const font  = await doc.embedFont(StandardFonts.HelveticaBold)
+              const font  = await embedAppFont(doc, true)
               const color = rgb(0.7, 0, 0)
               for (const page of doc.getPages()) {
                 const { width: pw, height: ph } = page.getSize()

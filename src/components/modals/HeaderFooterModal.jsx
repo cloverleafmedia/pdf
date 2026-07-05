@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
+import { embedAppFont } from '../../lib/embeddedFont'
 
 const ALIGN_OPTS = [
   { id: 'left',   icon: <AlignLeft size={13}/> },
@@ -47,7 +48,7 @@ export default function HeaderFooterModal() {
     setRunning(true)
     try {
       const doc  = await PDFDocument.load(pdfBytes)
-      const font = await doc.embedFont(StandardFonts.Helvetica)
+      const font = await embedAppFont(doc)
       const r = parseInt(colorHex.slice(1, 3), 16) / 255
       const g = parseInt(colorHex.slice(3, 5), 16) / 255
       const b = parseInt(colorHex.slice(5, 7), 16) / 255

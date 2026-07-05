@@ -1,17 +1,29 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
 
 // ── Flatten all UI annotations + form field values + newly-created form fields into PDF bytes via pdf-lib ──
 // newFields: [{ page, type: 'text'|'checkbox', name, x, y, w, h, pageW, pageH }]
 // in the same CSS-pixel space as `annotations` (name is expected to already
 // be unique - the caller dedupes against known field names when the draft is
 // placed; a stale collision here is simply skipped, same tolerance as formValues).
-export async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35, newFields = []) {
+// embedFont is injectable so tests can substitute a StandardFonts-based
+// embedder (no network fetch) instead of the real embedAppFont(). Loaded via
+// dynamic import (not a static top-level one) when not injected, since this
+// module sits on the core, non-lazy save path (PDFViewer.jsx) - a static
+// import would pull fontkit + the bundled font asset into the main chunk for
+// every save, not just the ones that actually draw a note/text annotation.
+export async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35, newFields = [], embedFont = null) {
   const hasFormValues = Object.keys(formValues).length > 0
   const hasNewFields  = newFields.length > 0
   if (!annotations.length && !hasFormValues && !hasNewFields) return pdfBytes
   const doc  = await PDFDocument.load(pdfBytes)
   let   font = null
-  const getFont = async () => { if (!font) font = await doc.embedFont(StandardFonts.Helvetica); return font }
+  const getFont = async () => {
+    if (!font) {
+      const embed = embedFont || (await import('./embeddedFont.js')).embedAppFont
+      font = await embed(doc)
+    }
+    return font
+  }
 
   const hexRgb = (hex) => {
     const c = (hex || '#f59e0b').replace('#', '').padEnd(6, '0')

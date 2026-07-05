@@ -3,7 +3,7 @@ import { FileCheck2, AlertTriangle, CheckCircle2, XCircle, ShieldCheck } from 'l
 import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
-import { checkFontEmbedding, checkStructure } from '../../lib/pdfCompliance'
+import { checkFontEmbedding, checkStructure, checkTransparencyAndColorSpace } from '../../lib/pdfCompliance'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import iccUrl from '../../assets/sRGB2014.icc?url'
 
@@ -99,6 +99,21 @@ export default function PdfaExportModal() {
       doc.catalog.set(PDFName.of('Metadata'), doc.context.register(stream))
       await embedOutputIntent(doc)
 
+      // PDF/UA: make viewers show the actual title instead of the filename.
+      doc.catalog.set(PDFName.of('ViewerPreferences'), doc.context.obj({ DisplayDocTitle: true }))
+
+      // PDF/UA tab order: /Tabs /R (row order, computed from annotation rects)
+      // is the honest choice here rather than /S (structure order) - this
+      // app's StructTreeRoot only ever tags image Alt-Text (Figure elements),
+      // never Widget ordering, so declaring /S would be syntactically valid
+      // but claim a structure-based order that doesn't exist. /R's algorithm
+      // (top-to-bottom, then left-to-right) already matches what
+      // formFieldOrder.js#sortFieldsReadingOrder() computes for the app's own
+      // keyboard tab order.
+      for (const page of doc.getPages()) {
+        page.node.set(PDFName.of('Tabs'), PDFName.of('R'))
+      }
+
       // PDF/A forbids xref streams (classic xref table only) and requires a
       // trailer /ID.
       const idHex = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -109,9 +124,12 @@ export default function PdfaExportModal() {
       // than claiming full compliance we can't verify without a real validator.
       const fonts = checkFontEmbedding(doc)
       const structure = checkStructure(doc)
+      const transparency = checkTransparencyAndColorSpace(doc)
       const foundGaps = []
       if (fonts.unembedded.length) foundGaps.push(`${fonts.unembedded.length} Schriftart(en) nicht eingebettet: ${fonts.unembedded.join(', ')}`)
       if (structure.hasEncryption) foundGaps.push('Dokument ist verschlüsselt (PDF/A erlaubt keine Verschlüsselung)')
+      if (transparency.hasTransparency) foundGaps.push('Transparenzgruppe(n) gefunden (PDF/A-1 verbietet Transparenz) — nur heuristisch erkannt, siehe veraPDF-Prüfung')
+      if (transparency.colorSpaceRisk) foundGaps.push(`Farbraum ohne OutputIntent: ${transparency.nonStandardColorSpaces.join(', ')} — nur heuristisch erkannt, siehe veraPDF-Prüfung`)
 
       const newBytes = await doc.save({ useObjectStreams: false })
       const reloaded = await reloadPdfDoc(newBytes)

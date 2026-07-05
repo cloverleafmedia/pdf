@@ -77,6 +77,19 @@ checker.init({ start: path.join(__dirname, ".."), production: true, excludePacka
   out += "fuer die PDF-Verschluesselung (Passwort/Berechtigungen) im Verschluesseln-Dialog,\n";
   out += "da pdf-lib selbst keine PDF-Verschluesselung unterstuetzt.\n\n";
 
+  out += "----------------------------------------------------------------------\n";
+  out += "Liberation Sans 2.1.5 (Regular + Bold, src/assets/)\n";
+  out += "Lizenz: SIL Open Font License 1.1\n";
+  out += "Quelle: https://github.com/liberationfonts/liberation-fonts (offizielles Release)\n";
+  out += "Copyright: Google Corporation (2010), Red Hat, Inc. (2012) - Reserved Font Name 'Liberation'\n\n";
+  out += "Metrisch mit Helvetica/Arial kompatibel. Ersetzt pdf-lib's nicht einbettbare\n";
+  out += "StandardFonts.Helvetica/HelveticaBold ueberall dort, wo diese App selbst Text\n";
+  out += "in ein PDF schreibt (Wasserzeichen, Kopf-/Fusszeile, Signatur-Beschriftung,\n";
+  out += "OCR-Textebene, geflattete Notiz-/Textfeld-Anmerkungen), um die dadurch\n";
+  out += "verursachte PDF/A-Regelverletzung (nicht eingebettete Schriftart) zu beheben.\n";
+  out += "Unveraendert weitergegeben, siehe volle Lizenz unter\n";
+  out += "https://github.com/liberationfonts/liberation-fonts/blob/master/LICENSE\n\n";
+
   fs.writeFileSync(outputPath, out);
   console.log("THIRD-PARTY-LICENSES.txt geschrieben:", keys.length, "Pakete");
 });

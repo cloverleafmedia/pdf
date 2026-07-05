@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { Trash2, Check, PenTool, ShieldCheck, FileKey, FolderOpen, History } from 'lucide-react'
-import { PDFDocument, PDFName, PDFString, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFString, rgb } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
+import { embedAppFont } from '../../lib/embeddedFont'
 
 const AUDIT_KEY = 'CloverleafAuditTrail'
 
@@ -165,7 +166,7 @@ export default function SignatureModal() {
       // (each one signs, saves, forwards) shows a readable chain, not just images.
       const now = new Date()
       if (signerName.trim()) {
-        const font = await doc.embedFont(StandardFonts.Helvetica)
+        const font = await embedAppFont(doc)
         const label = `${signerName.trim()}${signReason.trim() ? ' · ' + signReason.trim() : ''} · ${now.toLocaleDateString('de-DE')}`
         page.drawText(label, { x, y: Math.max(4, y - 10), size: 7, font, color: rgb(0.4, 0.4, 0.4) })
       }

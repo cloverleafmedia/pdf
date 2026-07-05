@@ -3,7 +3,7 @@ import { Accessibility, CheckCircle2, XCircle, Info } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { Modal } from './SettingsModal'
-import { checkStructure, checkFormFieldLabels, checkImageAltText } from '../../lib/pdfCompliance'
+import { checkStructure, checkDisplayDocTitle, checkTransparencyAndColorSpace, checkFormFieldLabels, checkImageAltText } from '../../lib/pdfCompliance'
 
 function Row({ status, title, detail, isDark }) {
   const Icon = status === 'pass' ? CheckCircle2 : status === 'fail' ? XCircle : Info
@@ -32,8 +32,10 @@ export default function AccessibilityCheckModal() {
       const doc = await PDFDocument.load(pdfBytes)
       const structure = checkStructure(doc)
       const title = doc.getTitle()
+      const displayDocTitle = checkDisplayDocTitle(doc)
       const formFields = checkFormFieldLabels(doc)
       const altText = checkImageAltText(doc)
+      const transparency = checkTransparencyAndColorSpace(doc)
 
       const results = [
         {
@@ -57,6 +59,11 @@ export default function AccessibilityCheckModal() {
           detail: title ? `"${title}"` : 'Fehlt — Fenstertitel/Screenreader zeigen sonst nur den Dateinamen.',
         },
         {
+          status: displayDocTitle ? 'pass' : 'fail',
+          title: 'Viewer zeigt Titel statt Dateiname (/ViewerPreferences/DisplayDocTitle)',
+          detail: displayDocTitle ? undefined : 'Fehlt — selbst mit gesetztem Titel zeigen die meisten Viewer sonst nur den Dateinamen an.',
+        },
+        {
           status: formFields.total === 0 ? 'info' : (formFields.withLabel === formFields.total ? 'pass' : 'fail'),
           title: 'Formularfelder mit Beschriftung (Tooltip/TU)',
           detail: formFields.total === 0
@@ -75,6 +82,15 @@ export default function AccessibilityCheckModal() {
             : altText.total === 0
               ? 'Keine als Bild (Figure) getaggten Elemente gefunden.'
               : `${altText.withAlt} von ${altText.total} Bild(ern) haben einen Alternativtext.`,
+        },
+        {
+          status: transparency.hasTransparency || transparency.colorSpaceRisk ? 'info' : 'pass',
+          title: 'Transparenz / Farbräume (Heuristik, kein Ersatz für veraPDF)',
+          detail: transparency.colorSpaceRisk
+            ? `Farbraum ohne OutputIntent gefunden: ${transparency.nonStandardColorSpaces.join(', ')}.`
+            : transparency.hasTransparency
+              ? 'Transparenzgruppe(n) gefunden — PDF/A-1 verbietet Transparenz.'
+              : 'Keine auffälligen Transparenzgruppen oder Farbräume ohne OutputIntent gefunden.',
         },
       ]
       setChecks(results)

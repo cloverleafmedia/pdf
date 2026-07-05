@@ -1,8 +1,14 @@
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { describe, it, expect } from 'vitest'
 import { PDFDocument, PDFName, PDFString, PDFBool } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 import {
   checkFontEmbedding,
   checkStructure,
+  checkDisplayDocTitle,
+  checkTransparencyAndColorSpace,
   checkImageAltText,
   listImagesForAltText,
   setImageAltText,
@@ -47,6 +53,53 @@ describe('checkFontEmbedding', () => {
     expect(result.unembedded).toEqual([])
   })
 
+  it('reports a Type0 composite font as embedded via its DescendantFonts FontDescriptor', async () => {
+    // pdf-lib/fontkit always produces a Type0 composite font for an embedded
+    // TrueType font (to support full Unicode) - its FontDescriptor lives on
+    // the descendant CIDFontType2 dict, not on the Type0 dict itself.
+    const doc = await makeDoc()
+    const page = doc.getPage(0)
+
+    const descriptorRef = doc.context.register(
+      doc.context.obj({ Type: PDFName.of('FontDescriptor'), FontFile2: doc.context.register(doc.context.stream('')) })
+    )
+    const descendantRef = doc.context.register(
+      doc.context.obj({ Type: PDFName.of('Font'), Subtype: PDFName.of('CIDFontType2'), BaseFont: PDFName.of('CustomFont'), FontDescriptor: descriptorRef })
+    )
+    const fontRef = doc.context.register(
+      doc.context.obj({
+        Type: PDFName.of('Font'), Subtype: PDFName.of('Type0'), BaseFont: PDFName.of('CustomFont'),
+        DescendantFonts: doc.context.obj([descendantRef]),
+      })
+    )
+    const resources = page.node.Resources()
+    resources.set(PDFName.of('Font'), doc.context.obj({ F1: fontRef }))
+
+    const result = checkFontEmbedding(doc)
+    expect(result.total).toBe(1)
+    expect(result.embedded).toBe(1)
+    expect(result.unembedded).toEqual([])
+  })
+
+  it('reports the bundled Liberation Sans font (used by embedAppFont) as embedded', async () => {
+    // Exercises the real font file + fontkit, not a synthetic FontFile2 stub -
+    // this is the actual asset embedAppFont() (embeddedFont.js) embeds in
+    // place of pdf-lib's un-embeddable StandardFonts.Helvetica.
+    const __dirname = path.dirname(fileURLToPath(import.meta.url))
+    const fontBytes = fs.readFileSync(path.join(__dirname, '../assets/LiberationSans-Regular.ttf'))
+
+    const doc = await makeDoc()
+    doc.registerFontkit(fontkit)
+    const font = await doc.embedFont(fontBytes)
+    doc.getPage(0).drawText('hi', { font })
+    await doc.save()
+
+    const result = checkFontEmbedding(doc)
+    expect(result.total).toBe(1)
+    expect(result.embedded).toBe(1)
+    expect(result.unembedded).toEqual([])
+  })
+
   it('dedupes the same font referenced across multiple pages', async () => {
     const doc = await makeDoc()
     doc.addPage([200, 200])
@@ -77,6 +130,85 @@ describe('checkStructure', () => {
     expect(result.isMarked).toBe(true)
     expect(result.hasStructTree).toBe(true)
     expect(result.lang).toBe('de')
+  })
+})
+
+describe('checkDisplayDocTitle', () => {
+  it('returns false when no ViewerPreferences are set', async () => {
+    const doc = await makeDoc()
+    expect(checkDisplayDocTitle(doc)).toBe(false)
+  })
+
+  it('returns false when DisplayDocTitle is explicitly false', async () => {
+    const doc = await makeDoc()
+    doc.catalog.set(PDFName.of('ViewerPreferences'), doc.context.obj({ DisplayDocTitle: PDFBool.False }))
+    expect(checkDisplayDocTitle(doc)).toBe(false)
+  })
+
+  it('returns true once DisplayDocTitle is set to true', async () => {
+    const doc = await makeDoc()
+    doc.catalog.set(PDFName.of('ViewerPreferences'), doc.context.obj({ DisplayDocTitle: PDFBool.True }))
+    expect(checkDisplayDocTitle(doc)).toBe(true)
+  })
+})
+
+describe('checkTransparencyAndColorSpace', () => {
+  it('reports no transparency/colorspace risk for a plain document', async () => {
+    const doc = await makeDoc()
+    const result = checkTransparencyAndColorSpace(doc)
+    expect(result).toEqual({ hasTransparency: false, nonStandardColorSpaces: [], colorSpaceRisk: false })
+  })
+
+  it('detects a real (non-/None) soft mask as transparency', async () => {
+    const doc = await makeDoc()
+    const page = doc.getPage(0)
+    const gsRef = doc.context.register(doc.context.obj({ Type: PDFName.of('ExtGState'), SMask: doc.context.obj({ Type: PDFName.of('Mask') }) }))
+    page.node.Resources().set(PDFName.of('ExtGState'), doc.context.obj({ GS0: gsRef }))
+
+    const result = checkTransparencyAndColorSpace(doc)
+    expect(result.hasTransparency).toBe(true)
+  })
+
+  it('does not flag an explicit /None soft mask as transparency', async () => {
+    const doc = await makeDoc()
+    const page = doc.getPage(0)
+    const gsRef = doc.context.register(doc.context.obj({ Type: PDFName.of('ExtGState'), SMask: PDFName.of('None') }))
+    page.node.Resources().set(PDFName.of('ExtGState'), doc.context.obj({ GS0: gsRef }))
+
+    const result = checkTransparencyAndColorSpace(doc)
+    expect(result.hasTransparency).toBe(false)
+  })
+
+  it('flags a non-standard color space as a risk when no OutputIntent is present', async () => {
+    const doc = await makeDoc()
+    const page = doc.getPage(0)
+    const csRef = doc.context.register(doc.context.obj([PDFName.of('Separation')]))
+    page.node.Resources().set(PDFName.of('ColorSpace'), doc.context.obj({ CS0: csRef }))
+
+    const result = checkTransparencyAndColorSpace(doc)
+    expect(result.nonStandardColorSpaces).toEqual(['Separation'])
+    expect(result.colorSpaceRisk).toBe(true)
+  })
+
+  it('does not flag the risk once an OutputIntent is present, even with a non-standard color space', async () => {
+    const doc = await makeDoc()
+    const page = doc.getPage(0)
+    const csRef = doc.context.register(doc.context.obj([PDFName.of('Separation')]))
+    page.node.Resources().set(PDFName.of('ColorSpace'), doc.context.obj({ CS0: csRef }))
+    doc.catalog.set(PDFName.of('OutputIntents'), doc.context.obj([]))
+
+    const result = checkTransparencyAndColorSpace(doc)
+    expect(result.colorSpaceRisk).toBe(false)
+  })
+
+  it('does not flag DeviceRGB/DeviceGray/ICCBased as non-standard', async () => {
+    const doc = await makeDoc()
+    const page = doc.getPage(0)
+    const csRef = doc.context.register(doc.context.obj([PDFName.of('ICCBased'), doc.context.register(doc.context.stream(''))]))
+    page.node.Resources().set(PDFName.of('ColorSpace'), doc.context.obj({ CS0: PDFName.of('DeviceRGB'), CS1: csRef }))
+
+    const result = checkTransparencyAndColorSpace(doc)
+    expect(result.nonStandardColorSpaces).toEqual([])
   })
 })
 
@@ -148,6 +280,38 @@ describe('listImagesForAltText', () => {
     const images = listImagesForAltText(doc)
     expect(images).toHaveLength(1)
     expect(images[0].alt).toBe('existing alt')
+  })
+
+  it('finds an image nested one level inside a Form XObject', async () => {
+    const doc = await makeDoc()
+    const imgRef = doc.context.register(doc.context.obj({ Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') }))
+    const formRef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('XObject'), Subtype: PDFName.of('Form'),
+      Resources: doc.context.obj({ XObject: doc.context.obj({ Im1: imgRef }) }),
+    }))
+    doc.getPage(0).node.Resources().set(PDFName.of('XObject'), doc.context.obj({ Fm1: formRef }))
+
+    const images = listImagesForAltText(doc)
+    expect(images).toHaveLength(1)
+    expect(images[0].ref.toString()).toBe(imgRef.toString())
+    expect(images[0].pages).toEqual([0])
+  })
+
+  it('does not recurse two levels deep into nested Form XObjects', async () => {
+    const doc = await makeDoc()
+    const imgRef = doc.context.register(doc.context.obj({ Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') }))
+    const innerFormRef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('XObject'), Subtype: PDFName.of('Form'),
+      Resources: doc.context.obj({ XObject: doc.context.obj({ Im1: imgRef }) }),
+    }))
+    const outerFormRef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('XObject'), Subtype: PDFName.of('Form'),
+      Resources: doc.context.obj({ XObject: doc.context.obj({ Fm2: innerFormRef }) }),
+    }))
+    doc.getPage(0).node.Resources().set(PDFName.of('XObject'), doc.context.obj({ Fm1: outerFormRef }))
+
+    const images = listImagesForAltText(doc)
+    expect(images).toHaveLength(0)
   })
 })
 

@@ -23,6 +23,13 @@ Repository: https://github.com/Brooooooklyn/canvas
 
 
 ----------------------------------------------------------------------
+@pdf-lib/fontkit@1.1.1
+Lizenz: MIT
+Repository: https://github.com/Hopding/fontkit
+Publisher: Andrew Dillon
+
+
+----------------------------------------------------------------------
 @pdf-lib/standard-fonts@1.0.0
 Lizenz: MIT
 Repository: https://github.com/Hopding/standard-fonts
@@ -1505,4 +1512,18 @@ Publisher: Jay Berkenbilt und qpdf-Mitwirkende
 Wird als eigenstaendiger Prozess aufgerufen (kein Linking in den eigenen Code)
 fuer die PDF-Verschluesselung (Passwort/Berechtigungen) im Verschluesseln-Dialog,
 da pdf-lib selbst keine PDF-Verschluesselung unterstuetzt.
+
+----------------------------------------------------------------------
+Liberation Sans 2.1.5 (Regular + Bold, src/assets/)
+Lizenz: SIL Open Font License 1.1
+Quelle: https://github.com/liberationfonts/liberation-fonts (offizielles Release)
+Copyright: Google Corporation (2010), Red Hat, Inc. (2012) - Reserved Font Name 'Liberation'
+
+Metrisch mit Helvetica/Arial kompatibel. Ersetzt pdf-lib's nicht einbettbare
+StandardFonts.Helvetica/HelveticaBold ueberall dort, wo diese App selbst Text
+in ein PDF schreibt (Wasserzeichen, Kopf-/Fusszeile, Signatur-Beschriftung,
+OCR-Textebene, geflattete Notiz-/Textfeld-Anmerkungen), um die dadurch
+verursachte PDF/A-Regelverletzung (nicht eingebettete Schriftart) zu beheben.
+Unveraendert weitergegeben, siehe volle Lizenz unter
+https://github.com/liberationfonts/liberation-fonts/blob/master/LICENSE
 
