@@ -13,6 +13,7 @@ import {
   Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 
 // Simple subsequence fuzzy match: every char of `query` must appear in
 // `text`, in order (not necessarily contiguous). Returns a score (lower is
@@ -34,7 +35,31 @@ function fuzzyScore(text, query) {
 
 export default function CommandPalette() {
   const { t } = useTranslation()
-  const s = useStore()
+  // Every field/action this component touches (directly or via `s.xxx`)
+  // listed explicitly - action functions are referentially stable in
+  // Zustand, so they never fail the shallow-equality check; only the actual
+  // state values below (commandPaletteOpen, pdfDoc, activeTool, ...) can
+  // trigger a re-render.
+  const s = useStore(useShallow(state => ({
+    commandPaletteOpen: state.commandPaletteOpen, closeCommandPalette: state.closeCommandPalette,
+    pdfDoc: state.pdfDoc, activeTool: state.activeTool, nightMode: state.nightMode,
+    twoPageView: state.twoPageView, magnifierActive: state.magnifierActive, toolbarLabels: state.toolbarLabels,
+    theme: state.theme, sidebarOpen: state.sidebarOpen, currentPage: state.currentPage, totalPages: state.totalPages,
+    annotationHistory: state.annotationHistory, annotationFuture: state.annotationFuture,
+    setActiveTool: state.setActiveTool, setSidebarTab: state.setSidebarTab, setToolbarLabels: state.setToolbarLabels,
+    setTwoPageView: state.setTwoPageView, toggleSidebar: state.toggleSidebar, toggleNightMode: state.toggleNightMode,
+    togglePresentation: state.togglePresentation, toggleMagnifier: state.toggleMagnifier,
+    zoomIn: state.zoomIn, zoomOut: state.zoomOut, rotatePageLeft: state.rotatePageLeft, rotatePageRight: state.rotatePageRight,
+    undoAnnotation: state.undoAnnotation, redoAnnotation: state.redoAnnotation,
+    openPrintDialog: state.openPrintDialog, openSplit: state.openSplit, openOCR: state.openOCR,
+    openWatermark: state.openWatermark, openSignature: state.openSignature, openHeaderFooter: state.openHeaderFooter,
+    openCompress: state.openCompress, openExportImages: state.openExportImages, openQRCode: state.openQRCode,
+    openCrop: state.openCrop, openBatch: state.openBatch, openCompare: state.openCompare,
+    openSanitize: state.openSanitize, openSignatureVerify: state.openSignatureVerify, openMailMerge: state.openMailMerge,
+    openPdfa: state.openPdfa, openA11y: state.openA11y, openLibrary: state.openLibrary, openEncrypt: state.openEncrypt,
+    openImagesToPdf: state.openImagesToPdf, openTableExtract: state.openTableExtract,
+    openProperties: state.openProperties, openSettings: state.openSettings, openShortcuts: state.openShortcuts,
+  })))
   const { commandPaletteOpen, closeCommandPalette, pdfDoc, activeTool, nightMode, twoPageView, magnifierActive, toolbarLabels } = s
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
