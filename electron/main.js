@@ -3,6 +3,7 @@ const path = require('path')
 const fs   = require('fs')
 const os   = require('os')
 const { execFile } = require('child_process')
+const { assertExtension, getInitialFile, scanFolder, LIBRARY_SCAN_LIMIT } = require('./mainUtils')
 
 const isDev = !app.isPackaged
 
@@ -30,16 +31,10 @@ app.on('second-instance', (_event, argv) => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore()
     mainWindow.focus()
-    const file = getInitialFile(argv)
+    const file = getInitialFile(argv, isDev)
     if (file) mainWindow.webContents.send('open-file', file)
   }
 })
-
-function getInitialFile(argv = process.argv) {
-  // In production: argv = [exe, file?]; in dev: argv = [electron, main.js, file?]
-  const args = argv.slice(isDev ? 2 : 1)
-  return args.find(a => !a.startsWith('-') && a.toLowerCase().endsWith('.pdf') && fs.existsSync(a)) || null
-}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -96,7 +91,7 @@ function createWindow() {
 
   // Send initial file (opened via double-click / "Open with") once the renderer is ready
   mainWindow.webContents.on('did-finish-load', () => {
-    const file = getInitialFile()
+    const file = getInitialFile(process.argv, isDev)
     if (file) mainWindow.webContents.send('open-file', file)
   })
 
@@ -213,13 +208,6 @@ ipcMain.handle('dialog:openImages', () => dialog.showOpenDialog(mainWindow, {
 // arbitrary files on disk (defense in depth in case of a future renderer compromise).
 const READABLE_EXTENSIONS = new Set(['.pdf', '.csv', '.png', '.jpg', '.jpeg', '.xfdf', '.fdf'])
 const WRITABLE_EXTENSIONS  = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
-
-function assertExtension(filePath, allowed) {
-  const ext = path.extname(filePath).toLowerCase()
-  if (!allowed.has(ext)) {
-    throw new Error(`Dateityp "${ext}" ist für diese Operation nicht erlaubt.`)
-  }
-}
 
 ipcMain.handle('fs:read', (_, filePath) => {
   assertExtension(filePath, READABLE_EXTENSIONS)
@@ -470,32 +458,9 @@ ipcMain.handle('dialog:saveDirectory', () => dialog.showOpenDialog(mainWindow, {
 }))
 
 // ── Document library: recursive scan of watched folders for PDFs ──────────
-// Capped at LIBRARY_SCAN_LIMIT files / LIBRARY_SCAN_DEPTH directory levels so a
-// folder pointed at something huge (e.g. a whole user profile) can't hang the app.
-const LIBRARY_SCAN_LIMIT = 2000
-const LIBRARY_SCAN_DEPTH = 6
-
-function scanFolder(root, results) {
-  const walk = (dir, depth) => {
-    if (results.length >= LIBRARY_SCAN_LIMIT || depth > LIBRARY_SCAN_DEPTH) return
-    let entries
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
-    for (const entry of entries) {
-      if (results.length >= LIBRARY_SCAN_LIMIT) return
-      const full = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        walk(full, depth + 1)
-      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf')) {
-        try {
-          const stat = fs.statSync(full)
-          results.push({ path: full, name: entry.name, size: stat.size, mtimeMs: stat.mtimeMs })
-        } catch {}
-      }
-    }
-  }
-  walk(root, 0)
-}
-
+// scanFolder() is capped at LIBRARY_SCAN_LIMIT files / LIBRARY_SCAN_DEPTH
+// directory levels (see mainUtils.js) so a folder pointed at something huge
+// (e.g. a whole user profile) can't hang the app.
 ipcMain.handle('library:scan', (_, folders) => {
   const results = []
   for (const folder of folders || []) {
