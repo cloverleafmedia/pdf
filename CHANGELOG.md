@@ -10,6 +10,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Code-Cleanup: das ~14-fach duplizierte "PDF speichern → pdf.js neu laden"-Muster zu `reloadPdfDoc()` extrahiert; das ~8-fach duplizierte "Datei speichern unter"-Muster zu `saveAsNewFile()` extrahiert.
 - Store-Aufräumung: `sidebarWidth` und die Anmerkungs-Deckkraft sind jetzt einfache Konstanten statt (nie tatsächlich geänderter) Store-Felder; nie gelesener `compareBytes`-Wert aus dem Store entfernt; verwaiste `hasJavaScript`-Berechnung in der Struktur-Prüfung entfernt (durch die eigenständige JS-Erkennung aus v1.7.0 ersetzt).
 - `electron/main.js`: reine Logik (Dateityp-Prüfung, Kommandozeilen-Datei-Erkennung, Bibliotheks-Ordner-Scan) nach `electron/mainUtils.js` extrahiert und erstmals mit Tests abgesichert.
+- Große Refaktorierung: `PDFViewer.jsx`s Maus-Interaktionslogik (bisher drei ~70-100-zeilige Funktionen mit einer Verzweigung pro Werkzeug) in einzelne Werkzeug-Hooks aufgeteilt (`useEraserTool`, `useRedactTool`, `useFormFieldTool`, `useShapeTool`, `useDrawTool` unter `src/components/pdf-tools/`) — jedes Werkzeug hat jetzt seinen eigenen, unabhängigen Maus-Zustand statt sich einen gemeinsamen Ref-Pool zu teilen.
 
 ### Sicherheit
 - CSV-Export (Tabellenextraktion): Zellen, die mit `=`, `+`, `-` oder `@` beginnen, werden jetzt escaped — Schutz vor Formel-Injection, falls eine präparierte PDF-Tabelle beim Öffnen der exportierten CSV in Excel/Sheets eine Formel ausführen sollte.
@@ -27,6 +28,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ### Hinweise
 - `npm run audit:deps`-Hinweis zu `crypto-js`/`pdfkit` erneut geprüft, weiterhin nur transitiv vorhanden und im tatsächlich genutzten Codepfad nicht ausnutzbar (siehe v1.5.0).
+- Die Werkzeug-Hook-Aufteilung wurde mechanisch (nahezu zeilengleich) extrahiert und nach jedem einzelnen Hook durch die volle Testsuite + Produktions-Build verifiziert; echte Maus-Drag-Interaktion konnte in dieser Entwicklungsumgebung nicht automatisiert live getestet werden (Fenster wird als `document.hidden` erkannt, synthetische Eingaben werden dadurch unterdrückt — dasselbe bereits dokumentierte Umgebungslimit wie bei früheren Releases, hier über das Chrome DevTools Protocol bestätigt statt über PowerShell-Maussteuerung).
 - Bekannte, bewusst nicht behobene Lücken: keine Tabellen-/Überschriften-/Listen-Struktur-Tags (echte Tagging-Arbeit bleibt manuell); Alt-Text-Erkennung deckt keine Bilder in Annotation-Appearance-Streams oder Inline-Images ab; Schwärzen verwirft weiterhin den kompletten Struktur-/Lesezeichen-/AcroForm-Baum des Dokuments (kein sicherer Teil-Erhalt mit pdf-lib ohne substanzielles Redesign — siehe Code-Kommentar in `PDFViewer.jsx`).
 
 ## [1.7.0] – 2026-07-04
