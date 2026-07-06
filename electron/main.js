@@ -207,6 +207,20 @@ ipcMain.handle('dialog:openImages', () => dialog.showOpenDialog(mainWindow, {
   filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg'] }],
 }))
 
+// Attachments can be of any file type (docx, zip, xlsx, ...) - unlike every
+// other dialog above, this one is intentionally unfiltered.
+ipcMain.handle('dialog:openAttachment', () => dialog.showOpenDialog(mainWindow, {
+  title: 'Datei als Anhang auswählen',
+  properties: ['openFile'],
+  filters: [{ name: 'Alle Dateien', extensions: ['*'] }],
+}))
+
+ipcMain.handle('dialog:saveAttachment', (_, defaultName) => dialog.showSaveDialog(mainWindow, {
+  title: 'Anhang speichern unter',
+  defaultPath: defaultName || 'anhang',
+  filters: [{ name: 'Alle Dateien', extensions: ['*'] }],
+}))
+
 // ── File I/O ───────────────────────────────────────────────────────────────
 // Extension allowlist: renderer-controlled paths must not be able to read/write
 // arbitrary files on disk (defense in depth in case of a future renderer compromise).
@@ -230,6 +244,24 @@ ipcMain.handle('fs:read', (_, filePath) => {
 ipcMain.handle('fs:write', (_, filePath, data) => {
   const resolved = path.resolve(filePath)
   assertExtension(resolved, WRITABLE_EXTENSIONS)
+  if (isPathDenied(resolved, DENIED_ROOTS)) throw new Error('Zugriff auf diesen Pfad ist nicht erlaubt.')
+  fs.writeFileSync(resolved, Buffer.from(data))
+  return true
+})
+
+// Attachment-only counterparts to fs:read/fs:write: deliberately skip the
+// extension allowlist above (attachments can be any file type), but keep the
+// same install-directory denial check - narrowly scoped to this one feature
+// rather than loosening the general-purpose fs:read/fs:write allowlist.
+ipcMain.handle('fs:readAttachment', (_, filePath) => {
+  const resolved = path.resolve(filePath)
+  if (isPathDenied(resolved, DENIED_ROOTS)) throw new Error('Zugriff auf diesen Pfad ist nicht erlaubt.')
+  const data = fs.readFileSync(resolved)
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+})
+
+ipcMain.handle('fs:writeAttachment', (_, filePath, data) => {
+  const resolved = path.resolve(filePath)
   if (isPathDenied(resolved, DENIED_ROOTS)) throw new Error('Zugriff auf diesen Pfad ist nicht erlaubt.')
   fs.writeFileSync(resolved, Buffer.from(data))
   return true

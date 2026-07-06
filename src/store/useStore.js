@@ -124,6 +124,7 @@ export const useStore = create((set, get) => ({
   tableExtractOpen:    false,
   commentsSummaryOpen: false,
   stampOpen:           false,
+  attachmentsOpen:     false,
 
   // ── Document library (folders watched for PDFs, tags per file path) ──────
   libraryFolders: [],
@@ -421,6 +422,8 @@ export const useStore = create((set, get) => ({
   closeCommentsSummary: () => set({ commentsSummaryOpen: false }),
   openStamp:            () => set({ stampOpen: true }),
   closeStamp:           () => set({ stampOpen: false }),
+  openAttachments:      () => set({ attachmentsOpen: true }),
+  closeAttachments:     () => set({ attachmentsOpen: false }),
 
   // ── Actions: document library ───────────────────────────────────────────
   setLibraryFolders: (folders) => {

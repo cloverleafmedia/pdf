@@ -3,7 +3,7 @@ import {
   Crop, Package2, SplitSquareHorizontal, BookmarkPlus, Download, Upload, ShieldCheck, BadgeCheck,
   FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images, Table2, ClipboardList, Award,
   Highlighter, Underline, Strikethrough, StickyNote, Type, Pen, Eraser,
-  Moon, Presentation, Layers, Search,
+  Moon, Presentation, Layers, Search, Paperclip,
 } from 'lucide-react'
 
 // Single source of truth for the three already array-based tool groups, so
@@ -24,7 +24,7 @@ export function buildDocumentItems({
   t, pdfDoc, openSplit, openOCR, openWatermark, openSignature, openHeaderFooter, openCompress,
   openExportImages, openQRCode, openCrop, openBatch, openCompare, openSanitize, openSignatureVerify,
   openMailMerge, openPdfa, openA11y, openLibrary, openEncrypt, openImagesToPdf, openTableExtract,
-  openCommentsSummary, openStamp,
+  openCommentsSummary, openStamp, openAttachments,
 }) {
   return [
     { heading: 'Seiten & Zusammenführen' },
@@ -61,8 +61,9 @@ export function buildDocumentItems({
     { id: 'commentssummary', icon: <ClipboardList size={15}/>, label: 'Kommentar-Zusammenfassung', onClick: openCommentsSummary, disabled: !pdfDoc },
 
     { heading: 'Verwaltung' },
-    { id: 'library',   icon: <Library size={15}/>,         label: 'Bibliothek', onClick: openLibrary },
-    { id: 'mailmerge', icon: <FileSpreadsheet size={15}/>, label: 'Serienbrief', onClick: openMailMerge },
+    { id: 'library',      icon: <Library size={15}/>,         label: 'Bibliothek', onClick: openLibrary },
+    { id: 'mailmerge',    icon: <FileSpreadsheet size={15}/>, label: 'Serienbrief', onClick: openMailMerge },
+    { id: 'attachments',  icon: <Paperclip size={15}/>,       label: 'Anhänge', onClick: openAttachments, disabled: !pdfDoc },
   ]
 }
 

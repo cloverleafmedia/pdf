@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('api', {
   openXFDF: () => ipcRenderer.invoke('dialog:openXFDF'),
   openImages: () => ipcRenderer.invoke('dialog:openImages'),
   pickFolder: (title) => ipcRenderer.invoke('dialog:pickFolder', title),
+  openAttachment: () => ipcRenderer.invoke('dialog:openAttachment'),
+  saveAttachment: (n) => ipcRenderer.invoke('dialog:saveAttachment', n),
 
   // Digital signature (certificate never leaves the main process)
   signPDF: (pdfBytes, certPath, password, meta) => ipcRenderer.invoke('sign:pdf', pdfBytes, certPath, password, meta),
@@ -45,6 +47,8 @@ contextBridge.exposeInMainWorld('api', {
   // File I/O
   readFile:     (p)    => ipcRenderer.invoke('fs:read', p),
   writeFile:    (p, d) => ipcRenderer.invoke('fs:write', p, d),
+  readAttachment:  (p)    => ipcRenderer.invoke('fs:readAttachment', p),
+  writeAttachment: (p, d) => ipcRenderer.invoke('fs:writeAttachment', p, d),
   fileExists:   (p)    => ipcRenderer.invoke('fs:exists', p),
   showInFolder: (p)    => ipcRenderer.invoke('shell:showInFolder', p),
 

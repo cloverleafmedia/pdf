@@ -56,7 +56,7 @@ export default function CommandPalette() {
     openCrop: state.openCrop, openBatch: state.openBatch, openCompare: state.openCompare,
     openSanitize: state.openSanitize, openSignatureVerify: state.openSignatureVerify, openMailMerge: state.openMailMerge,
     openPdfa: state.openPdfa, openA11y: state.openA11y, openLibrary: state.openLibrary, openEncrypt: state.openEncrypt,
-    openImagesToPdf: state.openImagesToPdf, openTableExtract: state.openTableExtract, openCommentsSummary: state.openCommentsSummary, openStamp: state.openStamp,
+    openImagesToPdf: state.openImagesToPdf, openTableExtract: state.openTableExtract, openCommentsSummary: state.openCommentsSummary, openStamp: state.openStamp, openAttachments: state.openAttachments,
     openProperties: state.openProperties, openSettings: state.openSettings, openShortcuts: state.openShortcuts,
   })))
   const { commandPaletteOpen, closeCommandPalette, pdfDoc, activeTool, nightMode, twoPageView, magnifierActive, toolbarLabels } = s
@@ -135,7 +135,7 @@ export default function CommandPalette() {
       openHeaderFooter: s.openHeaderFooter, openCompress: s.openCompress, openExportImages: s.openExportImages, openQRCode: s.openQRCode,
       openCrop: s.openCrop, openBatch: s.openBatch, openCompare: s.openCompare, openSanitize: s.openSanitize, openSignatureVerify: s.openSignatureVerify,
       openMailMerge: s.openMailMerge, openPdfa: s.openPdfa, openA11y: s.openA11y, openLibrary: s.openLibrary, openEncrypt: s.openEncrypt,
-      openImagesToPdf: s.openImagesToPdf, openTableExtract: s.openTableExtract, openCommentsSummary: s.openCommentsSummary, openStamp: s.openStamp,
+      openImagesToPdf: s.openImagesToPdf, openTableExtract: s.openTableExtract, openCommentsSummary: s.openCommentsSummary, openStamp: s.openStamp, openAttachments: s.openAttachments,
     }).filter(it => !it.heading).map(it => ({
       group: 'Dokument', label: it.label, icon: it.icon, disabled: it.disabled, action: run(it.onClick),
     })),
