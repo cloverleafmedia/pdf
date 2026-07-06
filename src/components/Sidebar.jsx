@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
 import { navigateToPage } from '../lib/navigate'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
+import { ANNOTATION_ICONS } from '../lib/annotationIcons'
 
 // Fixed thumbnail render width — also used to pre-compute placeholder height
 // (see ThumbPage) so the reserved space matches what renderThumb() ends up
@@ -540,7 +541,6 @@ function AnnotationsList({ isDark }) {
   const {
     annotations, removeAnnotation, addReply, deleteReply,
   } = useStore(useShallow(state => ({ annotations: state.annotations, removeAnnotation: state.removeAnnotation, addReply: state.addReply, deleteReply: state.deleteReply })))
-  const ICONS = { highlight: '🟡', note: '📌', text: '📝', draw: '✏️', underline: '▁', strikethrough: '—' }
   const [expanded, setExpanded] = useState({})
   const [drafts,   setDrafts]   = useState({})
 
@@ -564,7 +564,7 @@ function AnnotationsList({ isDark }) {
             <div onClick={() => navigateToPage(a.page, { setPage: false })}
               className={`flex items-start gap-2 p-2 rounded-lg cursor-pointer group transition-colors
                 ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`}>
-              <span className="text-base flex-shrink-0 mt-0.5">{ICONS[a.type] || '📎'}</span>
+              <span className="text-base flex-shrink-0 mt-0.5">{ANNOTATION_ICONS[a.type] || '📎'}</span>
               <div className="flex-1 min-w-0">
                 <span className={`font-semibold ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>S. {a.page}</span>
                 {a.text && <div className={`truncate mt-0.5 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>{a.text}</div>}

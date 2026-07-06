@@ -61,6 +61,26 @@ export function buildXfdf(annotations, pageDimensions) {
           replyElements(a, pageIndex) +
           `</${tag}>`
         )
+      } else if (a.type === 'rectangle' || a.type === 'circle') {
+        const x = a.x * sx, w = a.w * sx, h = a.h * sy
+        const y = ph - (a.y + a.h) * sy
+        const tag = a.type === 'rectangle' ? 'square' : 'circle'
+        elements.push(
+          `<${tag} page="${pageIndex}" rect="${x},${y},${x + w},${y + h}" color="${color}" name="${name}">` +
+          replyElements(a, pageIndex) +
+          `</${tag}>`
+        )
+      } else if (a.type === 'arrow') {
+        const x1 = a.x1 * sx, y1 = ph - a.y1 * sy
+        const x2 = a.x2 * sx, y2 = ph - a.y2 * sy
+        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2)
+        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2)
+        elements.push(
+          `<line page="${pageIndex}" rect="${minX},${minY},${maxX},${maxY}" color="${color}" ` +
+          `start="${x1},${y1}" end="${x2},${y2}" name="${name}">` +
+          replyElements(a, pageIndex) +
+          `</line>`
+        )
       }
     }
   }

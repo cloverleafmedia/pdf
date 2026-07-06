@@ -78,6 +78,39 @@ describe('buildXfdf', () => {
     expect(xml).toContain('<contents>a reply</contents>')
   })
 
+  it('emits a rectangle shape as <square>', () => {
+    const annotations = [{ id: 10, type: 'rectangle', page: 1, color: '#3b82f6', pageW: 400, pageH: 500, x: 10, y: 20, w: 100, h: 30 }]
+    const xml = buildXfdf(annotations, PAGE_DIMS)
+    // y = ph - (a.y + a.h) = 500 - 50 = 450; rect = "10,450,110,480"
+    expect(xml).toMatch(/<square page="0" rect="10,450,110,480" color="#3b82f6" name="ann-10">/)
+    expect(xml).toContain('</square>')
+  })
+
+  it('emits a circle shape as <circle>', () => {
+    const annotations = [{ id: 11, type: 'circle', page: 1, color: '#10b981', pageW: 400, pageH: 500, x: 10, y: 20, w: 100, h: 30 }]
+    const xml = buildXfdf(annotations, PAGE_DIMS)
+    expect(xml).toMatch(/<circle page="0" rect="10,450,110,480" color="#10b981" name="ann-11">/)
+    expect(xml).toContain('</circle>')
+  })
+
+  it('emits an arrow shape as <line> with start/end coordinates', () => {
+    const annotations = [{ id: 12, type: 'arrow', page: 1, color: '#ef4444', pageW: 400, pageH: 500, x1: 10, y1: 20, x2: 60, y2: 70 }]
+    const xml = buildXfdf(annotations, PAGE_DIMS)
+    // y1 = 500-20 = 480; y2 = 500-70 = 430
+    expect(xml).toMatch(/<line page="0" rect="10,430,60,480" color="#ef4444" start="10,480" end="60,430" name="ann-12">/)
+    expect(xml).toContain('</line>')
+  })
+
+  it('nests replies inside shape elements too, not just text/ink', () => {
+    const annotations = [{
+      id: 13, type: 'rectangle', page: 1, color: '#000', pageW: 400, pageH: 500, x: 0, y: 0, w: 10, h: 10,
+      replies: [{ id: 100, text: 'shape reply', time: 0 }],
+    }]
+    const xml = buildXfdf(annotations, PAGE_DIMS)
+    expect(xml).toContain('inreplyto="ann-13"')
+    expect(xml).toContain('<contents>shape reply</contents>')
+  })
+
   it('skips annotations whose page has no known dimensions', () => {
     const annotations = [{ id: 9, type: 'highlight', page: 5, color: '#000', pageW: 400, pageH: 500, rects: [{ x: 0, y: 0, w: 10, h: 10 }] }]
     expect(() => buildXfdf(annotations, PAGE_DIMS)).not.toThrow()

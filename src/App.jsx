@@ -43,6 +43,7 @@ const ImagesToPdfModal            = lazy(() => import('./components/modals/Image
 const AltTextModal                = lazy(() => import('./components/modals/AltTextModal'))
 const SignatureVerifyModal        = lazy(() => import('./components/modals/SignatureVerifyModal'))
 const TableExtractModal           = lazy(() => import('./components/modals/TableExtractModal'))
+const CommentsSummaryModal        = lazy(() => import('./components/modals/CommentsSummaryModal'))
 const PresentationMode            = lazy(() => import('./components/PresentationMode'))
 const CompareView                 = lazy(() => import('./components/CompareView'))
 
@@ -392,6 +393,7 @@ export default function App() {
         {altTextOpen       && <AltTextModal />}
         {signatureVerifyOpen && <SignatureVerifyModal />}
         {tableExtractOpen  && <TableExtractModal />}
+        {commentsSummaryOpen && <CommentsSummaryModal />}
       </Suspense>
       <CommandPalette />
     </div>
