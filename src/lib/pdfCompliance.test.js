@@ -13,6 +13,8 @@ import {
   listImagesForAltText,
   setImageAltText,
   checkFormFieldLabels,
+  setDocumentLang,
+  setFormFieldLabelsFallback,
 } from './pdfCompliance.js'
 
 async function makeDoc() {
@@ -370,5 +372,55 @@ describe('checkFormFieldLabels', () => {
     const result = checkFormFieldLabels(doc)
     expect(result.total).toBe(2)
     expect(result.withLabel).toBe(1)
+  })
+})
+
+describe('setDocumentLang', () => {
+  it('sets /Lang so checkStructure reads it back', async () => {
+    const doc = await makeDoc()
+    expect(checkStructure(doc).lang).toBe('')
+    setDocumentLang(doc, 'de')
+    expect(checkStructure(doc).lang).toBe('de')
+  })
+
+  it('defaults to "de" when no language is given', async () => {
+    const doc = await makeDoc()
+    setDocumentLang(doc)
+    expect(checkStructure(doc).lang).toBe('de')
+  })
+})
+
+describe('setImageAltText with an empty image list (the a11y-autofix minimal-tagging path)', () => {
+  it('produces a Marked MarkInfo + an empty StructTreeRoot when the document had neither', async () => {
+    const doc = await makeDoc()
+    expect(checkStructure(doc).isMarked).toBe(false)
+    expect(checkStructure(doc).hasStructTree).toBe(false)
+
+    setImageAltText(doc, [])
+
+    const structure = checkStructure(doc)
+    expect(structure.isMarked).toBe(true)
+    expect(structure.hasStructTree).toBe(true)
+  })
+})
+
+describe('setFormFieldLabelsFallback', () => {
+  it('sets /TU to the field name on every unlabeled field, leaving labeled fields untouched', async () => {
+    const doc = await makeDoc()
+    const form = doc.getForm()
+    const labeled = form.createTextField('labeled')
+    labeled.addToPage(doc.getPage(0))
+    labeled.acroField.dict.set(PDFName.of('TU'), PDFString.of('Enter your name'))
+
+    const unlabeled = form.createTextField('unlabeled')
+    unlabeled.addToPage(doc.getPage(0))
+
+    setFormFieldLabelsFallback(doc)
+
+    const result = checkFormFieldLabels(doc)
+    expect(result.total).toBe(2)
+    expect(result.withLabel).toBe(2)
+    expect(labeled.acroField.dict.lookup(PDFName.of('TU')).decodeText()).toBe('Enter your name')
+    expect(unlabeled.acroField.dict.lookup(PDFName.of('TU')).decodeText()).toBe('unlabeled')
   })
 })

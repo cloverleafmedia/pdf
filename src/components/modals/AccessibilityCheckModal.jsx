@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Accessibility, CheckCircle2, XCircle, Info } from 'lucide-react'
+import { Accessibility, CheckCircle2, XCircle, Info, Wand2 } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
-import { checkStructure, checkDisplayDocTitle, checkTransparencyAndColorSpace, checkFormFieldLabels, checkImageAltText } from '../../lib/pdfCompliance'
+import { checkStructure, checkDisplayDocTitle, checkTransparencyAndColorSpace, checkFormFieldLabels, checkImageAltText, setImageAltText, setDocumentLang, setFormFieldLabelsFallback } from '../../lib/pdfCompliance'
+import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 
 function Row({ status, title, detail, isDark }) {
   const Icon = status === 'pass' ? CheckCircle2 : status === 'fail' ? XCircle : Info
@@ -22,17 +23,18 @@ function Row({ status, title, detail, isDark }) {
 
 export default function AccessibilityCheckModal() {
   const {
-    pdfBytes, theme, closeA11y, fileName, openAltText,
-  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, theme: state.theme, closeA11y: state.closeA11y, fileName: state.fileName, openAltText: state.openAltText })))
+    pdfBytes, filePath, theme, closeA11y, fileName, openAltText, setStatus, openDocument,
+  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, filePath: state.filePath, theme: state.theme, closeA11y: state.closeA11y, fileName: state.fileName, openAltText: state.openAltText, setStatus: state.setStatus, openDocument: state.openDocument })))
   const isDark = theme === 'dark'
   const [checks, setChecks] = useState(null)
   const [running, setRunning] = useState(false)
+  const [fixing, setFixing] = useState(false)
 
-  const run = async () => {
-    if (!pdfBytes) return
+  const run = async (bytes = pdfBytes) => {
+    if (!bytes) return
     setRunning(true)
     try {
-      const doc = await PDFDocument.load(pdfBytes)
+      const doc = await PDFDocument.load(bytes)
       const structure = checkStructure(doc)
       const title = doc.getTitle()
       const displayDocTitle = checkDisplayDocTitle(doc)
@@ -45,16 +47,19 @@ export default function AccessibilityCheckModal() {
           status: structure.isMarked ? 'pass' : 'fail',
           title: 'Dokument als getaggt markiert (/MarkInfo)',
           detail: structure.isMarked ? undefined : 'Fehlt — Screenreader können nicht sicher erkennen, dass Tags vorhanden sind.',
+          fixable: !structure.isMarked && !structure.hasStructTree, fixId: 'markinfo',
         },
         {
           status: structure.hasStructTree ? 'pass' : 'fail',
           title: 'Struktur-Baum (Tags) vorhanden',
           detail: structure.hasStructTree ? undefined : 'Kein StructTreeRoot — Lesereihenfolge und Semantik (Überschrift, Absatz, Tabelle …) fehlen für Screenreader.',
+          fixable: !structure.isMarked && !structure.hasStructTree, fixId: 'markinfo',
         },
         {
           status: structure.lang ? 'pass' : 'fail',
           title: 'Dokumentsprache gesetzt',
           detail: structure.lang ? `Gesetzt auf "${structure.lang}"` : 'Fehlt — Screenreader wissen nicht, welche Sprache vorgelesen werden soll.',
+          fixable: !structure.lang, fixId: 'lang',
         },
         {
           status: title ? 'pass' : 'fail',
@@ -72,6 +77,7 @@ export default function AccessibilityCheckModal() {
           detail: formFields.total === 0
             ? 'Keine Formularfelder im Dokument.'
             : `${formFields.withLabel} von ${formFields.total} Feld(ern) haben eine Beschriftung.`,
+          fixable: formFields.total > 0 && formFields.withLabel < formFields.total, fixId: 'formLabels',
         },
         {
           status: !altText.supported
@@ -106,13 +112,35 @@ export default function AccessibilityCheckModal() {
 
   const passed = checks?.filter(c => c.status === 'pass').length ?? 0
   const failed = checks?.filter(c => c.status === 'fail').length ?? 0
+  const fixableIds = new Set((checks ?? []).filter(c => c.status === 'fail' && c.fixable).map(c => c.fixId))
+
+  const autoFix = async () => {
+    if (!pdfBytes || fixableIds.size === 0) return
+    setFixing(true)
+    try {
+      const doc = await PDFDocument.load(pdfBytes)
+      if (fixableIds.has('markinfo')) setImageAltText(doc, [])
+      if (fixableIds.has('lang')) setDocumentLang(doc, 'de')
+      if (fixableIds.has('formLabels')) setFormFieldLabelsFallback(doc)
+      const bytes = await doc.save()
+      const reloaded = await reloadPdfDoc(bytes)
+      openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
+      setStatus('Barrierefreiheits-Probleme automatisch behoben')
+      await run(bytes)
+    } catch (e) {
+      console.error(e)
+      setStatus('Fehler: ' + e.message)
+    } finally {
+      setFixing(false)
+    }
+  }
 
   return (
     <Modal isDark={isDark} onClose={closeA11y} title="Barrierefreiheits-Check (PDF/UA)">
       <div className="p-5 space-y-3" style={{ minWidth: 440 }}>
         <div className={`text-xs rounded-lg px-3 py-2 flex items-start gap-2 ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-blue-50 text-blue-700'}`}>
           <Accessibility size={14} className="flex-shrink-0 mt-0.5"/>
-          <span>Prüft "{fileName}" gegen zentrale PDF/UA-Kriterien. Reine Prüfung — behebt Probleme nicht automatisch, da echtes Tagging/Alt-Text-Zuordnung manuelle Arbeit im Struktur-Baum erfordert.</span>
+          <span>Prüft "{fileName}" gegen zentrale PDF/UA-Kriterien. Drei einfache Punkte (Dokumentsprache, minimale Tag-Struktur, Formularfeld-Beschriftung) lassen sich automatisch beheben — alles andere (echtes Tagging, Alt-Text-Zuordnung, Schriftart-Einbettung) erfordert weiterhin manuelle Arbeit.</span>
         </div>
 
         {running && <div className={`text-xs ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Prüfe …</div>}
@@ -125,6 +153,12 @@ export default function AccessibilityCheckModal() {
             <div className="space-y-1.5">
               {checks.map((c, i) => <Row key={i} {...c} isDark={isDark}/>)}
             </div>
+            {fixableIds.size > 0 && (
+              <button onClick={autoFix} disabled={fixing}
+                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
+                <Wand2 size={13}/> {fixing ? 'Behebe …' : `${fixableIds.size} Problem(e) automatisch beheben`}
+              </button>
+            )}
             <button onClick={openAltText}
               className={`w-full px-3 py-1.5 rounded-lg text-xs border transition-colors
                 ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>

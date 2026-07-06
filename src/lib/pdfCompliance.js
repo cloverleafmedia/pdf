@@ -275,3 +275,28 @@ export function checkFormFieldLabels(doc) {
     return { total: 0, withLabel: 0 }
   }
 }
+
+// --- Autofix writers (v1.8.0) ------------------------------------------
+// Deliberately limited to the three checks cheap/unambiguous enough to fix
+// without any user input: a missing document language, a completely absent
+// tag tree (the MarkInfo/StructTreeRoot writer already exists above as
+// setImageAltText - calling it with an empty image list produces exactly
+// this minimal skeleton, so no separate writer is needed for that case),
+// and missing form-field tooltips falling back to the field's own name.
+// Font embedding and real accessibility tagging are NOT autofixable here -
+// they require re-encoding fonts or genuine manual structure work.
+
+export function setDocumentLang(doc, lang = 'de') {
+  doc.catalog.set(PDFName.of('Lang'), PDFString.of(lang))
+}
+
+export function setFormFieldLabelsFallback(doc) {
+  for (const field of doc.getForm().getFields()) {
+    try {
+      if (!field.acroField.dict.lookup(PDFName.of('TU')))
+        field.acroField.dict.set(PDFName.of('TU'), PDFString.of(field.getName()))
+    } catch {
+      // Malformed field dict - skip rather than abort the whole autofix.
+    }
+  }
+}
