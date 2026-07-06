@@ -359,6 +359,10 @@ function PDFPage({ pageNum }) {
   const [inlineInput, setInline]  = useState(null)
   // Dragging a placed annotation (hand tool)
   const [annotDrag, setAnnotDrag] = useState(null) // { id, sx, sy, ox, oy }
+  // Resizing a placed stamp annotation (hand tool) - other annotation types
+  // either have no explicit w/h (note/text are content-sized) or weren't
+  // asked to support resize (shapes)
+  const [annotResize, setAnnotResize] = useState(null) // { id, sx, sy, ow, oh }
   // Dragging / resizing a pending new-field draft (hand tool)
   const [fieldDrag, setFieldDrag]     = useState(null) // { id, sx, sy, ox, oy }
   const [fieldResize, setFieldResize] = useState(null) // { id, sx, sy, ow, oh }
@@ -398,6 +402,20 @@ function PDFPage({ pageNum }) {
     window.addEventListener('mouseup',   onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [annotDrag, updateAnnotation])
+
+  // ── Stamp resize (hand tool) ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!annotResize) return
+    const onMove = (e) => {
+      const dx = e.clientX - annotResize.sx
+      const dy = e.clientY - annotResize.sy
+      updateAnnotation(annotResize.id, { w: Math.max(20, annotResize.ow + dx), h: Math.max(14, annotResize.oh + dy) })
+    }
+    const onUp = () => setAnnotResize(null)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [annotResize, updateAnnotation])
 
   // ── New-field draft drag (hand tool) ─────────────────────────────────────
   useEffect(() => {
@@ -809,6 +827,12 @@ function PDFPage({ pageNum }) {
           {a.kind === 'custom'
             ? <img src={a.imageUrl} alt="Stempel" className="w-full h-full object-contain pointer-events-none" draggable={false}/>
             : a.text}
+          {activeTool === 'hand' && (
+            <div
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setAnnotResize({ id: a.id, sx: e.clientX, sy: e.clientY, ow: a.w, oh: a.h }) }}
+              className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-blue-500 cursor-nwse-resize pointer-events-auto"
+            />
+          )}
         </DraggableAnnotationMarker>
       ))}
 
