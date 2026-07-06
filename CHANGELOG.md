@@ -6,6 +6,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- Native PDF-Lesezeichen: eigene Lesezeichen werden jetzt echt ins PDF geschrieben (statt nur app-lokal in `localStorage`), umbenennbar, löschbar und per Drag verschiebbar. Ein bereits vorhandenes natives Inhaltsverzeichnis bleibt read-only mit Warnhinweis vor dem Ersetzen.
+- Anhänge-Verwaltung: neues Modal zeigt im PDF eingebettete Dateien an, erlaubt Extrahieren auf die Festplatte sowie Hinzufügen neuer Anhänge.
+- OCR-Sprachen um acht Pakete erweitert (Italienisch, Chinesisch, Polnisch, Japanisch, Portugiesisch, Russisch, Koreanisch, Türkisch) — jetzt Parität mit den 12 UI-Sprachen.
+- Textfeld-Anmerkungen: Schriftgröße und Farbe wählbar (analog zum bestehenden Farbwähler bei Markierungen/Formen).
+
+### Behoben
+- Sprachauswahl-Grid im Einstellungen-Dialog: längere/CJK-Sprachnamen (中文, 日本語, 한국어, Português) brachen in ihrer Schaltfläche um bzw. quetschten sich an die Nachbarschaltfläche.
+
+## [1.8.2] – 2026-07-06
+
+### Hinzugefügt
 - Toolbar-"Dokument"-Flyout in fünf Untergruppen gegliedert (Seiten & Zusammenführen, Schützen & Kennzeichnen, Konvertieren & Prüfen, Anmerkungen, Verwaltung) statt einer flachen Liste von 27 Einträgen.
 - Stempel: Rotationswinkel (0°/15°/-15°/45°/-45°) analog zum Wasserzeichen, inklusive Vorschau und Speicherung in Stempel-Vorlagen.
 
