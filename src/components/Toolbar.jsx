@@ -4,18 +4,17 @@ import { useFloatingMenu, FloatingMenu } from './FloatingMenu.jsx'
 import {
   FolderOpen, Save, Printer, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   ZoomIn, ZoomOut, Maximize, AlignJustify, RotateCcw, RotateCw,
-  Hand, MousePointer2, Highlighter, Underline, Strikethrough,
-  StickyNote, Type, Pen, Eraser, Merge, Scissors, ScanText,
+  Hand, MousePointer2, Highlighter,
   PanelLeftClose, PanelLeftOpen, Settings, FileText, ChevronDown,
-  Square, AlertTriangle, CheckCheck, Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
-  FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
+  Square, AlertTriangle, CheckCheck, Undo2, Redo2,
+  Search,
   Wrench, Eye, Pin, Terminal, Keyboard,
-  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes, ClipboardList, Award
+  SquarePlus, Shapes,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { navigateToPage } from '../lib/navigate'
+import { buildDocumentItems, buildAnnotateItems, buildViewItems } from '../lib/toolbarGroups.jsx'
 
 const ZOOM_PRESETS = [25, 50, 75, 100, 125, 150, 175, 200, 300, 400]
 const COLORS = ['#f59e0b','#ef4444','#3b82f6','#10b981','#a855f7','#ec4899','#000000','#ffffff']
@@ -70,53 +69,18 @@ export default function Toolbar() {
 
   const isAnnotateColorTool = ['highlight', 'underline', 'strikethrough', 'draw', 'note', 'text'].includes(activeTool)
 
-  // ── Grouped tool definitions (Adobe-style flyout menus) ──────────────────
-  const annotateItems = [
-    { id: 'highlight',     icon: <Highlighter size={15}/>,   label: t('toolbar.highlight') },
-    { id: 'underline',     icon: <Underline size={15}/>,     label: t('toolbar.underline') },
-    { id: 'strikethrough', icon: <Strikethrough size={15}/>, label: t('toolbar.strikethrough') },
-    { id: 'note',          icon: <StickyNote size={15}/>,    label: t('toolbar.note') },
-    { id: 'text',          icon: <Type size={15}/>,          label: t('toolbar.textBox') },
-    { id: 'draw',          icon: <Pen size={15}/>,           label: t('toolbar.draw') },
-    { id: 'eraser',        icon: <Eraser size={15}/>,        label: t('toolbar.eraser') },
-  ]
+  // ── Grouped tool definitions (Adobe-style flyout menus) — shared with
+  // CommandPalette.jsx via src/lib/toolbarGroups.jsx so the two can't drift ──
+  const annotateItems = buildAnnotateItems({ t })
 
-  const documentItems = [
-    { id: 'merge',       icon: <Merge size={15}/>,               label: t('toolbar.merge'),         onClick: () => window._mergePDF?.(),  disabled: !pdfDoc },
-    { id: 'repair',      icon: <Stethoscope size={15}/>,         label: 'PDF reparieren',           onClick: () => window._repairPDF?.(), disabled: !pdfDoc },
-    { id: 'split',       icon: <Scissors size={15}/>,            label: t('toolbar.split'),          onClick: openSplit,                   disabled: !pdfDoc },
-    { id: 'ocr',         icon: <ScanText size={15}/>,            label: 'OCR',                       onClick: openOCR,                     disabled: !pdfDoc },
-    { id: 'watermark',   icon: <Stamp size={15}/>,               label: 'Wasserzeichen',             onClick: openWatermark,               disabled: !pdfDoc },
-    { id: 'signature',   icon: <PenTool size={15}/>,             label: 'Unterschrift',              onClick: openSignature,               disabled: !pdfDoc },
-    { id: 'headerfooter',icon: <Rows3 size={15}/>,               label: 'Kopf- & Fußzeile',          onClick: openHeaderFooter,            disabled: !pdfDoc },
-    { id: 'compress',    icon: <Archive size={15}/>,             label: 'Komprimieren',              onClick: openCompress,                disabled: !pdfDoc },
-    { id: 'exportimg',   icon: <FileDown size={15}/>,            label: 'Als Bilder exportieren',    onClick: openExportImages,            disabled: !pdfDoc },
-    { id: 'qrcode',      icon: <QrCode size={15}/>,              label: 'QR-Code einfügen',          onClick: openQRCode,                  disabled: !pdfDoc },
-    { id: 'crop',        icon: <Crop size={15}/>,                label: 'Seite beschneiden',         onClick: openCrop,                    disabled: !pdfDoc },
-    { id: 'batch',       icon: <Package2 size={15}/>,            label: 'Batch-Verarbeitung',        onClick: openBatch },
-    { id: 'compare',     icon: <SplitSquareHorizontal size={15}/>, label: 'PDFs vergleichen',         onClick: openCompare,                 disabled: !pdfDoc },
-    { id: 'exportannot', icon: <BookmarkPlus size={15}/>,        label: 'Anmerkungen exportieren',   onClick: () => window._exportAnnotations?.(), disabled: !pdfDoc },
-    { id: 'exportxfdf',  icon: <Download size={15}/>,            label: 'Anmerkungen als XFDF exportieren', onClick: () => window._exportAnnotationsXFDF?.(), disabled: !pdfDoc },
-    { id: 'importxfdf',  icon: <Upload size={15}/>,              label: 'Anmerkungen aus XFDF importieren', onClick: () => window._importAnnotationsXFDF?.(), disabled: !pdfDoc },
-    { id: 'sanitize',    icon: <ShieldCheck size={15}/>,         label: 'Dokument bereinigen',       onClick: openSanitize,                disabled: !pdfDoc },
-    { id: 'verifysig',   icon: <BadgeCheck size={15}/>,          label: 'Signatur prüfen',           onClick: openSignatureVerify,         disabled: !pdfDoc },
-    { id: 'mailmerge',   icon: <FileSpreadsheet size={15}/>,     label: 'Serienbrief',               onClick: openMailMerge },
-    { id: 'pdfa',        icon: <FileCheck2 size={15}/>,          label: 'PDF/A-Export',              onClick: openPdfa,                    disabled: !pdfDoc },
-    { id: 'a11y',        icon: <Accessibility size={15}/>,       label: 'Barrierefreiheits-Check',   onClick: openA11y,                    disabled: !pdfDoc },
-    { id: 'library',     icon: <Library size={15}/>,             label: 'Bibliothek',                onClick: openLibrary },
-    { id: 'encrypt',     icon: <Lock size={15}/>,                label: 'Verschlüsseln',             onClick: openEncrypt,                 disabled: !pdfDoc },
-    { id: 'imagestopdf', icon: <Images size={15}/>,              label: 'Bilder zu PDF',             onClick: openImagesToPdf },
-    { id: 'tableextract', icon: <Table2 size={15}/>,             label: 'Tabellen als CSV exportieren', onClick: openTableExtract, disabled: !pdfDoc },
-    { id: 'commentssummary', icon: <ClipboardList size={15}/>,   label: 'Kommentar-Zusammenfassung', onClick: openCommentsSummary, disabled: !pdfDoc },
-    { id: 'stamp',        icon: <Award size={15}/>,              label: 'Stempel',                   onClick: openStamp,                 disabled: !pdfDoc },
-  ]
+  const documentItems = buildDocumentItems({
+    t, pdfDoc, openSplit, openOCR, openWatermark, openSignature, openHeaderFooter, openCompress,
+    openExportImages, openQRCode, openCrop, openBatch, openCompare, openSanitize, openSignatureVerify,
+    openMailMerge, openPdfa, openA11y, openLibrary, openEncrypt, openImagesToPdf, openTableExtract,
+    openCommentsSummary, openStamp,
+  })
 
-  const viewItems = [
-    { id: 'night',        icon: <Moon size={15}/>,         label: 'Nachtmodus',        toggled: nightMode,       onClick: toggleNightMode },
-    { id: 'presentation', icon: <Presentation size={15}/>, label: 'Präsentation (F5)', toggled: false,           onClick: togglePresentation },
-    { id: 'twopage',      icon: <Layers size={15}/>,       label: 'Zwei-Seiten-Ansicht', toggled: twoPageView,   onClick: () => setTwoPageView(!twoPageView) },
-    { id: 'magnifier',    icon: <Search size={15}/>,       label: 'Lupe',              toggled: magnifierActive, onClick: toggleMagnifier },
-  ]
+  const viewItems = buildViewItems({ nightMode, twoPageView, magnifierActive, toggleNightMode, setTwoPageView, toggleMagnifier, togglePresentation })
 
   return (
     <LabelsContext.Provider value={toolbarLabels}>
@@ -460,6 +424,15 @@ function ToolGroup({ title, icon, isDark, disabled, items, activeId, onSelect, s
         <div className={`rounded-lg shadow-2xl border py-1 min-w-[220px] max-h-[70vh] overflow-y-auto
           ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-200'}`}>
           {items.map(it => {
+            if (it.heading) {
+              return (
+                <div key={`heading-${it.heading}`}
+                  className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide
+                    ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
+                  {it.heading}
+                </div>
+              )
+            }
             const pinned = pinnable && pinnedIds?.includes(it.id)
             return (
               <div key={it.id} className="flex items-stretch">

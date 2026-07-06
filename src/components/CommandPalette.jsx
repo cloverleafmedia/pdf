@@ -3,17 +3,16 @@ import { useTranslation } from 'react-i18next'
 import {
   FolderOpen, Save, Printer, ChevronsLeft, ChevronsRight,
   ZoomIn, ZoomOut, Maximize, AlignJustify, RotateCcw, RotateCw,
-  Hand, MousePointer2, Highlighter, Underline, Strikethrough,
-  StickyNote, Type, Pen, Eraser, Merge, Scissors, ScanText,
+  Hand, MousePointer2,
   PanelLeftClose, PanelLeftOpen, Settings, FileText, Square,
-  Moon, Stamp, PenTool, Undo2, Redo2, Rows3, Presentation,
-  FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
-  BookmarkPlus, Package2, Keyboard, CornerDownLeft,
-  ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes, ClipboardList, Award,
+  Undo2, Redo2,
+  Search,
+  Keyboard, CornerDownLeft,
+  SquarePlus, Shapes,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
+import { buildDocumentItems, buildAnnotateItems, buildViewItems } from '../lib/toolbarGroups.jsx'
 
 // Simple subsequence fuzzy match: every char of `query` must appear in
 // `text`, in order (not necessarily contiguous). Returns a score (lower is
@@ -117,20 +116,10 @@ export default function CommandPalette() {
       action: run(() => s.setActiveTool('hand')) },
     { group: 'Werkzeuge', label: t('toolbar.select'), icon: <MousePointer2 size={15}/>, disabled: !pdfDoc, active: activeTool === 'select',
       action: run(() => s.setActiveTool('select')) },
-    { group: 'Werkzeuge', label: t('toolbar.highlight'), icon: <Highlighter size={15}/>, disabled: !pdfDoc, active: activeTool === 'highlight',
-      action: run(() => s.setActiveTool('highlight')) },
-    { group: 'Werkzeuge', label: t('toolbar.underline'), icon: <Underline size={15}/>, disabled: !pdfDoc, active: activeTool === 'underline',
-      action: run(() => s.setActiveTool('underline')) },
-    { group: 'Werkzeuge', label: t('toolbar.strikethrough'), icon: <Strikethrough size={15}/>, disabled: !pdfDoc, active: activeTool === 'strikethrough',
-      action: run(() => s.setActiveTool('strikethrough')) },
-    { group: 'Werkzeuge', label: t('toolbar.note'), icon: <StickyNote size={15}/>, disabled: !pdfDoc, active: activeTool === 'note',
-      action: run(() => s.setActiveTool('note')) },
-    { group: 'Werkzeuge', label: t('toolbar.textBox'), icon: <Type size={15}/>, disabled: !pdfDoc, active: activeTool === 'text',
-      action: run(() => s.setActiveTool('text')) },
-    { group: 'Werkzeuge', label: t('toolbar.draw'), icon: <Pen size={15}/>, disabled: !pdfDoc, active: activeTool === 'draw',
-      action: run(() => s.setActiveTool('draw')) },
-    { group: 'Werkzeuge', label: t('toolbar.eraser'), icon: <Eraser size={15}/>, disabled: !pdfDoc, active: activeTool === 'eraser',
-      action: run(() => s.setActiveTool('eraser')) },
+    ...buildAnnotateItems({ t }).map(it => ({
+      group: 'Werkzeuge', label: it.label, icon: it.icon, disabled: !pdfDoc, active: activeTool === it.id,
+      action: run(() => s.setActiveTool(it.id)),
+    })),
     { group: 'Werkzeuge', label: 'Schwärzen', icon: <Square size={15}/>, disabled: !pdfDoc, active: activeTool === 'redact',
       action: run(() => s.setActiveTool('redact')) },
     { group: 'Werkzeuge', label: 'Formular ausfüllen', icon: <FileText size={15}/>, disabled: !pdfDoc, active: activeTool === 'form',
@@ -141,43 +130,31 @@ export default function CommandPalette() {
       action: run(() => s.setActiveTool(activeTool === 'shape' ? 'hand' : 'shape')) },
 
     // ── Dokument ───────────────────────────────────────────────────────
-    { group: 'Dokument', label: t('toolbar.merge'), icon: <Merge size={15}/>, disabled: !pdfDoc, action: run(() => window._mergePDF?.()) },
-    { group: 'Dokument', label: 'PDF reparieren', icon: <Stethoscope size={15}/>, disabled: !pdfDoc, action: run(() => window._repairPDF?.()) },
-    { group: 'Dokument', label: t('toolbar.split'), icon: <Scissors size={15}/>, disabled: !pdfDoc, action: run(() => s.openSplit()) },
-    { group: 'Dokument', label: 'OCR', icon: <ScanText size={15}/>, disabled: !pdfDoc, action: run(() => s.openOCR()) },
-    { group: 'Dokument', label: 'Wasserzeichen', icon: <Stamp size={15}/>, disabled: !pdfDoc, action: run(() => s.openWatermark()) },
-    { group: 'Dokument', label: 'Unterschrift', icon: <PenTool size={15}/>, disabled: !pdfDoc, action: run(() => s.openSignature()) },
-    { group: 'Dokument', label: 'Kopf- & Fußzeile', icon: <Rows3 size={15}/>, disabled: !pdfDoc, action: run(() => s.openHeaderFooter()) },
-    { group: 'Dokument', label: 'Komprimieren', icon: <Archive size={15}/>, disabled: !pdfDoc, action: run(() => s.openCompress()) },
-    { group: 'Dokument', label: 'Als Bilder exportieren', icon: <FileDown size={15}/>, disabled: !pdfDoc, action: run(() => s.openExportImages()) },
-    { group: 'Dokument', label: 'QR-Code einfügen', icon: <QrCode size={15}/>, disabled: !pdfDoc, action: run(() => s.openQRCode()) },
-    { group: 'Dokument', label: 'Seite beschneiden', icon: <Crop size={15}/>, disabled: !pdfDoc, action: run(() => s.openCrop()) },
-    { group: 'Dokument', label: 'Batch-Verarbeitung', icon: <Package2 size={15}/>, action: run(() => s.openBatch()) },
-    { group: 'Dokument', label: 'PDFs vergleichen', icon: <SplitSquareHorizontal size={15}/>, disabled: !pdfDoc, action: run(() => s.openCompare()) },
-    { group: 'Dokument', label: 'Anmerkungen exportieren', icon: <BookmarkPlus size={15}/>, disabled: !pdfDoc, action: run(() => window._exportAnnotations?.()) },
-    { group: 'Dokument', label: 'Anmerkungen als XFDF exportieren', icon: <Download size={15}/>, disabled: !pdfDoc, action: run(() => window._exportAnnotationsXFDF?.()) },
-    { group: 'Dokument', label: 'Anmerkungen aus XFDF importieren', icon: <Upload size={15}/>, disabled: !pdfDoc, action: run(() => window._importAnnotationsXFDF?.()) },
-    { group: 'Dokument', label: 'Dokument bereinigen', icon: <ShieldCheck size={15}/>, disabled: !pdfDoc, action: run(() => s.openSanitize()) },
-    { group: 'Dokument', label: 'Signatur prüfen', icon: <BadgeCheck size={15}/>, disabled: !pdfDoc, action: run(() => s.openSignatureVerify()) },
-    { group: 'Dokument', label: 'Serienbrief', icon: <FileSpreadsheet size={15}/>, action: run(() => s.openMailMerge()) },
-    { group: 'Dokument', label: 'PDF/A-Export', icon: <FileCheck2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openPdfa()) },
-    { group: 'Dokument', label: 'Barrierefreiheits-Check', icon: <Accessibility size={15}/>, disabled: !pdfDoc, action: run(() => s.openA11y()) },
-    { group: 'Dokument', label: 'Bibliothek', icon: <Library size={15}/>, action: run(() => s.openLibrary()) },
-    { group: 'Dokument', label: 'Verschlüsseln', icon: <Lock size={15}/>, disabled: !pdfDoc, action: run(() => s.openEncrypt()) },
-    { group: 'Dokument', label: 'Bilder zu PDF', icon: <Images size={15}/>, action: run(() => s.openImagesToPdf()) },
-    { group: 'Dokument', label: 'Tabellen als CSV exportieren', icon: <Table2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openTableExtract()) },
-    { group: 'Dokument', label: 'Kommentar-Zusammenfassung', icon: <ClipboardList size={15}/>, disabled: !pdfDoc, action: run(() => s.openCommentsSummary()) },
-    { group: 'Dokument', label: 'Stempel', icon: <Award size={15}/>, disabled: !pdfDoc, action: run(() => s.openStamp()) },
+    ...buildDocumentItems({
+      t, pdfDoc, openSplit: s.openSplit, openOCR: s.openOCR, openWatermark: s.openWatermark, openSignature: s.openSignature,
+      openHeaderFooter: s.openHeaderFooter, openCompress: s.openCompress, openExportImages: s.openExportImages, openQRCode: s.openQRCode,
+      openCrop: s.openCrop, openBatch: s.openBatch, openCompare: s.openCompare, openSanitize: s.openSanitize, openSignatureVerify: s.openSignatureVerify,
+      openMailMerge: s.openMailMerge, openPdfa: s.openPdfa, openA11y: s.openA11y, openLibrary: s.openLibrary, openEncrypt: s.openEncrypt,
+      openImagesToPdf: s.openImagesToPdf, openTableExtract: s.openTableExtract, openCommentsSummary: s.openCommentsSummary, openStamp: s.openStamp,
+    }).filter(it => !it.heading).map(it => ({
+      group: 'Dokument', label: it.label, icon: it.icon, disabled: it.disabled, action: run(it.onClick),
+    })),
 
     // ── Ansicht ────────────────────────────────────────────────────────
-    { group: 'Ansicht', label: 'Nachtmodus umschalten', icon: <Moon size={15}/>, disabled: !pdfDoc, active: nightMode,
-      action: run(() => s.toggleNightMode()) },
-    { group: 'Ansicht', label: 'Präsentation starten', icon: <Presentation size={15}/>, shortcut: 'F5', disabled: !pdfDoc,
-      action: run(() => s.togglePresentation()) },
-    { group: 'Ansicht', label: 'Zwei-Seiten-Ansicht umschalten', icon: <Layers size={15}/>, disabled: !pdfDoc, active: twoPageView,
-      action: run(() => s.setTwoPageView(!twoPageView)) },
-    { group: 'Ansicht', label: 'Lupe umschalten', icon: <Search size={15}/>, disabled: !pdfDoc, active: magnifierActive,
-      action: run(() => s.toggleMagnifier()) },
+    ...buildViewItems({
+      nightMode, twoPageView, magnifierActive,
+      toggleNightMode: s.toggleNightMode, setTwoPageView: s.setTwoPageView, toggleMagnifier: s.toggleMagnifier, togglePresentation: s.togglePresentation,
+    }).map(it => ({
+      group: 'Ansicht',
+      // toolbarGroups.jsx's labels are written for the Toolbar flyout button
+      // (short, with "(F5)" baked in for presentation); the palette instead
+      // shows shortcuts as their own <kbd> badge, so it needs its own longer,
+      // searchable "... umschalten" phrasing here instead of the raw label.
+      label: it.id === 'presentation' ? 'Präsentation starten' : `${it.label} umschalten`,
+      icon: it.icon, disabled: !pdfDoc, active: it.toggled,
+      shortcut: it.id === 'presentation' ? 'F5' : undefined,
+      action: run(it.onClick),
+    })),
     { group: 'Ansicht', label: toolbarLabels ? 'Toolbar-Beschriftungen ausblenden' : 'Toolbar-Beschriftungen anzeigen',
       icon: <span className="text-[11px] font-bold w-[15px] text-center inline-block">Aa</span>, active: toolbarLabels,
       action: run(() => s.setToolbarLabels(!toolbarLabels)) },
