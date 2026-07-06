@@ -1,16 +1,18 @@
-import React, { useMemo } from 'react'
-import { ClipboardList, Download } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { ClipboardList, Download, FileText } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
-import { groupAnnotationsByPage, buildCommentsSummaryText, TYPE_LABELS } from '../../lib/commentsSummary'
+import { groupAnnotationsByPage, buildCommentsSummaryText, buildCommentsSummaryPdf, TYPE_LABELS } from '../../lib/commentsSummary'
 import { ANNOTATION_ICONS } from '../../lib/annotationIcons'
+import { saveAsNewFile } from '../../lib/saveAsNewFile'
 
 export default function CommentsSummaryModal() {
   const {
-    annotations, fileName, theme, closeCommentsSummary,
-  } = useStore(useShallow(state => ({ annotations: state.annotations, fileName: state.fileName, theme: state.theme, closeCommentsSummary: state.closeCommentsSummary })))
+    annotations, fileName, theme, closeCommentsSummary, setStatus,
+  } = useStore(useShallow(state => ({ annotations: state.annotations, fileName: state.fileName, theme: state.theme, closeCommentsSummary: state.closeCommentsSummary, setStatus: state.setStatus })))
   const isDark = theme === 'dark'
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   const byPage = useMemo(() => groupAnnotationsByPage(annotations), [annotations])
   const replyCount = useMemo(() => annotations.reduce((n, a) => n + (a.replies?.length || 0), 0), [annotations])
@@ -22,6 +24,19 @@ export default function CommentsSummaryModal() {
     const a    = document.createElement('a')
     a.href = url; a.download = (fileName || 'dokument').replace('.pdf', '') + '_kommentare.txt'
     a.click(); URL.revokeObjectURL(url)
+  }
+
+  const exportPdf = async () => {
+    setExportingPdf(true)
+    try {
+      const bytes = await buildCommentsSummaryPdf(annotations)
+      const savedPath = await saveAsNewFile((fileName || 'dokument').replace('.pdf', '') + '_kommentare.pdf', bytes)
+      if (savedPath) setStatus('Kommentar-Bericht gespeichert: ' + savedPath.split(/[\\/]/).pop())
+    } catch (e) {
+      setStatus('Fehler: ' + e.message)
+    } finally {
+      setExportingPdf(false)
+    }
   }
 
   return (
@@ -76,6 +91,11 @@ export default function CommentsSummaryModal() {
         <button onClick={closeCommentsSummary}
           className={`px-4 py-1.5 rounded-lg text-sm ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-600 hover:bg-gray-100'}`}>
           Schließen
+        </button>
+        <button onClick={exportPdf} disabled={!annotations.length || exportingPdf}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm border transition-colors disabled:opacity-50 disabled:cursor-default
+            ${isDark ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+          <FileText size={14}/> {exportingPdf ? 'Wird erstellt …' : 'Als PDF exportieren'}
         </button>
         <button onClick={exportTxt} disabled={!annotations.length}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">

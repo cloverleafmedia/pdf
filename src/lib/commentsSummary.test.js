@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { groupAnnotationsByPage, buildCommentsSummaryText, TYPE_LABELS } from './commentsSummary.js'
+import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { groupAnnotationsByPage, buildCommentsSummaryText, buildCommentsSummaryPdf, TYPE_LABELS } from './commentsSummary.js'
+
+// Stands in for the real embedAppFont() (which fetches the bundled Liberation
+// Sans asset - a browser-only operation), same pattern as annotationFlatten.test.js.
+const embedTestFont = (doc, bold) => doc.embedFont(bold ? StandardFonts.HelveticaBold : StandardFonts.Helvetica)
 
 describe('groupAnnotationsByPage', () => {
   it('groups annotations by page and sorts pages numerically', () => {
@@ -50,5 +55,29 @@ describe('buildCommentsSummaryText', () => {
     expect(text).toContain('root comment')
     expect(text).toContain('↳')
     expect(text).toContain('a reply')
+  })
+})
+
+describe('buildCommentsSummaryPdf', () => {
+  it('produces a single-page PDF for a short document', async () => {
+    const annotations = [{ id: 1, page: 1, type: 'note', text: 'hi' }]
+    const bytes = await buildCommentsSummaryPdf(annotations, embedTestFont)
+    const doc = await PDFDocument.load(bytes)
+    expect(doc.getPageCount()).toBe(1)
+  })
+
+  it('produces exactly one page for an empty document', async () => {
+    const bytes = await buildCommentsSummaryPdf([], embedTestFont)
+    const doc = await PDFDocument.load(bytes)
+    expect(doc.getPageCount()).toBe(1)
+  })
+
+  it('paginates across multiple pages once the content overflows one page', async () => {
+    const annotations = Array.from({ length: 80 }, (_, i) => ({
+      id: i, page: 1, type: 'note', text: `Anmerkung Nummer ${i} mit etwas laengerem Text zum Testen des Zeilenumbruchs.`,
+    }))
+    const bytes = await buildCommentsSummaryPdf(annotations, embedTestFont)
+    const doc = await PDFDocument.load(bytes)
+    expect(doc.getPageCount()).toBeGreaterThan(1)
   })
 })
