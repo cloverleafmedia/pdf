@@ -8,6 +8,11 @@ export const LANGUAGES = [
   { id: 'zh', flag: '🇨🇳', name: '中文' },
   { id: 'pl', flag: '🇵🇱', name: 'Polski' },
   { id: 'ja', flag: '🇯🇵', name: '日本語' },
+  { id: 'fr', flag: '🇫🇷', name: 'Français' },
+  { id: 'pt', flag: '🇵🇹', name: 'Português' },
+  { id: 'ru', flag: '🇷🇺', name: 'Русский' },
+  { id: 'ko', flag: '🇰🇷', name: '한국어' },
+  { id: 'tr', flag: '🇹🇷', name: 'Türkçe' },
 ]
 
 // Maps an OS locale string (e.g. Electron's app.getLocale(), "de-DE"/"zh-CN"/

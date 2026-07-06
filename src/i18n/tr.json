@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "Profesyonel PDF Paketi"
+  },
+  "menu": {
+    "file": "Dosya",
+    "edit": "Düzen",
+    "view": "Görünüm",
+    "document": "Belge",
+    "tools": "Araçlar",
+    "help": "Yardım"
+  },
+  "file": {
+    "open": "Aç",
+    "openRecent": "Son Kullanılanları Aç",
+    "close": "Kapat",
+    "save": "Kaydet",
+    "saveAs": "Farklı Kaydet …",
+    "print": "Yazdır",
+    "properties": "Özellikler",
+    "noRecent": "Son kullanılan dosya yok"
+  },
+  "toolbar": {
+    "open": "Aç",
+    "save": "Kaydet",
+    "print": "Yazdır",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "fitWidth": "Genişliğe Sığdır",
+    "fitPage": "Sayfaya Sığdır",
+    "rotateLeft": "Sola Döndür",
+    "rotateRight": "Sağa Döndür",
+    "firstPage": "İlk Sayfa",
+    "prevPage": "Önceki Sayfa",
+    "nextPage": "Sonraki Sayfa",
+    "lastPage": "Son Sayfa",
+    "hand": "El Aracı",
+    "select": "Seçim Aracı",
+    "highlight": "Vurgula",
+    "underline": "Altını Çiz",
+    "strikethrough": "Üstünü Çiz",
+    "note": "Yapışkan Not",
+    "textBox": "Metin Kutusu",
+    "draw": "Çiz",
+    "shapes": "Şekiller",
+    "eraser": "Silgi",
+    "merge": "PDF'leri Birleştir",
+    "split": "PDF'i Böl",
+    "extract": "Sayfaları Çıkar",
+    "protect": "Parola ile Koru",
+    "sign": "İmzala"
+  },
+  "sidebar": {
+    "thumbnails": "Sayfalar",
+    "bookmarks": "Yer İmleri",
+    "search": "Ara",
+    "annotations": "Notlar"
+  },
+  "search": {
+    "placeholder": "Belgede ara …",
+    "results": "{{count}} sonuç",
+    "noResults": "Sonuç yok",
+    "caseSensitive": "Büyük/küçük harf duyarlı",
+    "wholeWord": "Tam sözcük",
+    "next": "Sonraki",
+    "prev": "Önceki"
+  },
+  "status": {
+    "page": "Sayfa",
+    "of": "/",
+    "zoom": "Yakınlaştırma",
+    "noFile": "Açık belge yok",
+    "ready": "Hazır",
+    "loading": "Yükleniyor …",
+    "saving": "Kaydediliyor …",
+    "saved": "Kaydedildi"
+  },
+  "welcome": {
+    "title": "CloverleafPDF'e Hoş Geldiniz",
+    "subtitle": "Windows için profesyonel PDF paketi",
+    "openPDF": "PDF Aç",
+    "openPDFHint": "veya dosyayı buraya sürükleyin",
+    "recentFiles": "Son açılanlar",
+    "features": {
+      "view": "Görüntüle",
+      "viewDesc": "Yüksek kaliteli PDF görüntüleme",
+      "edit": "Düzenle",
+      "editDesc": "Notlar ve vurgulamalar",
+      "manage": "Yönet",
+      "manageDesc": "Sayfalar, birleştirme, bölme",
+      "protect": "Koru",
+      "protectDesc": "Şifreleme ve imzalar"
+    }
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "general": "Genel",
+    "appearance": "Görünüm",
+    "language": "Dil",
+    "theme": "Tema",
+    "themeDark": "Koyu",
+    "themeLight": "Açık",
+    "themeSystem": "Sistem",
+    "defaultZoom": "Varsayılan Yakınlaştırma",
+    "scrollMode": "Kaydırma Modu",
+    "scrollVertical": "Dikey",
+    "scrollHorizontal": "Yatay",
+    "scrollPage": "Sayfa Sayfa",
+    "annotations": "Notlar",
+    "annotationColor": "Varsayılan Renk",
+    "performance": "Performans",
+    "cachePages": "Önbelleğe Alınan Sayfa Sayısı",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "reset": "Sıfırla",
+    "system": "Sistem",
+    "defaultApp": "Varsayılan PDF Uygulaması",
+    "defaultAppHint": "CloverleafPDF'i varsayılan PDF uygulaması olarak ayarlayabileceğiniz Windows ayarlarını açar. Bunun çalışması için CloverleafPDF'in kurulu olması gerekir (yalnızca geliştirme modunda çalıştırmak yeterli değildir).",
+    "setAsDefault": "Varsayılan Uygulama Olarak Ayarla"
+  },
+  "document": {
+    "pages": "Sayfa Sayısı",
+    "author": "Yazar",
+    "title": "Başlık",
+    "subject": "Konu",
+    "keywords": "Anahtar Kelimeler",
+    "created": "Oluşturulma",
+    "modified": "Değiştirilme",
+    "creator": "Oluşturan Uygulama",
+    "producer": "PDF Üretici",
+    "version": "PDF Sürümü",
+    "fileSize": "Dosya Boyutu",
+    "encrypted": "Şifreli",
+    "yes": "Evet",
+    "no": "Hayır",
+    "propertiesTitle": "Belge Özellikleri"
+  },
+  "error": {
+    "openFailed": "Dosya açılamadı",
+    "saveFailed": "Dosya kaydedilemedi",
+    "corrupted": "Dosya bozuk veya geçerli bir PDF değil",
+    "passwordRequired": "Bu PDF parola ile korunuyor",
+    "wrongPassword": "Yanlış parola",
+    "generic": "Bir hata oluştu"
+  },
+  "password": {
+    "title": "Parola ile Korunuyor",
+    "enter": "Parolayı girin",
+    "placeholder": "Parola …",
+    "ok": "Aç",
+    "cancel": "İptal"
+  },
+  "page": {
+    "rotate": "Sayfayı Döndür",
+    "delete": "Sayfayı Sil",
+    "deleteConfirm": "{{num}}. sayfa gerçekten silinsin mi?",
+    "insertBefore": "Öncesine Sayfa Ekle",
+    "insertAfter": "Sonrasına Sayfa Ekle",
+    "moveUp": "Sayfayı Yukarı Taşı",
+    "moveDown": "Sayfayı Aşağı Taşı"
+  },
+  "action": {
+    "ok": "Tamam",
+    "cancel": "İptal",
+    "yes": "Evet",
+    "no": "Hayır",
+    "confirm": "Onayla"
+  }
+}

@@ -7,6 +7,11 @@ import it from './it.json'
 import zh from './zh.json'
 import pl from './pl.json'
 import ja from './ja.json'
+import fr from './fr.json'
+import pt from './pt.json'
+import ru from './ru.json'
+import ko from './ko.json'
+import tr from './tr.json'
 
 i18n.use(initReactI18next).init({
   resources: {
@@ -17,6 +22,11 @@ i18n.use(initReactI18next).init({
     zh: { translation: zh },
     pl: { translation: pl },
     ja: { translation: ja },
+    fr: { translation: fr },
+    pt: { translation: pt },
+    ru: { translation: ru },
+    ko: { translation: ko },
+    tr: { translation: tr },
   },
   lng: 'de',
   fallbackLng: 'de',

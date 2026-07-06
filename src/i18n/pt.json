@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "Suíte profissional de PDF"
+  },
+  "menu": {
+    "file": "Arquivo",
+    "edit": "Editar",
+    "view": "Exibir",
+    "document": "Documento",
+    "tools": "Ferramentas",
+    "help": "Ajuda"
+  },
+  "file": {
+    "open": "Abrir",
+    "openRecent": "Abrir recente",
+    "close": "Fechar",
+    "save": "Salvar",
+    "saveAs": "Salvar como …",
+    "print": "Imprimir",
+    "properties": "Propriedades",
+    "noRecent": "Nenhum arquivo recente"
+  },
+  "toolbar": {
+    "open": "Abrir",
+    "save": "Salvar",
+    "print": "Imprimir",
+    "zoomIn": "Aumentar zoom",
+    "zoomOut": "Diminuir zoom",
+    "fitWidth": "Ajustar à largura",
+    "fitPage": "Ajustar à página",
+    "rotateLeft": "Girar à esquerda",
+    "rotateRight": "Girar à direita",
+    "firstPage": "Primeira página",
+    "prevPage": "Página anterior",
+    "nextPage": "Próxima página",
+    "lastPage": "Última página",
+    "hand": "Mão",
+    "select": "Seleção",
+    "highlight": "Destacar",
+    "underline": "Sublinhar",
+    "strikethrough": "Tachar",
+    "note": "Nota adesiva",
+    "textBox": "Caixa de texto",
+    "draw": "Desenhar",
+    "shapes": "Formas",
+    "eraser": "Borracha",
+    "merge": "Mesclar PDFs",
+    "split": "Dividir PDF",
+    "extract": "Extrair páginas",
+    "protect": "Proteger com senha",
+    "sign": "Assinar"
+  },
+  "sidebar": {
+    "thumbnails": "Páginas",
+    "bookmarks": "Marcadores",
+    "search": "Pesquisar",
+    "annotations": "Anotações"
+  },
+  "search": {
+    "placeholder": "Pesquisar no documento …",
+    "results": "{{count}} resultado(s)",
+    "noResults": "Nenhum resultado",
+    "caseSensitive": "Diferenciar maiúsculas/minúsculas",
+    "wholeWord": "Palavra inteira",
+    "next": "Próximo",
+    "prev": "Anterior"
+  },
+  "status": {
+    "page": "Página",
+    "of": "de",
+    "zoom": "Zoom",
+    "noFile": "Nenhum documento aberto",
+    "ready": "Pronto",
+    "loading": "Carregando …",
+    "saving": "Salvando …",
+    "saved": "Salvo"
+  },
+  "welcome": {
+    "title": "Bem-vindo ao CloverleafPDF",
+    "subtitle": "A suíte profissional de PDF para Windows",
+    "openPDF": "Abrir PDF",
+    "openPDFHint": "ou solte um arquivo aqui",
+    "recentFiles": "Abertos recentemente",
+    "features": {
+      "view": "Visualizar",
+      "viewDesc": "Renderização de PDF de alta qualidade",
+      "edit": "Editar",
+      "editDesc": "Anotações e destaques",
+      "manage": "Gerenciar",
+      "manageDesc": "Páginas, mesclagem, divisão",
+      "protect": "Proteger",
+      "protectDesc": "Criptografia e assinaturas"
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "general": "Geral",
+    "appearance": "Aparência",
+    "language": "Idioma",
+    "theme": "Tema",
+    "themeDark": "Escuro",
+    "themeLight": "Claro",
+    "themeSystem": "Sistema",
+    "defaultZoom": "Zoom padrão",
+    "scrollMode": "Modo de rolagem",
+    "scrollVertical": "Vertical",
+    "scrollHorizontal": "Horizontal",
+    "scrollPage": "Página por página",
+    "annotations": "Anotações",
+    "annotationColor": "Cor padrão",
+    "performance": "Desempenho",
+    "cachePages": "Páginas em cache",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "reset": "Redefinir",
+    "system": "Sistema",
+    "defaultApp": "Aplicativo PDF padrão",
+    "defaultAppHint": "Abre as configurações do Windows onde você pode definir o CloverleafPDF como o aplicativo PDF padrão. O CloverleafPDF precisa estar instalado (não apenas em execução no modo de desenvolvimento) para que isso funcione.",
+    "setAsDefault": "Definir como padrão"
+  },
+  "document": {
+    "pages": "Páginas",
+    "author": "Autor",
+    "title": "Título",
+    "subject": "Assunto",
+    "keywords": "Palavras-chave",
+    "created": "Criado",
+    "modified": "Modificado",
+    "creator": "Criado com",
+    "producer": "Produtor de PDF",
+    "version": "Versão do PDF",
+    "fileSize": "Tamanho do arquivo",
+    "encrypted": "Criptografado",
+    "yes": "Sim",
+    "no": "Não",
+    "propertiesTitle": "Propriedades do documento"
+  },
+  "error": {
+    "openFailed": "Não foi possível abrir o arquivo",
+    "saveFailed": "Não foi possível salvar o arquivo",
+    "corrupted": "O arquivo está corrompido ou não é um PDF válido",
+    "passwordRequired": "Este PDF está protegido por senha",
+    "wrongPassword": "Senha incorreta",
+    "generic": "Ocorreu um erro"
+  },
+  "password": {
+    "title": "Protegido por senha",
+    "enter": "Digite a senha",
+    "placeholder": "Senha …",
+    "ok": "Abrir",
+    "cancel": "Cancelar"
+  },
+  "page": {
+    "rotate": "Girar página",
+    "delete": "Excluir página",
+    "deleteConfirm": "Excluir realmente a página {{num}}?",
+    "insertBefore": "Inserir página antes",
+    "insertAfter": "Inserir página depois",
+    "moveUp": "Mover página para cima",
+    "moveDown": "Mover página para baixo"
+  },
+  "action": {
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "yes": "Sim",
+    "no": "Não",
+    "confirm": "Confirmar"
+  }
+}

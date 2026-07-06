@@ -6,6 +6,11 @@ import itLocale from './it.json'
 import zh from './zh.json'
 import pl from './pl.json'
 import ja from './ja.json'
+import fr from './fr.json'
+import pt from './pt.json'
+import ru from './ru.json'
+import ko from './ko.json'
+import tr from './tr.json'
 
 function leafKeys(obj, prefix = '') {
   return Object.entries(obj).flatMap(([k, v]) => {
@@ -14,7 +19,7 @@ function leafKeys(obj, prefix = '') {
   }).sort()
 }
 
-const locales = { en, es, it: itLocale, zh, pl, ja }
+const locales = { en, es, it: itLocale, zh, pl, ja, fr, pt, ru, ko, tr }
 const deKeys = leafKeys(de)
 
 describe('i18n locale key parity', () => {

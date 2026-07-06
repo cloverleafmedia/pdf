@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "Профессиональный набор инструментов для PDF"
+  },
+  "menu": {
+    "file": "Файл",
+    "edit": "Правка",
+    "view": "Вид",
+    "document": "Документ",
+    "tools": "Инструменты",
+    "help": "Справка"
+  },
+  "file": {
+    "open": "Открыть",
+    "openRecent": "Недавние файлы",
+    "close": "Закрыть",
+    "save": "Сохранить",
+    "saveAs": "Сохранить как …",
+    "print": "Печать",
+    "properties": "Свойства",
+    "noRecent": "Нет недавних файлов"
+  },
+  "toolbar": {
+    "open": "Открыть",
+    "save": "Сохранить",
+    "print": "Печать",
+    "zoomIn": "Увеличить",
+    "zoomOut": "Уменьшить",
+    "fitWidth": "По ширине страницы",
+    "fitPage": "Целая страница",
+    "rotateLeft": "Повернуть влево",
+    "rotateRight": "Повернуть вправо",
+    "firstPage": "Первая страница",
+    "prevPage": "Предыдущая страница",
+    "nextPage": "Следующая страница",
+    "lastPage": "Последняя страница",
+    "hand": "Рука",
+    "select": "Выделение",
+    "highlight": "Выделение цветом",
+    "underline": "Подчеркивание",
+    "strikethrough": "Зачеркивание",
+    "note": "Заметка",
+    "textBox": "Текстовое поле",
+    "draw": "Рисование",
+    "shapes": "Фигуры",
+    "eraser": "Ластик",
+    "merge": "Объединить PDF",
+    "split": "Разделить PDF",
+    "extract": "Извлечь страницы",
+    "protect": "Защита паролем",
+    "sign": "Подписать"
+  },
+  "sidebar": {
+    "thumbnails": "Страницы",
+    "bookmarks": "Закладки",
+    "search": "Поиск",
+    "annotations": "Аннотации"
+  },
+  "search": {
+    "placeholder": "Поиск в документе …",
+    "results": "Результатов: {{count}}",
+    "noResults": "Нет результатов",
+    "caseSensitive": "Учитывать регистр",
+    "wholeWord": "Слово целиком",
+    "next": "Далее",
+    "prev": "Назад"
+  },
+  "status": {
+    "page": "Страница",
+    "of": "из",
+    "zoom": "Масштаб",
+    "noFile": "Документ не открыт",
+    "ready": "Готово",
+    "loading": "Загрузка …",
+    "saving": "Сохранение …",
+    "saved": "Сохранено"
+  },
+  "welcome": {
+    "title": "Добро пожаловать в CloverleafPDF",
+    "subtitle": "Профессиональный набор инструментов для PDF на Windows",
+    "openPDF": "Открыть PDF",
+    "openPDFHint": "или перетащите файл сюда",
+    "recentFiles": "Недавно открытые",
+    "features": {
+      "view": "Просмотр",
+      "viewDesc": "Качественный рендеринг PDF",
+      "edit": "Редактирование",
+      "editDesc": "Аннотации и выделения",
+      "manage": "Управление",
+      "manageDesc": "Страницы, объединение, разделение",
+      "protect": "Защита",
+      "protectDesc": "Шифрование и подписи"
+    }
+  },
+  "settings": {
+    "title": "Настройки",
+    "general": "Общие",
+    "appearance": "Оформление",
+    "language": "Язык",
+    "theme": "Тема",
+    "themeDark": "Тёмная",
+    "themeLight": "Светлая",
+    "themeSystem": "Системная",
+    "defaultZoom": "Масштаб по умолчанию",
+    "scrollMode": "Режим прокрутки",
+    "scrollVertical": "Вертикальный",
+    "scrollHorizontal": "Горизонтальный",
+    "scrollPage": "Постранично",
+    "annotations": "Аннотации",
+    "annotationColor": "Цвет по умолчанию",
+    "performance": "Производительность",
+    "cachePages": "Страниц в кэше",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "reset": "Сбросить",
+    "system": "Система",
+    "defaultApp": "Приложение для PDF по умолчанию",
+    "defaultAppHint": "Открывает настройки Windows, где можно назначить CloverleafPDF приложением по умолчанию для PDF. Для этого CloverleafPDF должен быть установлен (а не просто запущен в режиме разработки).",
+    "setAsDefault": "Сделать приложением по умолчанию"
+  },
+  "document": {
+    "pages": "Страницы",
+    "author": "Автор",
+    "title": "Заголовок",
+    "subject": "Тема",
+    "keywords": "Ключевые слова",
+    "created": "Создано",
+    "modified": "Изменено",
+    "creator": "Создано в",
+    "producer": "Производитель PDF",
+    "version": "Версия PDF",
+    "fileSize": "Размер файла",
+    "encrypted": "Зашифровано",
+    "yes": "Да",
+    "no": "Нет",
+    "propertiesTitle": "Свойства документа"
+  },
+  "error": {
+    "openFailed": "Не удалось открыть файл",
+    "saveFailed": "Не удалось сохранить файл",
+    "corrupted": "Файл повреждён или не является допустимым PDF",
+    "passwordRequired": "Этот PDF защищён паролем",
+    "wrongPassword": "Неверный пароль",
+    "generic": "Произошла ошибка"
+  },
+  "password": {
+    "title": "Защита паролем",
+    "enter": "Введите пароль",
+    "placeholder": "Пароль …",
+    "ok": "Открыть",
+    "cancel": "Отмена"
+  },
+  "page": {
+    "rotate": "Повернуть страницу",
+    "delete": "Удалить страницу",
+    "deleteConfirm": "Действительно удалить страницу {{num}}?",
+    "insertBefore": "Вставить страницу перед",
+    "insertAfter": "Вставить страницу после",
+    "moveUp": "Переместить страницу вверх",
+    "moveDown": "Переместить страницу вниз"
+  },
+  "action": {
+    "ok": "ОК",
+    "cancel": "Отмена",
+    "yes": "Да",
+    "no": "Нет",
+    "confirm": "Подтвердить"
+  }
+}

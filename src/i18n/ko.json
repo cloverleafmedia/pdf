@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "전문 PDF 스위트"
+  },
+  "menu": {
+    "file": "파일",
+    "edit": "편집",
+    "view": "보기",
+    "document": "문서",
+    "tools": "도구",
+    "help": "도움말"
+  },
+  "file": {
+    "open": "열기",
+    "openRecent": "최근 문서 열기",
+    "close": "닫기",
+    "save": "저장",
+    "saveAs": "다른 이름으로 저장 …",
+    "print": "인쇄",
+    "properties": "속성",
+    "noRecent": "최근 파일이 없습니다"
+  },
+  "toolbar": {
+    "open": "열기",
+    "save": "저장",
+    "print": "인쇄",
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "fitWidth": "폭에 맞춤",
+    "fitPage": "페이지에 맞춤",
+    "rotateLeft": "왼쪽으로 회전",
+    "rotateRight": "오른쪽으로 회전",
+    "firstPage": "첫 페이지",
+    "prevPage": "이전 페이지",
+    "nextPage": "다음 페이지",
+    "lastPage": "마지막 페이지",
+    "hand": "손 도구",
+    "select": "선택 도구",
+    "highlight": "형광펜",
+    "underline": "밑줄",
+    "strikethrough": "취소선",
+    "note": "메모",
+    "textBox": "텍스트 상자",
+    "draw": "그리기",
+    "shapes": "도형",
+    "eraser": "지우개",
+    "merge": "PDF 병합",
+    "split": "PDF 분할",
+    "extract": "페이지 추출",
+    "protect": "암호 보호",
+    "sign": "서명"
+  },
+  "sidebar": {
+    "thumbnails": "페이지",
+    "bookmarks": "책갈피",
+    "search": "검색",
+    "annotations": "주석"
+  },
+  "search": {
+    "placeholder": "문서에서 검색 …",
+    "results": "결과 {{count}}개",
+    "noResults": "결과 없음",
+    "caseSensitive": "대소문자 구분",
+    "wholeWord": "단어 단위 검색",
+    "next": "다음",
+    "prev": "이전"
+  },
+  "status": {
+    "page": "페이지",
+    "of": "/",
+    "zoom": "확대/축소",
+    "noFile": "열린 문서 없음",
+    "ready": "준비됨",
+    "loading": "불러오는 중 …",
+    "saving": "저장 중 …",
+    "saved": "저장됨"
+  },
+  "welcome": {
+    "title": "CloverleafPDF에 오신 것을 환영합니다",
+    "subtitle": "Windows용 전문 PDF 스위트",
+    "openPDF": "PDF 열기",
+    "openPDFHint": "또는 여기에 파일을 끌어다 놓으세요",
+    "recentFiles": "최근에 연 문서",
+    "features": {
+      "view": "보기",
+      "viewDesc": "고품질 PDF 렌더링",
+      "edit": "편집",
+      "editDesc": "주석 및 강조 표시",
+      "manage": "관리",
+      "manageDesc": "페이지, 병합, 분할",
+      "protect": "보호",
+      "protectDesc": "암호화 및 서명"
+    }
+  },
+  "settings": {
+    "title": "설정",
+    "general": "일반",
+    "appearance": "모양",
+    "language": "언어",
+    "theme": "테마",
+    "themeDark": "어둡게",
+    "themeLight": "밝게",
+    "themeSystem": "시스템 설정 사용",
+    "defaultZoom": "기본 확대/축소",
+    "scrollMode": "스크롤 모드",
+    "scrollVertical": "세로",
+    "scrollHorizontal": "가로",
+    "scrollPage": "페이지 단위",
+    "annotations": "주석",
+    "annotationColor": "기본 색상",
+    "performance": "성능",
+    "cachePages": "캐시할 페이지 수",
+    "save": "저장",
+    "cancel": "취소",
+    "reset": "재설정",
+    "system": "시스템",
+    "defaultApp": "기본 PDF 프로그램",
+    "defaultAppHint": "CloverleafPDF를 기본 PDF 프로그램으로 설정할 수 있는 Windows 설정을 엽니다. 이 기능이 동작하려면 CloverleafPDF가 설치되어 있어야 합니다(개발 모드 실행만으로는 부족합니다).",
+    "setAsDefault": "기본 프로그램으로 설정"
+  },
+  "document": {
+    "pages": "페이지 수",
+    "author": "작성자",
+    "title": "제목",
+    "subject": "주제",
+    "keywords": "키워드",
+    "created": "만든 날짜",
+    "modified": "수정한 날짜",
+    "creator": "작성 프로그램",
+    "producer": "PDF 생성기",
+    "version": "PDF 버전",
+    "fileSize": "파일 크기",
+    "encrypted": "암호화됨",
+    "yes": "예",
+    "no": "아니요",
+    "propertiesTitle": "문서 속성"
+  },
+  "error": {
+    "openFailed": "파일을 열 수 없습니다",
+    "saveFailed": "파일을 저장할 수 없습니다",
+    "corrupted": "파일이 손상되었거나 유효한 PDF가 아닙니다",
+    "passwordRequired": "이 PDF는 암호로 보호되어 있습니다",
+    "wrongPassword": "암호가 올바르지 않습니다",
+    "generic": "오류가 발생했습니다"
+  },
+  "password": {
+    "title": "암호로 보호됨",
+    "enter": "암호를 입력하세요",
+    "placeholder": "암호 …",
+    "ok": "열기",
+    "cancel": "취소"
+  },
+  "page": {
+    "rotate": "페이지 회전",
+    "delete": "페이지 삭제",
+    "deleteConfirm": "{{num}} 페이지를 정말 삭제하시겠습니까?",
+    "insertBefore": "앞에 페이지 삽입",
+    "insertAfter": "뒤에 페이지 삽입",
+    "moveUp": "페이지 위로 이동",
+    "moveDown": "페이지 아래로 이동"
+  },
+  "action": {
+    "ok": "확인",
+    "cancel": "취소",
+    "yes": "예",
+    "no": "아니요",
+    "confirm": "확인"
+  }
+}
