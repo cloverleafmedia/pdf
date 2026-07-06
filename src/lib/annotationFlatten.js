@@ -1,5 +1,24 @@
-import { PDFDocument, rgb } from 'pdf-lib'
+import { PDFDocument, rgb, degrees } from 'pdf-lib'
 import { setFormFieldValue } from './formFieldValue.js'
+
+// pdf-lib's drawImage/drawRectangle/drawText rotate around the given {x,y}
+// origin, not the shape's own center - fine for a page-spanning diagonal
+// watermark, but a small rotated stamp box would visibly swing out of its
+// bounding box otherwise (and no longer match the CSS preview, which rotates
+// around the element's center by default). Standard rotation-around-a-pivot
+// formula: given a shape's own drawing origin, compute where that origin
+// ends up if the whole stamp is rotated by `rotation` degrees around a
+// shared pivot (the stamp box's center) - so a text-preset stamp's border
+// rectangle and its centered text rotate together as one rigid unit rather
+// than each spinning around its own, different center.
+function rotatePointAroundPivot(x, y, cx, cy, rotation) {
+  if (!rotation) return { x, y }
+  const rad = (rotation * Math.PI) / 180
+  const dx = x - cx, dy = y - cy
+  const rx = dx * Math.cos(rad) - dy * Math.sin(rad)
+  const ry = dx * Math.sin(rad) + dy * Math.cos(rad)
+  return { x: cx + rx, y: cy + ry }
+}
 
 // ── Flatten all UI annotations + form field values + newly-created form fields into PDF bytes via pdf-lib ──
 // newFields: [{ page, type: 'text'|'checkbox', name, x, y, w, h, pageW, pageH }]
@@ -102,18 +121,25 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
       } else if (a.type === 'stamp') {
         const x = a.x * sx, w = a.w * sx, h = a.h * sy
         const y = ph - (a.y + a.h) * sy
+        const rotation = a.rotation || 0
+        const cx = x + w / 2, cy = y + h / 2
+        const rotate = rotation ? degrees(rotation) : undefined
         if (a.kind === 'custom' && a.imageBytes) {
           const isJpg = a.imageExt === 'jpg' || a.imageExt === 'jpeg'
           const image = isJpg ? await doc.embedJpg(a.imageBytes) : await doc.embedPng(a.imageBytes)
-          page.drawImage(image, { x, y, width: w, height: h })
+          const origin = rotatePointAroundPivot(x, y, cx, cy, rotation)
+          page.drawImage(image, { x: origin.x, y: origin.y, width: w, height: h, rotate })
         } else {
           const f = await getFont()
           const bw = Math.max(3 * sx, 1)
-          page.drawRectangle({ x, y, width: w, height: h, borderColor: color, borderWidth: bw })
+          const rectOrigin = rotatePointAroundPivot(x, y, cx, cy, rotation)
+          page.drawRectangle({ x: rectOrigin.x, y: rectOrigin.y, width: w, height: h, borderColor: color, borderWidth: bw, rotate })
           const text = a.text || ''
           const fSz = Math.min(h * 0.4, 24)
           const textW = f.widthOfTextAtSize(text, fSz)
-          page.drawText(text, { x: x + (w - textW) / 2, y: y + h / 2 - fSz * 0.35, size: fSz, font: f, color })
+          const textX = x + (w - textW) / 2, textY = y + h / 2 - fSz * 0.35
+          const textOrigin = rotatePointAroundPivot(textX, textY, cx, cy, rotation)
+          page.drawText(text, { x: textOrigin.x, y: textOrigin.y, size: fSz, font: f, color, rotate })
         }
       }
     }

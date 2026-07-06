@@ -11,6 +11,7 @@ import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
 import { renderPageToCanvas } from '../lib/renderPage'
 import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
+import { unrotateDelta } from '../lib/rotateVector'
 import { saveAsNewFile } from '../lib/saveAsNewFile'
 import { useEraserTool } from './pdf-tools/useEraserTool'
 import { useRedactTool } from './pdf-tools/useRedactTool'
@@ -362,7 +363,7 @@ function PDFPage({ pageNum }) {
   // Resizing a placed stamp annotation (hand tool) - other annotation types
   // either have no explicit w/h (note/text are content-sized) or weren't
   // asked to support resize (shapes)
-  const [annotResize, setAnnotResize] = useState(null) // { id, sx, sy, ow, oh }
+  const [annotResize, setAnnotResize] = useState(null) // { id, sx, sy, ow, oh, rotation }
   // Dragging / resizing a pending new-field draft (hand tool)
   const [fieldDrag, setFieldDrag]     = useState(null) // { id, sx, sy, ox, oy }
   const [fieldResize, setFieldResize] = useState(null) // { id, sx, sy, ow, oh }
@@ -409,7 +410,12 @@ function PDFPage({ pageNum }) {
     const onMove = (e) => {
       const dx = e.clientX - annotResize.sx
       const dy = e.clientY - annotResize.sy
-      updateAnnotation(annotResize.id, { w: Math.max(20, annotResize.ow + dx), h: Math.max(14, annotResize.oh + dy) })
+      // The handle is a child of the stamp's own div, which carries the CSS
+      // `rotate(${-a.rotation}deg)` preview transform (see the stamp overlay
+      // below) - so a raw screen-space mouse delta no longer lines up with
+      // the box's own width/height axes once rotated.
+      const { dx: ldx, dy: ldy } = unrotateDelta(dx, dy, annotResize.rotation)
+      updateAnnotation(annotResize.id, { w: Math.max(20, annotResize.ow + ldx), h: Math.max(14, annotResize.oh + ldy) })
     }
     const onUp = () => setAnnotResize(null)
     window.addEventListener('mousemove', onMove)
@@ -815,6 +821,7 @@ function PDFPage({ pageNum }) {
             ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
           style={{
             left: a.x, top: a.y, width: a.w, height: a.h, userSelect: 'none',
+            transform: a.rotation ? `rotate(${-a.rotation}deg)` : undefined,
             ...(a.kind !== 'custom' ? {
               border: `3px solid ${a.color}`, borderRadius: 4,
               color: a.color, fontWeight: 'bold', letterSpacing: 1,
@@ -829,7 +836,7 @@ function PDFPage({ pageNum }) {
             : a.text}
           {activeTool === 'hand' && (
             <div
-              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setAnnotResize({ id: a.id, sx: e.clientX, sy: e.clientY, ow: a.w, oh: a.h }) }}
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setAnnotResize({ id: a.id, sx: e.clientX, sy: e.clientY, ow: a.w, oh: a.h, rotation: a.rotation || 0 }) }}
               className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-blue-500 cursor-nwse-resize pointer-events-auto"
             />
           )}

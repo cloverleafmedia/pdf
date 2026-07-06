@@ -5,6 +5,7 @@ import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
+import RotationPresetButtons from './RotationPresetButtons'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { embedAppFont } from '../../lib/embeddedFont'
 
@@ -119,17 +120,9 @@ export default function WatermarkModal() {
         {/* Rotation */}
         <div>
           <label className={lbl}>Winkel</label>
-          <div className="flex gap-2">
-            {[{ v: 45, l: '45°' }, { v: -45, l: '-45°' }, { v: 0, l: '0°' }, { v: 90, l: '90°' }].map(opt => (
-              <button key={opt.v} onClick={() => setRotation(opt.v)}
-                className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors
-                  ${rotation === opt.v
-                    ? 'bg-clover-600 text-white border-clover-600'
-                    : isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-                {opt.l}
-              </button>
-            ))}
-          </div>
+          <RotationPresetButtons
+            options={[{ v: 45, l: '45°' }, { v: -45, l: '-45°' }, { v: 0, l: '0°' }, { v: 90, l: '90°' }]}
+            value={rotation} onChange={setRotation} isDark={isDark}/>
         </div>
 
         {/* Color */}

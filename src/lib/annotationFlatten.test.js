@@ -148,6 +148,35 @@ describe('flattenAnnotations', () => {
     expect(reloaded.getPageCount()).toBe(1)
   })
 
+  it('draws a rotated text-preset stamp without throwing, rectangle and text rotating around the same pivot', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'stamp', page: 1, kind: 'draft', text: 'ENTWURF', color: '#f59e0b', x: 10, y: 10, w: 150, h: 50, rotation: 45, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {}, 0.35, [], embedTestFont)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPageCount()).toBe(1)
+  })
+
+  it('draws a rotated custom-image stamp without throwing', async () => {
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+    const imageBytes = new Uint8Array(Buffer.from(pngBase64, 'base64'))
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'stamp', page: 1, kind: 'custom', imageBytes, imageExt: 'png', x: 10, y: 10, w: 60, h: 60, rotation: -30, pageW: 200, pageH: 200 },
+    ]
+    await expect(flattenAnnotations(bytes, annotations, {})).resolves.toBeTruthy()
+  })
+
+  it('produces the same output for rotation: 0 as for an omitted rotation (no regression for existing stamps)', async () => {
+    const bytes = await makePdfBytes()
+    const withZero = [{ type: 'stamp', page: 1, kind: 'approved', text: 'GENEHMIGT', color: '#10b981', x: 10, y: 10, w: 150, h: 50, rotation: 0, pageW: 200, pageH: 200 }]
+    const withoutField = [{ type: 'stamp', page: 1, kind: 'approved', text: 'GENEHMIGT', color: '#10b981', x: 10, y: 10, w: 150, h: 50, pageW: 200, pageH: 200 }]
+    const resultA = await flattenAnnotations(bytes, withZero, {}, 0.35, [], embedTestFont)
+    const resultB = await flattenAnnotations(bytes, withoutField, {}, 0.35, [], embedTestFont)
+    expect(Buffer.from(resultA).equals(Buffer.from(resultB))).toBe(true)
+  })
+
   it('silently skips shape annotations targeting a page number beyond the document', async () => {
     const bytes = await makePdfBytes()
     const annotations = [

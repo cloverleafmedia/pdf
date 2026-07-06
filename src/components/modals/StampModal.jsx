@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
+import RotationPresetButtons from './RotationPresetButtons'
 import { bytesToBase64, base64ToBytes } from '../../lib/base64'
 
 const PRESETS = [
@@ -21,6 +22,7 @@ export default function StampModal() {
   const [preset, setPreset] = useState('approved')
   const [customImage, setCustomImage] = useState(null) // { bytes, ext, aspect, previewUrl }
   const [mode, setMode] = useState('preset') // 'preset' | 'custom'
+  const [rotation, setRotation] = useState(0)
   const [error, setError] = useState('')
 
   const pickImage = async () => {
@@ -57,16 +59,17 @@ export default function StampModal() {
     const previewUrl = URL.createObjectURL(new Blob([bytes], { type: config.imageExt === 'jpg' ? 'image/jpeg' : 'image/png' }))
     setCustomImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return { bytes, ext: config.imageExt, aspect: config.aspect, previewUrl } })
     setMode('custom')
+    setRotation(config.rotation ?? 0)
     setError('')
   }
 
   const place = () => {
     if (mode === 'custom') {
       if (!customImage) { setError('Bitte zuerst ein Bild wählen.'); return }
-      setPendingStampConfig({ kind: 'custom', imageBytes: customImage.bytes, imageExt: customImage.ext, imageUrl: customImage.previewUrl, aspect: customImage.aspect })
+      setPendingStampConfig({ kind: 'custom', imageBytes: customImage.bytes, imageExt: customImage.ext, imageUrl: customImage.previewUrl, aspect: customImage.aspect, rotation })
     } else {
       const p = PRESETS.find(p => p.id === preset)
-      setPendingStampConfig({ kind: p.id, text: p.text, color: p.color })
+      setPendingStampConfig({ kind: p.id, text: p.text, color: p.color, rotation })
     }
     setActiveTool('stamp')
     closeStamp()
@@ -114,7 +117,7 @@ export default function StampModal() {
               isDark={isDark}
               templates={stampTemplates}
               onLoad={loadStampTemplate}
-              onSave={(name) => customImage && saveStampTemplate(name, { imageBase64: bytesToBase64(customImage.bytes), imageExt: customImage.ext, aspect: customImage.aspect })}
+              onSave={(name) => customImage && saveStampTemplate(name, { imageBase64: bytesToBase64(customImage.bytes), imageExt: customImage.ext, aspect: customImage.aspect, rotation })}
               onDelete={deleteStampTemplate}
             />
             {customImage ? (
@@ -135,6 +138,13 @@ export default function StampModal() {
             {error && <div className="text-xs text-red-400">{error}</div>}
           </div>
         )}
+
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Winkel</label>
+          <RotationPresetButtons
+            options={[{ v: 0, l: '0°' }, { v: 15, l: '15°' }, { v: -15, l: '-15°' }, { v: 45, l: '45°' }, { v: -45, l: '-45°' }]}
+            value={rotation} onChange={setRotation} isDark={isDark}/>
+        </div>
       </div>
 
       <div className={`flex justify-end gap-2 px-5 py-3 border-t ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>
