@@ -9,3 +9,15 @@ export const LANGUAGES = [
   { id: 'pl', flag: '🇵🇱', name: 'Polski' },
   { id: 'ja', flag: '🇯🇵', name: '日本語' },
 ]
+
+// Maps an OS locale string (e.g. Electron's app.getLocale(), "de-DE"/"zh-CN"/
+// "pt-BR") to one of our supported language codes by primary subtag only -
+// region variants of a supported language (any "zh-*") all map to our single
+// "zh" file, and anything we don't ship a translation for falls back to
+// English rather than German, since German is just this app's development
+// default, not a sensible universal fallback for an unrecognized locale.
+export function matchSystemLocale(locale) {
+  if (!locale) return 'en'
+  const primary = locale.split(/[-_]/)[0].toLowerCase()
+  return LANGUAGES.some(l => l.id === primary) ? primary : 'en'
+}

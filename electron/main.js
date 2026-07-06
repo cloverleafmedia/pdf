@@ -162,6 +162,9 @@ ipcMain.handle('win:installUpdate',   () => autoUpdater?.quitAndInstall())
 // ── Theme ──────────────────────────────────────────────────────────────────
 ipcMain.handle('theme:getSystem', () => nativeTheme.shouldUseDarkColors)
 
+// ── Locale ─────────────────────────────────────────────────────────────────
+ipcMain.handle('locale:getSystem', () => app.getLocale())
+
 // ── File dialogs ───────────────────────────────────────────────────────────
 ipcMain.handle('dialog:openPDF', () => dialog.showOpenDialog(mainWindow, {
   title: 'PDF öffnen',

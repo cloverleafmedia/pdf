@@ -12,6 +12,7 @@ import TabBar from './components/TabBar'
 import CommandPalette from './components/CommandPalette'
 import { buildXfdf } from './lib/xfdfExport'
 import { parseXfdf } from './lib/xfdfImport'
+import { matchSystemLocale } from './i18n/languages'
 
 // Modals/overlays are only ever mounted once their `xOpen` flag is true (see
 // the render block below), so lazy-loading them keeps their code out of the
@@ -76,7 +77,15 @@ export default function App() {
         const isSystemDark = await window.api?.getSystemTheme()
         if (isSystemDark !== undefined) setTheme(isSystemDark ? 'dark' : 'light')
       }
-      if (settings.language) setLanguage(settings.language)
+      if (settings.language) {
+        setLanguage(settings.language)
+      } else {
+        // No explicit choice saved yet (via Settings) - detect from the OS
+        // locale each boot instead of defaulting to German, so a fresh
+        // install/profile speaks the user's system language out of the box.
+        const systemLocale = await window.api?.getSystemLocale()
+        setLanguage(matchSystemLocale(systemLocale))
+      }
       if (settings.toolbarLabels) useStore.setState({ toolbarLabels: true })
       if (Array.isArray(settings.pinnedTools)) useStore.setState({ pinnedTools: settings.pinnedTools })
       if (Array.isArray(settings.watermarkTemplates)) useStore.setState({ watermarkTemplates: settings.watermarkTemplates })

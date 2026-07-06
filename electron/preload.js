@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld('api', {
   getSystemTheme:     () => ipcRenderer.invoke('theme:getSystem'),
   onSystemThemeChange: (cb) => ipcRenderer.on('system-theme-changed', (_, isDark) => cb(isDark)),
 
+  // Locale
+  getSystemLocale:    () => ipcRenderer.invoke('locale:getSystem'),
+
   // Dialogs
   openPDF: () => ipcRenderer.invoke('dialog:openPDF'),
   savePDF: (n) => ipcRenderer.invoke('dialog:savePDF', n),
