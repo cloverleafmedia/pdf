@@ -229,4 +229,40 @@ describe('flattenAnnotations', () => {
     expect(reloadedForm.getTextField('vorhanden').getText()).toBe('Wert')
     expect(reloadedForm.getCheckBox('Neu').isChecked()).toBe(false)
   })
+
+  it('creates a new dropdown field with the given options from newFields', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'dropdown', name: 'Land', options: ['DE', 'AT', 'CH'], x: 10, y: 10, w: 80, h: 20, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getDropdown('Land').getOptions()).toEqual(['DE', 'AT', 'CH'])
+  })
+
+  it('creates a new listbox field with the given options from newFields', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'listbox', name: 'Obst', options: ['Apfel', 'Birne'], x: 10, y: 10, w: 80, h: 40, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getOptionList('Obst').getOptions()).toEqual(['Apfel', 'Birne'])
+  })
+
+  it('creates a dropdown with no options when none were configured yet', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'dropdown', name: 'Leer', x: 10, y: 10, w: 80, h: 20, pageW: 200, pageH: 200 }]
+    await expect(flattenAnnotations(bytes, [], {}, 0.35, newFields)).resolves.toBeTruthy()
+  })
+
+  it('fills a dropdown and a listbox via formValues, dispatched by field type not value type', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([200, 200])
+    const form = doc.getForm()
+    const dd = form.createDropdown('country'); dd.addOptions(['DE', 'AT']); dd.addToPage(page)
+    const list = form.createOptionList('fruit'); list.addOptions(['Apfel', 'Birne']); list.addToPage(page)
+    const bytes = await doc.save()
+
+    const result = await flattenAnnotations(bytes, [], { country: 'AT', fruit: 'Birne' })
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getDropdown('country').getSelected()).toEqual(['AT'])
+    expect(reloaded.getForm().getOptionList('fruit').getSelected()).toEqual(['Birne'])
+  })
 })

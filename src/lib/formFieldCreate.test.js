@@ -9,6 +9,14 @@ describe('defaultFieldName', () => {
   it('builds a German default name for a checkbox', () => {
     expect(defaultFieldName('checkbox', 3)).toBe('Kontrollkästchen 3')
   })
+
+  it('builds a German default name for a dropdown', () => {
+    expect(defaultFieldName('dropdown', 1)).toBe('Dropdown-Liste 1')
+  })
+
+  it('builds a German default name for a listbox', () => {
+    expect(defaultFieldName('listbox', 1)).toBe('Listenfeld 1')
+  })
 })
 
 describe('dedupeFieldName', () => {

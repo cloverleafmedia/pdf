@@ -1,4 +1,5 @@
 import { PDFDocument, rgb } from 'pdf-lib'
+import { setFormFieldValue } from './formFieldValue.js'
 
 // ── Flatten all UI annotations + form field values + newly-created form fields into PDF bytes via pdf-lib ──
 // newFields: [{ page, type: 'text'|'checkbox', name, x, y, w, h, pageW, pageH }]
@@ -124,15 +125,7 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
 
       if (hasFormValues) {
         for (const [key, value] of Object.entries(formValues)) {
-          try {
-            if (typeof value === 'boolean') {
-              const cb = form.getCheckBox(key)
-              if (value) cb.check(); else cb.uncheck()
-            } else {
-              const tf = form.getTextField(key)
-              tf.setText(String(value ?? ''))
-            }
-          } catch (_) { /* field not found on this document, or wrong widget type — skip */ }
+          try { setFormFieldValue(form, key, value) } catch (_) { /* field not found on this document, or wrong widget type — skip */ }
         }
       }
 
@@ -149,7 +142,13 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
             const w = nf.w * sx
             const h = nf.h * sy
             const y = ph - (nf.y + nf.h) * sy
-            const field = nf.type === 'checkbox' ? form.createCheckBox(nf.name) : form.createTextField(nf.name)
+            let field
+            switch (nf.type) {
+              case 'checkbox': field = form.createCheckBox(nf.name); break
+              case 'dropdown': field = form.createDropdown(nf.name); if (nf.options?.length) field.addOptions(nf.options); break
+              case 'listbox':  field = form.createOptionList(nf.name); if (nf.options?.length) field.addOptions(nf.options); break
+              default:         field = form.createTextField(nf.name)
+            }
             field.addToPage(page, { x, y, width: w, height: h })
           } catch (_) { /* name collision, out-of-range page, or other pdf-lib error — skip */ }
         }
