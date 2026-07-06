@@ -265,4 +265,46 @@ describe('flattenAnnotations', () => {
     expect(reloaded.getForm().getDropdown('country').getSelected()).toEqual(['AT'])
     expect(reloaded.getForm().getOptionList('fruit').getSelected()).toEqual(['Birne'])
   })
+
+  it('groups radio-button drafts sharing a groupId into one radio-group field with one widget per option', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [
+      { page: 1, type: 'radio', name: 'Farbe', groupId: 'g1', optionValue: 'Rot',  x: 10, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 },
+      { page: 1, type: 'radio', name: 'Farbe', groupId: 'g1', optionValue: 'Grün', x: 30, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 },
+      { page: 1, type: 'radio', name: 'Farbe', groupId: 'g1', optionValue: 'Blau', x: 50, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const fields = reloaded.getForm().getFields().filter(f => f.getName() === 'Farbe')
+    expect(fields).toHaveLength(1)
+    expect(reloaded.getForm().getRadioGroup('Farbe').getOptions().sort()).toEqual(['Blau', 'Grün', 'Rot'])
+  })
+
+  it('creates two independent radio groups from two different groupIds', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [
+      { page: 1, type: 'radio', name: 'Farbe',  groupId: 'g1', optionValue: 'Rot',  x: 10, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 },
+      { page: 1, type: 'radio', name: 'Farbe',  groupId: 'g1', optionValue: 'Blau', x: 30, y: 10, w: 14, h: 14, pageW: 200, pageH: 200 },
+      { page: 1, type: 'radio', name: 'Größe',  groupId: 'g2', optionValue: 'S',    x: 10, y: 40, w: 14, h: 14, pageW: 200, pageH: 200 },
+      { page: 1, type: 'radio', name: 'Größe',  groupId: 'g2', optionValue: 'M',    x: 30, y: 40, w: 14, h: 14, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getRadioGroup('Farbe').getOptions().sort()).toEqual(['Blau', 'Rot'])
+    expect(reloaded.getForm().getRadioGroup('Größe').getOptions().sort()).toEqual(['M', 'S'])
+  })
+
+  it('fills a radio group via formValues using its export value', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([200, 200])
+    const form = doc.getForm()
+    const rg = form.createRadioGroup('wahl')
+    rg.addOptionToPage('Ja', page, { x: 10, y: 10, width: 14, height: 14 })
+    rg.addOptionToPage('Nein', page, { x: 30, y: 10, width: 14, height: 14 })
+    const bytes = await doc.save()
+
+    const result = await flattenAnnotations(bytes, [], { wahl: 'Nein' })
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getForm().getRadioGroup('wahl').getSelected()).toBe('Nein')
+  })
 })

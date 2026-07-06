@@ -10,7 +10,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal,
   BookmarkPlus, Package2, Keyboard, CornerDownLeft,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes,
+  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes, ClipboardList, Award,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -57,7 +57,7 @@ export default function CommandPalette() {
     openCrop: state.openCrop, openBatch: state.openBatch, openCompare: state.openCompare,
     openSanitize: state.openSanitize, openSignatureVerify: state.openSignatureVerify, openMailMerge: state.openMailMerge,
     openPdfa: state.openPdfa, openA11y: state.openA11y, openLibrary: state.openLibrary, openEncrypt: state.openEncrypt,
-    openImagesToPdf: state.openImagesToPdf, openTableExtract: state.openTableExtract,
+    openImagesToPdf: state.openImagesToPdf, openTableExtract: state.openTableExtract, openCommentsSummary: state.openCommentsSummary, openStamp: state.openStamp,
     openProperties: state.openProperties, openSettings: state.openSettings, openShortcuts: state.openShortcuts,
   })))
   const { commandPaletteOpen, closeCommandPalette, pdfDoc, activeTool, nightMode, twoPageView, magnifierActive, toolbarLabels } = s
@@ -166,6 +166,8 @@ export default function CommandPalette() {
     { group: 'Dokument', label: 'Verschlüsseln', icon: <Lock size={15}/>, disabled: !pdfDoc, action: run(() => s.openEncrypt()) },
     { group: 'Dokument', label: 'Bilder zu PDF', icon: <Images size={15}/>, action: run(() => s.openImagesToPdf()) },
     { group: 'Dokument', label: 'Tabellen als CSV exportieren', icon: <Table2 size={15}/>, disabled: !pdfDoc, action: run(() => s.openTableExtract()) },
+    { group: 'Dokument', label: 'Kommentar-Zusammenfassung', icon: <ClipboardList size={15}/>, disabled: !pdfDoc, action: run(() => s.openCommentsSummary()) },
+    { group: 'Dokument', label: 'Stempel', icon: <Award size={15}/>, disabled: !pdfDoc, action: run(() => s.openStamp()) },
 
     // ── Ansicht ────────────────────────────────────────────────────────
     { group: 'Ansicht', label: 'Nachtmodus umschalten', icon: <Moon size={15}/>, disabled: !pdfDoc, active: nightMode,

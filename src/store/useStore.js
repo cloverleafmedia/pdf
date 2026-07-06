@@ -44,6 +44,13 @@ export const useStore = create((set, get) => ({
   // ── Shape annotations (rectangle / circle / arrow) ──────────────────────
   shapeType: 'rectangle', // 'rectangle' | 'circle' | 'arrow' - which shape the 'shape' tool draws next
 
+  // ── Stamp tool - StampModal arms this, a single click on the page places it ──
+  pendingStampConfig: null, // { kind: 'approved'|'draft'|'confidential'|'custom', text?, color?, imageBytes?, imageExt?, imageUrl?, aspect? }
+
+  // ── Radio-Button-Gruppe: which group the next placed 'radio' draft joins ──
+  // (null = the next placement mints a fresh group and becomes its first option)
+  activeRadioGroupId: null,
+
   // ── Reusable templates (Wasserzeichen / Kopf-Fußzeile) ──────────────────
   watermarkTemplates:    [],
   headerFooterTemplates: [],
@@ -113,6 +120,8 @@ export const useStore = create((set, get) => ({
   hasSignatures:       false,
   hasJavaScriptActions: false,
   tableExtractOpen:    false,
+  commentsSummaryOpen: false,
+  stampOpen:           false,
 
   // ── Document library (folders watched for PDFs, tags per file path) ──────
   libraryFolders: [],
@@ -174,6 +183,8 @@ export const useStore = create((set, get) => ({
   })),
   setDrawColor:  (c) => set({ drawColor: c }),
   setDrawWidth:  (w) => set({ drawWidth: w }),
+  setPendingStampConfig: (cfg) => set({ pendingStampConfig: cfg }),
+  setActiveRadioGroupId: (id) => set({ activeRadioGroupId: id }),
 
   // ── Actions: annotations ────────────────────────────────────────────────
   addAnnotation: (a) => {
@@ -248,8 +259,8 @@ export const useStore = create((set, get) => ({
     pendingFormFields: s.pendingFormFields.map(f => f.id === id ? { ...f, ...updates } : f),
   })),
   removeFormFieldDraft: (id) => set(s => ({ pendingFormFields: s.pendingFormFields.filter(f => f.id !== id) })),
-  clearFormFieldDrafts: ()  => set({ pendingFormFields: [] }),
-  setNewFieldType:      (t) => set({ newFieldType: t }),
+  clearFormFieldDrafts: ()  => set({ pendingFormFields: [], activeRadioGroupId: null }),
+  setNewFieldType:      (t) => set(s => ({ newFieldType: t, activeRadioGroupId: t === 'radio' ? s.activeRadioGroupId : null })),
   setShapeType:         (t) => set({ shapeType: t }),
 
   // ── Actions: form fields ────────────────────────────────────────────────
@@ -393,6 +404,10 @@ export const useStore = create((set, get) => ({
   setHasJavaScriptActions: (v) => set({ hasJavaScriptActions: v }),
   openTableExtract:     () => set({ tableExtractOpen: true }),
   closeTableExtract:    () => set({ tableExtractOpen: false }),
+  openCommentsSummary:  () => set({ commentsSummaryOpen: true }),
+  closeCommentsSummary: () => set({ commentsSummaryOpen: false }),
+  openStamp:            () => set({ stampOpen: true }),
+  closeStamp:           () => set({ stampOpen: false }),
 
   // ── Actions: document library ───────────────────────────────────────────
   setLibraryFolders: (folders) => {

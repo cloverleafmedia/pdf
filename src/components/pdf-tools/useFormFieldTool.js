@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { useStore } from '../../store/useStore'
-import { defaultFieldName, dedupeFieldName } from '../../lib/formFieldCreate'
+import { defaultFieldName, dedupeFieldName, nextRadioOptionValue } from '../../lib/formFieldCreate'
 
 // Live-drag preview for placing a new form field - blue, distinct from
 // redaction's red, so the two drag-tools are visually distinguishable.
@@ -36,10 +36,31 @@ export function useFormFieldTool({ pageNum, size, getPos, overlayRef, redraw, ne
     const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
     const w = Math.abs(pos.x - s.x), h = Math.abs(pos.y - s.y)
     if (w > 10 && h > 10) {
-      const existingNames = useStore.getState().pendingFormFields.map(f => f.name)
-      const n = useStore.getState().pendingFormFields.filter(f => f.type === newFieldType).length + 1
-      const name = dedupeFieldName(defaultFieldName(newFieldType, n), existingNames)
-      addFormFieldDraft({ pageNum, type: newFieldType, name, x, y, w, h, logicalW: size.w, logicalH: size.h })
+      const { pendingFormFields, activeRadioGroupId, setActiveRadioGroupId } = useStore.getState()
+
+      if (newFieldType === 'radio') {
+        const groupMembers = pendingFormFields.filter(f => f.groupId === activeRadioGroupId)
+        if (activeRadioGroupId && groupMembers.length) {
+          // Joining the group this session already started - reuse its name.
+          const optionValue = nextRadioOptionValue(groupMembers.map(f => f.optionValue))
+          addFormFieldDraft({ pageNum, type: 'radio', name: groupMembers[0].name, groupId: activeRadioGroupId, optionValue, x, y, w, h, logicalW: size.w, logicalH: size.h })
+        } else {
+          // First button of a fresh group - mint both a new name and a new groupId.
+          const existingNames = pendingFormFields.map(f => f.name)
+          const groupCount = new Set(pendingFormFields.filter(f => f.type === 'radio').map(f => f.groupId)).size
+          const name = dedupeFieldName(defaultFieldName('radio', groupCount + 1), existingNames)
+          const groupId = `radio-${Date.now()}-${Math.random()}`
+          const optionValue = nextRadioOptionValue([])
+          addFormFieldDraft({ pageNum, type: 'radio', name, groupId, optionValue, x, y, w, h, logicalW: size.w, logicalH: size.h })
+          setActiveRadioGroupId(groupId)
+        }
+      } else {
+        const existingNames = pendingFormFields.map(f => f.name)
+        const n = pendingFormFields.filter(f => f.type === newFieldType).length + 1
+        const name = dedupeFieldName(defaultFieldName(newFieldType, n), existingNames)
+        const options = ['dropdown', 'listbox'].includes(newFieldType) ? [] : undefined
+        addFormFieldDraft({ pageNum, type: newFieldType, name, x, y, w, h, logicalW: size.w, logicalH: size.h, options })
+      }
     }
     rectStartRef.current = null
     redraw()

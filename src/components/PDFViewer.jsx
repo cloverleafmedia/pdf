@@ -346,8 +346,8 @@ export default function PDFViewer() {
 // ── Single PDF page ────────────────────────────────────────────────────────
 function PDFPage({ pageNum }) {
   const {
-    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType })))
+    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId })))
 
   const canvasRef     = useRef(null)
   const textLayerRef  = useRef(null)
@@ -832,7 +832,10 @@ function PDFPage({ pageNum }) {
         // realistic form field count.
         const tabIndex = pageNum * 1000 + i
         return (
-          <div key={key} className="absolute z-20" style={{ left, top, width, height }}>
+          // Radio-button widgets share `key` (their common fieldName) across
+          // multiple widgets - the React list key needs the map index too so
+          // sibling radio buttons don't collide.
+          <div key={`${key}-${i}`} className="absolute z-20" style={{ left, top, width, height }}>
             {field.fieldType === 'Tx' && (
               <input
                 value={formValues[key] || ''}
@@ -851,19 +854,59 @@ function PDFPage({ pageNum }) {
                 className="w-full h-full accent-clover-500 cursor-pointer"
               />
             )}
+            {field.fieldType === 'Btn' && field.radioButton && (
+              <input type="radio"
+                name={`radio-${key}`}
+                checked={(formValues[key] ?? field.fieldValue) === field.buttonValue}
+                onChange={() => setFormValue(key, field.buttonValue)}
+                tabIndex={tabIndex}
+                className="w-full h-full accent-clover-500 cursor-pointer"
+              />
+            )}
+            {field.fieldType === 'Ch' && (
+              // Simplified to single-selection even for multi-select listboxes -
+              // pdf-lib's field.select() takes an array for that case, but the
+              // fill-in UI here only ever writes one value via setFormFieldValue().
+              <select
+                value={formValues[key] ?? ''}
+                onChange={e => setFormValue(key, e.target.value)}
+                tabIndex={tabIndex}
+                size={!field.combo ? Math.min(field.options?.length || 1, 4) : undefined}
+                className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
+                style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}>
+                {field.combo && <option value="">—</option>}
+                {(field.options || []).map((opt, oi) => (
+                  <option key={oi} value={opt.exportValue}>{opt.displayValue}</option>
+                ))}
+              </select>
+            )}
           </div>
         )
       })}
 
       {/* 7b. Pending new-field drafts (visible whenever pending, like sticky notes) */}
-      {pendingFormFields.filter(f => f.pageNum === pageNum).map(f => (
-        <DraggableFieldBox key={f.id} field={f} activeTool={activeTool} isDark={isDark}
-          onDragStart={(e) => setFieldDrag({ id: f.id, sx: e.clientX, sy: e.clientY, ox: f.x, oy: f.y })}
-          onResizeStart={(e) => setFieldResize({ id: f.id, sx: e.clientX, sy: e.clientY, ow: f.w, oh: f.h })}
-          onRename={(name) => updateFormFieldDraft(f.id, { name })}
-          onRemove={() => removeFormFieldDraft(f.id)}
-        />
-      ))}
+      {pendingFormFields.filter(f => f.pageNum === pageNum).map(f => {
+        // Radio-group members all share one field name (needed once flattened
+        // into a single pdf-lib radio-group field) - only the group's first
+        // member gets an editable name input, later members show a read-only
+        // label instead, so renaming one option can't silently desync the
+        // group's actual field name from what the box displays.
+        const groupSiblings = f.groupId ? pendingFormFields.filter(x => x.groupId === f.groupId) : []
+        const isFirstInGroup = f.type !== 'radio' || groupSiblings[0]?.id === f.id
+        const optionIndex = f.groupId ? groupSiblings.findIndex(x => x.id === f.id) + 1 : 0
+        return (
+          <DraggableFieldBox key={f.id} field={f} activeTool={activeTool} isDark={isDark}
+            isFirstInGroup={isFirstInGroup} optionIndex={optionIndex}
+            onDragStart={(e) => setFieldDrag({ id: f.id, sx: e.clientX, sy: e.clientY, ox: f.x, oy: f.y })}
+            onResizeStart={(e) => setFieldResize({ id: f.id, sx: e.clientX, sy: e.clientY, ow: f.w, oh: f.h })}
+            onRename={(name) => updateFormFieldDraft(f.id, { name })}
+            onRemove={() => removeFormFieldDraft(f.id)}
+            onUpdateOptions={(options) => updateFormFieldDraft(f.id, { options })}
+            onUpdateOptionValue={(optionValue) => updateFormFieldDraft(f.id, { optionValue })}
+            onAddRadioOption={() => { setActiveRadioGroupId(f.groupId); setNewFieldType('radio'); setActiveTool('newfield') }}
+          />
+        )
+      })}
 
       {/* 8. Page badge */}
       <div className={`absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded-full pointer-events-none select-none
@@ -893,8 +936,16 @@ function DraggableAnnotationMarker({ activeTool, className, style, title, onDrag
 // (not canvas-painted like the redaction preview, since it must stay editable
 // until the document is saved). Visible whenever pending, draggable/resizable
 // only with the hand tool active - same convention as sticky notes/text boxes.
-function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeStart, onRename, onRemove }) {
+function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeStart, onRename, onRemove, onUpdateOptions, onUpdateOptionValue, onAddRadioOption, isFirstInGroup = true, optionIndex = 0 }) {
   const isHand = activeTool === 'hand'
+  const hasOptions = field.type === 'dropdown' || field.type === 'listbox'
+  const isRadio = field.type === 'radio'
+  const options = field.options || []
+
+  const updateOption = (i, value) => onUpdateOptions?.(options.map((o, oi) => oi === i ? value : o))
+  const removeOption = (i) => onUpdateOptions?.(options.filter((_, oi) => oi !== i))
+  const addOption = () => onUpdateOptions?.([...options, `Option ${options.length + 1}`])
+
   return (
     <div className="absolute z-20 border-2 border-dashed border-blue-500 bg-blue-500/10"
       style={{ left: field.x, top: field.y, width: field.w, height: field.h,
@@ -902,15 +953,71 @@ function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeSta
       onMouseDown={isHand ? (e) => { e.preventDefault(); e.stopPropagation(); onDragStart(e) } : undefined}
       onContextMenu={isHand ? (e) => { e.preventDefault(); onRemove() } : undefined}
       title={isHand ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : undefined}>
-      <input
-        value={field.name}
-        onChange={(e) => onRename(e.target.value)}
-        onMouseDown={(e) => e.stopPropagation()}
-        className={`absolute -top-6 left-0 w-full text-[11px] px-1 py-0.5 rounded outline-none border
-          ${isDark ? 'bg-zinc-800 text-zinc-100 border-zinc-600' : 'bg-white text-gray-900 border-gray-300'}`}
-      />
+      {isRadio && !isFirstInGroup ? (
+        <div className={`absolute -top-6 left-0 w-full text-[11px] px-1 py-0.5 rounded truncate
+          ${isDark ? 'bg-zinc-800/70 text-zinc-400' : 'bg-gray-100 text-gray-500'}`}>
+          Teil von: {field.name}
+        </div>
+      ) : (
+        <input
+          value={field.name}
+          onChange={(e) => onRename(e.target.value)}
+          onMouseDown={(e) => e.stopPropagation()}
+          className={`absolute -top-6 left-0 w-full text-[11px] px-1 py-0.5 rounded outline-none border
+            ${isDark ? 'bg-zinc-800 text-zinc-100 border-zinc-600' : 'bg-white text-gray-900 border-gray-300'}`}
+        />
+      )}
       {field.type === 'checkbox' && (
         <div className="absolute inset-1 border border-blue-400 rounded-sm"/>
+      )}
+      {isRadio && (
+        <>
+          <div className="absolute inset-1 border-2 border-blue-400 rounded-full pointer-events-none"/>
+          <div onMouseDown={(e) => e.stopPropagation()}
+            className={`absolute left-0 z-30 w-48 rounded-lg border shadow-lg text-[11px] p-1.5 space-y-1
+              ${isDark ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-gray-300'}`}
+            style={{ top: field.h + 6 }}>
+            <div className={isDark ? 'text-zinc-400' : 'text-gray-500'}>Gruppe · Option {optionIndex}</div>
+            <div className="flex items-center gap-1">
+              <span className={isDark ? 'text-zinc-500' : 'text-gray-400'}>Wert:</span>
+              <input value={field.optionValue || ''} onChange={(e) => onUpdateOptionValue?.(e.target.value)}
+                className={`flex-1 min-w-0 px-1 py-0.5 rounded outline-none border
+                  ${isDark ? 'bg-zinc-900 text-zinc-100 border-zinc-700' : 'bg-gray-50 text-gray-900 border-gray-200'}`}/>
+            </div>
+            <button onClick={onAddRadioOption}
+              className={`w-full px-1 py-0.5 rounded text-center transition-colors
+                ${isDark ? 'text-blue-400 hover:bg-zinc-700' : 'text-blue-600 hover:bg-gray-100'}`}>
+              + Option
+            </button>
+          </div>
+        </>
+      )}
+      {hasOptions && (
+        <div className="absolute inset-0 flex items-center justify-center text-blue-500 text-xs pointer-events-none select-none">
+          {field.type === 'dropdown' ? '▾' : '☰'}
+        </div>
+      )}
+      {hasOptions && (
+        <div onMouseDown={(e) => e.stopPropagation()}
+          className={`absolute left-0 z-30 w-56 max-h-40 overflow-y-auto rounded-lg border shadow-lg text-[11px] p-1.5 space-y-1
+            ${isDark ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-gray-300'}`}
+          style={{ top: field.h + 6 }}>
+          {options.map((opt, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <input value={opt} onChange={(e) => updateOption(i, e.target.value)}
+                className={`flex-1 min-w-0 px-1 py-0.5 rounded outline-none border
+                  ${isDark ? 'bg-zinc-900 text-zinc-100 border-zinc-700' : 'bg-gray-50 text-gray-900 border-gray-200'}`}/>
+              <button onClick={() => removeOption(i)} className="text-red-400 hover:text-red-300 flex-shrink-0 leading-none px-0.5">
+                ×
+              </button>
+            </div>
+          ))}
+          <button onClick={addOption}
+            className={`w-full px-1 py-0.5 rounded text-center transition-colors
+              ${isDark ? 'text-blue-400 hover:bg-zinc-700' : 'text-blue-600 hover:bg-gray-100'}`}>
+            + Option
+          </button>
+        </div>
       )}
       {isHand && (
         <div

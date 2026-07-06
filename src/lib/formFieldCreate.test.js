@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { defaultFieldName, dedupeFieldName } from './formFieldCreate.js'
+import { defaultFieldName, dedupeFieldName, nextRadioOptionValue } from './formFieldCreate.js'
 
 describe('defaultFieldName', () => {
   it('builds a German default name for a text field', () => {
@@ -34,5 +34,21 @@ describe('dedupeFieldName', () => {
 
   it('is exact-match only - does not over-match unrelated names containing the same substring', () => {
     expect(dedupeFieldName('Textfeld 1', ['Textfeld 10', 'Textfeld 1 Kopie'])).toBe('Textfeld 1')
+  })
+})
+
+describe('nextRadioOptionValue', () => {
+  it('starts at "Option 1" for an empty group', () => {
+    expect(nextRadioOptionValue([])).toBe('Option 1')
+  })
+
+  it('picks the next free number, skipping already-used values', () => {
+    expect(nextRadioOptionValue(['Option 1', 'Option 2'])).toBe('Option 3')
+  })
+
+  it('only needs uniqueness within the given group, not globally - does not backfill lower gaps', () => {
+    // Starts counting from length+1 (3) and increments past collisions -
+    // it does not go back and reuse a freed-up lower number like "Option 2".
+    expect(nextRadioOptionValue(['Option 1', 'Option 3'])).toBe('Option 4')
   })
 })

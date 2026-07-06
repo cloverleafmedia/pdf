@@ -351,7 +351,7 @@ export default function Toolbar() {
             <span>Bereich für ein neues Formularfeld aufziehen. Name direkt im Feld bearbeitbar, Position/Größe mit dem Hand-Werkzeug anpassbar.</span>
             <div className="flex-1"/>
             <div className="flex gap-1">
-              {[['text', 'Textfeld'], ['checkbox', 'Kontrollkästchen']].map(([v, l]) => (
+              {[['text', 'Textfeld'], ['checkbox', 'Kontrollkästchen'], ['dropdown', 'Dropdown'], ['listbox', 'Listenfeld'], ['radio', 'Radio-Gruppe']].map(([v, l]) => (
                 <button key={v} onClick={() => setNewFieldType(v)}
                   className={`px-3 py-0.5 rounded text-xs transition-colors
                     ${newFieldType === v ? 'bg-blue-600 text-white' : isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-100'}`}>

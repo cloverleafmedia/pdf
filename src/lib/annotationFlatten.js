@@ -130,7 +130,35 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
       }
 
       if (hasNewFields) {
+        // Radio-group members can't go through the one-draft-= one-`addToPage`
+        // loop below: pdf-lib needs ONE createRadioGroup(name) call followed by
+        // addOptionToPage(value, page, rect) per physical button, so they're
+        // grouped by groupId and handled separately first.
+        const radioGroups = {}
         for (const nf of newFields) {
+          if (nf.type === 'radio') (radioGroups[nf.groupId] ||= []).push(nf)
+        }
+        for (const group of Object.values(radioGroups)) {
+          try {
+            const rg = form.createRadioGroup(group[0].name)
+            for (const nf of group) {
+              const pageIndex = nf.page - 1
+              if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
+              try {
+                const page = doc.getPage(pageIndex)
+                const { width: pw, height: ph } = page.getSize()
+                const sx = pw / (nf.pageW || pw)
+                const sy = ph / (nf.pageH || ph)
+                const x = nf.x * sx, w = nf.w * sx, h = nf.h * sy
+                const y = ph - (nf.y + nf.h) * sy
+                rg.addOptionToPage(nf.optionValue, page, { x, y, width: w, height: h })
+              } catch (_) { /* out-of-range page or duplicate option value — skip this widget */ }
+            }
+          } catch (_) { /* name collision for the group's field name — skip the whole group */ }
+        }
+
+        for (const nf of newFields) {
+          if (nf.type === 'radio') continue
           const pageIndex = nf.page - 1
           if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
           try {

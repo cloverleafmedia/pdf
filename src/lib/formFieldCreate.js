@@ -3,7 +3,7 @@
 // and against sibling drafts placed in the same session, so every new field
 // needs a name that's actually unique before it reaches pdf-lib.
 
-const TYPE_LABELS = { text: 'Textfeld', checkbox: 'Kontrollkästchen' }
+const TYPE_LABELS = { text: 'Textfeld', checkbox: 'Kontrollkästchen', dropdown: 'Dropdown-Liste', listbox: 'Listenfeld', radio: 'Radio-Button-Gruppe' }
 
 export function defaultFieldName(type, index) {
   return `${TYPE_LABELS[type] || 'Feld'} ${index}`
@@ -14,4 +14,14 @@ export function dedupeFieldName(name, existingNames) {
   let n = 2
   while (existingNames.includes(`${name} (${n})`)) n++
   return `${name} (${n})`
+}
+
+// Radio-group option values only need to be unique within their own group
+// (pdf-lib's addOptionToPage(value, ...) is what breaks on a collision), not
+// globally like field names - so this takes just that group's existing
+// values, not the whole document's field list.
+export function nextRadioOptionValue(existingValues) {
+  let n = existingValues.length + 1
+  while (existingValues.includes(`Option ${n}`)) n++
+  return `Option ${n}`
 }
