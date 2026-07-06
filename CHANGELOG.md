@@ -5,6 +5,18 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- Toolbar-"Dokument"-Flyout in fünf Untergruppen gegliedert (Seiten & Zusammenführen, Schützen & Kennzeichnen, Konvertieren & Prüfen, Anmerkungen, Verwaltung) statt einer flachen Liste von 27 Einträgen.
+- Stempel: Rotationswinkel (0°/15°/-15°/45°/-45°) analog zum Wasserzeichen, inklusive Vorschau und Speicherung in Stempel-Vorlagen.
+
+### Geändert
+- `documentItems`/`annotateItems`/`viewItems` aus Toolbar.jsx und CommandPalette.jsx in ein gemeinsames Modul (`src/lib/toolbarGroups.jsx`) ausgelagert, damit beide Stellen nicht mehr von Hand synchron gehalten werden müssen.
+- Rotationswinkel-Regler von Stempel und Wasserzeichen in eine gemeinsame Komponente (`RotationPresetButtons`) zusammengeführt.
+
+### Behoben
+- Stempel-Resize-Griff berücksichtigte die neue Rotations-Vorschau nicht: bei einem gedrehten Stempel wuchs/schrumpfte die Box beim Ziehen entlang der falschen Achse.
+- Befehlspalette verlor beim Ableiten aus dem gemeinsamen Modul das "... umschalten"-Suffix bei Nachtmodus/Zwei-Seiten-Ansicht/Lupe sowie zeigte den Präsentations-Tastenkürzel F5 doppelt an.
+
 ## [1.8.1] – 2026-07-06
 
 ### Hinzugefügt
