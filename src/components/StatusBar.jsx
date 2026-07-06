@@ -1,10 +1,12 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ShieldCheck, TriangleAlert } from 'lucide-react'
+import { ShieldCheck, TriangleAlert, ChevronUp } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import pkg from '../../package.json'
 import { formatBytes } from '../lib/formatBytes'
+import { useFloatingMenu, FloatingMenu } from './FloatingMenu.jsx'
+import { LANGUAGES } from '../i18n/languages'
 
 export default function StatusBar() {
   const { t } = useTranslation()
@@ -12,6 +14,8 @@ export default function StatusBar() {
     pdfDoc, currentPage, totalPages, zoom, fileName, fileSize, theme, statusMessage, activeTool, language, setLanguage, hasSignatures, openSignatureVerify, hasJavaScriptActions,
   } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, totalPages: state.totalPages, zoom: state.zoom, fileName: state.fileName, fileSize: state.fileSize, theme: state.theme, statusMessage: state.statusMessage, activeTool: state.activeTool, language: state.language, setLanguage: state.setLanguage, hasSignatures: state.hasSignatures, openSignatureVerify: state.openSignatureVerify, hasJavaScriptActions: state.hasJavaScriptActions })))
   const isDark = theme === 'dark'
+  const langMenu = useFloatingMenu({ placement: 'above' })
+  const currentLang = LANGUAGES.find(l => l.id === language) || LANGUAGES[0]
 
   const toolLabels = {
     hand: 'Hand', select: 'Auswahl', highlight: 'Markieren', underline: 'Unterstreichen',
@@ -74,12 +78,31 @@ export default function StatusBar() {
       <div className="flex-1" />
 
       {/* Language switcher */}
-      <button
-        onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors
-          ${isDark ? 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}>
-        {language === 'de' ? 'DE' : 'EN'}
-      </button>
+      <div className="relative">
+        <button
+          ref={langMenu.anchorRef}
+          onClick={() => langMenu.setOpen(o => !o)}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors
+            ${isDark ? 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}>
+          {currentLang.flag} {currentLang.id.toUpperCase()} <ChevronUp size={10}/>
+        </button>
+        <FloatingMenu open={langMenu.open} pos={langMenu.pos} menuRef={langMenu.menuRef}>
+          <div className={`min-w-[140px] rounded-lg border shadow-lg overflow-hidden text-xs
+            ${isDark ? 'bg-zinc-850 border-zinc-700' : 'bg-white border-gray-200'}`}>
+            {LANGUAGES.map(opt => (
+              <button key={opt.id}
+                onClick={() => { setLanguage(opt.id); langMenu.setOpen(false) }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors
+                  ${opt.id === language
+                    ? isDark ? 'bg-clover-600/20 text-clover-400' : 'bg-clover-50 text-clover-700'
+                    : isDark ? 'text-zinc-300 hover:bg-zinc-800' : 'text-gray-600 hover:bg-gray-100'
+                  }`}>
+                {opt.flag} {opt.name}
+              </button>
+            ))}
+          </div>
+        </FloatingMenu>
+      </div>
 
       <span className={isDark ? 'text-zinc-700' : 'text-gray-300'}>CloverleafPDF v{pkg.version}</span>
     </div>

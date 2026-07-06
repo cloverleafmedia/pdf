@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "专业 PDF 套件"
+  },
+  "menu": {
+    "file": "文件",
+    "edit": "编辑",
+    "view": "视图",
+    "document": "文档",
+    "tools": "工具",
+    "help": "帮助"
+  },
+  "file": {
+    "open": "打开",
+    "openRecent": "最近打开",
+    "close": "关闭",
+    "save": "保存",
+    "saveAs": "另存为 …",
+    "print": "打印",
+    "properties": "属性",
+    "noRecent": "没有最近使用的文件"
+  },
+  "toolbar": {
+    "open": "打开",
+    "save": "保存",
+    "print": "打印",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "fitWidth": "适合宽度",
+    "fitPage": "适合页面",
+    "rotateLeft": "向左旋转",
+    "rotateRight": "向右旋转",
+    "firstPage": "第一页",
+    "prevPage": "上一页",
+    "nextPage": "下一页",
+    "lastPage": "最后一页",
+    "hand": "抓手工具",
+    "select": "选择工具",
+    "highlight": "高亮",
+    "underline": "下划线",
+    "strikethrough": "删除线",
+    "note": "便签",
+    "textBox": "文本框",
+    "draw": "绘制",
+    "shapes": "形状",
+    "eraser": "橡皮擦",
+    "merge": "合并 PDF",
+    "split": "拆分 PDF",
+    "extract": "提取页面",
+    "protect": "密码保护",
+    "sign": "签名"
+  },
+  "sidebar": {
+    "thumbnails": "页面",
+    "bookmarks": "书签",
+    "search": "搜索",
+    "annotations": "批注"
+  },
+  "search": {
+    "placeholder": "在文档中搜索 …",
+    "results": "{{count}} 条结果",
+    "noResults": "没有结果",
+    "caseSensitive": "区分大小写",
+    "wholeWord": "全字匹配",
+    "next": "下一个",
+    "prev": "上一个"
+  },
+  "status": {
+    "page": "第",
+    "of": "/",
+    "zoom": "缩放",
+    "noFile": "未打开文档",
+    "ready": "就绪",
+    "loading": "加载中 …",
+    "saving": "保存中 …",
+    "saved": "已保存"
+  },
+  "welcome": {
+    "title": "欢迎使用 CloverleafPDF",
+    "subtitle": "适用于 Windows 的专业 PDF 套件",
+    "openPDF": "打开 PDF",
+    "openPDFHint": "或将文件拖放到此处",
+    "recentFiles": "最近打开",
+    "features": {
+      "view": "查看",
+      "viewDesc": "高质量 PDF 渲染",
+      "edit": "编辑",
+      "editDesc": "批注与高亮",
+      "manage": "管理",
+      "manageDesc": "页面、合并、拆分",
+      "protect": "保护",
+      "protectDesc": "加密与签名"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "general": "常规",
+    "appearance": "外观",
+    "language": "语言",
+    "theme": "主题",
+    "themeDark": "深色",
+    "themeLight": "浅色",
+    "themeSystem": "跟随系统",
+    "defaultZoom": "默认缩放",
+    "scrollMode": "滚动模式",
+    "scrollVertical": "垂直",
+    "scrollHorizontal": "水平",
+    "scrollPage": "逐页",
+    "annotations": "批注",
+    "annotationColor": "默认颜色",
+    "performance": "性能",
+    "cachePages": "缓存页数",
+    "save": "保存",
+    "cancel": "取消",
+    "reset": "重置",
+    "system": "系统",
+    "defaultApp": "默认 PDF 应用程序",
+    "defaultAppHint": "打开 Windows 设置，你可以在其中将 CloverleafPDF 设为默认 PDF 应用程序。为此 CloverleafPDF 必须已安装（而不仅仅是在开发模式下运行）。",
+    "setAsDefault": "设为默认应用"
+  },
+  "document": {
+    "pages": "页数",
+    "author": "作者",
+    "title": "标题",
+    "subject": "主题",
+    "keywords": "关键词",
+    "created": "创建时间",
+    "modified": "修改时间",
+    "creator": "创建工具",
+    "producer": "PDF 生成器",
+    "version": "PDF 版本",
+    "fileSize": "文件大小",
+    "encrypted": "已加密",
+    "yes": "是",
+    "no": "否",
+    "propertiesTitle": "文档属性"
+  },
+  "error": {
+    "openFailed": "无法打开文件",
+    "saveFailed": "无法保存文件",
+    "corrupted": "文件已损坏或不是有效的 PDF",
+    "passwordRequired": "此 PDF 受密码保护",
+    "wrongPassword": "密码错误",
+    "generic": "发生错误"
+  },
+  "password": {
+    "title": "密码保护",
+    "enter": "请输入密码",
+    "placeholder": "密码 …",
+    "ok": "打开",
+    "cancel": "取消"
+  },
+  "page": {
+    "rotate": "旋转页面",
+    "delete": "删除页面",
+    "deleteConfirm": "确定要删除第 {{num}} 页吗？",
+    "insertBefore": "在之前插入页面",
+    "insertAfter": "在之后插入页面",
+    "moveUp": "上移页面",
+    "moveDown": "下移页面"
+  },
+  "action": {
+    "ok": "确定",
+    "cancel": "取消",
+    "yes": "是",
+    "no": "否",
+    "confirm": "确认"
+  }
+}

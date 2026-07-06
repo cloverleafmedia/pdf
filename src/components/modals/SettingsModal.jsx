@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { X, Moon, Sun, Monitor, Globe, Sliders, Shield } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
+import { LANGUAGES } from '../../i18n/languages'
 
 export default function SettingsModal() {
   const { t } = useTranslation()
@@ -77,18 +78,15 @@ export default function SettingsModal() {
 
               {/* Language */}
               <Field label={t('settings.language')} isDark={isDark}>
-                <div className="flex gap-2">
-                  {[
-                    { id: 'de', label: '🇩🇪  Deutsch' },
-                    { id: 'en', label: '🇬🇧  English' },
-                  ].map(opt => (
+                <div className="grid grid-cols-4 gap-2">
+                  {LANGUAGES.map(opt => (
                     <button key={opt.id} onClick={() => setLocalLang(opt.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors
                         ${localLang === opt.id
                           ? 'border-clover-500 bg-clover-600 text-white'
                           : isDark ? 'border-zinc-700 text-zinc-300 hover:border-zinc-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
                         }`}>
-                      {opt.label}
+                      {opt.flag}&nbsp;&nbsp;{opt.name}
                     </button>
                   ))}
                 </div>

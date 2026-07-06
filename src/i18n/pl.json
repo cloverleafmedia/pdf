@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "Profesjonalny pakiet PDF"
+  },
+  "menu": {
+    "file": "Plik",
+    "edit": "Edycja",
+    "view": "Widok",
+    "document": "Dokument",
+    "tools": "Narzędzia",
+    "help": "Pomoc"
+  },
+  "file": {
+    "open": "Otwórz",
+    "openRecent": "Ostatnio otwierane",
+    "close": "Zamknij",
+    "save": "Zapisz",
+    "saveAs": "Zapisz jako …",
+    "print": "Drukuj",
+    "properties": "Właściwości",
+    "noRecent": "Brak ostatnich plików"
+  },
+  "toolbar": {
+    "open": "Otwórz",
+    "save": "Zapisz",
+    "print": "Drukuj",
+    "zoomIn": "Powiększ",
+    "zoomOut": "Pomniejsz",
+    "fitWidth": "Dopasuj do szerokości",
+    "fitPage": "Dopasuj do strony",
+    "rotateLeft": "Obróć w lewo",
+    "rotateRight": "Obróć w prawo",
+    "firstPage": "Pierwsza strona",
+    "prevPage": "Poprzednia strona",
+    "nextPage": "Następna strona",
+    "lastPage": "Ostatnia strona",
+    "hand": "Rączka",
+    "select": "Zaznaczanie",
+    "highlight": "Zaznacz kolorem",
+    "underline": "Podkreśl",
+    "strikethrough": "Przekreśl",
+    "note": "Notatka",
+    "textBox": "Pole tekstowe",
+    "draw": "Rysuj",
+    "shapes": "Kształty",
+    "eraser": "Gumka",
+    "merge": "Połącz pliki PDF",
+    "split": "Podziel PDF",
+    "extract": "Wyodrębnij strony",
+    "protect": "Zabezpiecz hasłem",
+    "sign": "Podpisz"
+  },
+  "sidebar": {
+    "thumbnails": "Strony",
+    "bookmarks": "Zakładki",
+    "search": "Szukaj",
+    "annotations": "Adnotacje"
+  },
+  "search": {
+    "placeholder": "Szukaj w dokumencie …",
+    "results": "Liczba wyników: {{count}}",
+    "noResults": "Brak wyników",
+    "caseSensitive": "Uwzględnij wielkość liter",
+    "wholeWord": "Całe słowo",
+    "next": "Dalej",
+    "prev": "Wstecz"
+  },
+  "status": {
+    "page": "Strona",
+    "of": "z",
+    "zoom": "Powiększenie",
+    "noFile": "Brak otwartego dokumentu",
+    "ready": "Gotowe",
+    "loading": "Wczytywanie …",
+    "saving": "Zapisywanie …",
+    "saved": "Zapisano"
+  },
+  "welcome": {
+    "title": "Witamy w CloverleafPDF",
+    "subtitle": "Profesjonalny pakiet PDF dla systemu Windows",
+    "openPDF": "Otwórz PDF",
+    "openPDFHint": "lub przeciągnij tutaj plik",
+    "recentFiles": "Ostatnio otwierane",
+    "features": {
+      "view": "Przeglądaj",
+      "viewDesc": "Wysokiej jakości renderowanie PDF",
+      "edit": "Edytuj",
+      "editDesc": "Adnotacje i zaznaczenia",
+      "manage": "Zarządzaj",
+      "manageDesc": "Strony, łączenie, dzielenie",
+      "protect": "Chroń",
+      "protectDesc": "Szyfrowanie i podpisy"
+    }
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "general": "Ogólne",
+    "appearance": "Wygląd",
+    "language": "Język",
+    "theme": "Motyw",
+    "themeDark": "Ciemny",
+    "themeLight": "Jasny",
+    "themeSystem": "Systemowy",
+    "defaultZoom": "Domyślne powiększenie",
+    "scrollMode": "Tryb przewijania",
+    "scrollVertical": "Pionowy",
+    "scrollHorizontal": "Poziomy",
+    "scrollPage": "Strona po stronie",
+    "annotations": "Adnotacje",
+    "annotationColor": "Domyślny kolor",
+    "performance": "Wydajność",
+    "cachePages": "Strony w pamięci podręcznej",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "reset": "Przywróć",
+    "system": "System",
+    "defaultApp": "Domyślna aplikacja PDF",
+    "defaultAppHint": "Otwiera ustawienia Windows, w których możesz ustawić CloverleafPDF jako domyślną aplikację PDF. Aby to zadziałało, CloverleafPDF musi być zainstalowany (nie tylko uruchomiony w trybie deweloperskim).",
+    "setAsDefault": "Ustaw jako domyślną"
+  },
+  "document": {
+    "pages": "Strony",
+    "author": "Autor",
+    "title": "Tytuł",
+    "subject": "Temat",
+    "keywords": "Słowa kluczowe",
+    "created": "Utworzono",
+    "modified": "Zmodyfikowano",
+    "creator": "Utworzono w",
+    "producer": "Producent PDF",
+    "version": "Wersja PDF",
+    "fileSize": "Rozmiar pliku",
+    "encrypted": "Zaszyfrowany",
+    "yes": "Tak",
+    "no": "Nie",
+    "propertiesTitle": "Właściwości dokumentu"
+  },
+  "error": {
+    "openFailed": "Nie można otworzyć pliku",
+    "saveFailed": "Nie można zapisać pliku",
+    "corrupted": "Plik jest uszkodzony lub nie jest prawidłowym plikiem PDF",
+    "passwordRequired": "Ten plik PDF jest chroniony hasłem",
+    "wrongPassword": "Nieprawidłowe hasło",
+    "generic": "Wystąpił błąd"
+  },
+  "password": {
+    "title": "Chroniony hasłem",
+    "enter": "Wprowadź hasło",
+    "placeholder": "Hasło …",
+    "ok": "Otwórz",
+    "cancel": "Anuluj"
+  },
+  "page": {
+    "rotate": "Obróć stronę",
+    "delete": "Usuń stronę",
+    "deleteConfirm": "Czy na pewno usunąć stronę {{num}}?",
+    "insertBefore": "Wstaw stronę przed",
+    "insertAfter": "Wstaw stronę po",
+    "moveUp": "Przenieś stronę w górę",
+    "moveDown": "Przenieś stronę w dół"
+  },
+  "action": {
+    "ok": "OK",
+    "cancel": "Anuluj",
+    "yes": "Tak",
+    "no": "Nie",
+    "confirm": "Potwierdź"
+  }
+}

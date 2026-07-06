@@ -1,0 +1,170 @@
+{
+  "app": {
+    "name": "CloverleafPDF",
+    "tagline": "プロフェッショナル PDF スイート"
+  },
+  "menu": {
+    "file": "ファイル",
+    "edit": "編集",
+    "view": "表示",
+    "document": "ドキュメント",
+    "tools": "ツール",
+    "help": "ヘルプ"
+  },
+  "file": {
+    "open": "開く",
+    "openRecent": "最近使用したファイル",
+    "close": "閉じる",
+    "save": "保存",
+    "saveAs": "名前を付けて保存 …",
+    "print": "印刷",
+    "properties": "プロパティ",
+    "noRecent": "最近使用したファイルはありません"
+  },
+  "toolbar": {
+    "open": "開く",
+    "save": "保存",
+    "print": "印刷",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "fitWidth": "幅に合わせる",
+    "fitPage": "ページに合わせる",
+    "rotateLeft": "左に回転",
+    "rotateRight": "右に回転",
+    "firstPage": "最初のページ",
+    "prevPage": "前のページ",
+    "nextPage": "次のページ",
+    "lastPage": "最後のページ",
+    "hand": "手のひらツール",
+    "select": "選択ツール",
+    "highlight": "ハイライト",
+    "underline": "下線",
+    "strikethrough": "取り消し線",
+    "note": "付箋",
+    "textBox": "テキストボックス",
+    "draw": "描画",
+    "shapes": "図形",
+    "eraser": "消しゴム",
+    "merge": "PDFを結合",
+    "split": "PDFを分割",
+    "extract": "ページを抽出",
+    "protect": "パスワード保護",
+    "sign": "署名"
+  },
+  "sidebar": {
+    "thumbnails": "ページ",
+    "bookmarks": "しおり",
+    "search": "検索",
+    "annotations": "注釈"
+  },
+  "search": {
+    "placeholder": "ドキュメント内を検索 …",
+    "results": "{{count}} 件の結果",
+    "noResults": "結果なし",
+    "caseSensitive": "大文字と小文字を区別",
+    "wholeWord": "単語単位で検索",
+    "next": "次へ",
+    "prev": "前へ"
+  },
+  "status": {
+    "page": "ページ",
+    "of": "/",
+    "zoom": "ズーム",
+    "noFile": "ドキュメントが開かれていません",
+    "ready": "準備完了",
+    "loading": "読み込み中 …",
+    "saving": "保存中 …",
+    "saved": "保存しました"
+  },
+  "welcome": {
+    "title": "CloverleafPDF へようこそ",
+    "subtitle": "Windows 向けプロフェッショナル PDF スイート",
+    "openPDF": "PDF を開く",
+    "openPDFHint": "またはここにファイルをドロップ",
+    "recentFiles": "最近開いたファイル",
+    "features": {
+      "view": "表示",
+      "viewDesc": "高品質な PDF 表示",
+      "edit": "編集",
+      "editDesc": "注釈とハイライト",
+      "manage": "管理",
+      "manageDesc": "ページ、結合、分割",
+      "protect": "保護",
+      "protectDesc": "暗号化と署名"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "general": "一般",
+    "appearance": "外観",
+    "language": "言語",
+    "theme": "テーマ",
+    "themeDark": "ダーク",
+    "themeLight": "ライト",
+    "themeSystem": "システムに合わせる",
+    "defaultZoom": "既定のズーム",
+    "scrollMode": "スクロールモード",
+    "scrollVertical": "垂直",
+    "scrollHorizontal": "水平",
+    "scrollPage": "ページ単位",
+    "annotations": "注釈",
+    "annotationColor": "既定の色",
+    "performance": "パフォーマンス",
+    "cachePages": "キャッシュするページ数",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "reset": "リセット",
+    "system": "システム",
+    "defaultApp": "既定の PDF アプリ",
+    "defaultAppHint": "Windows の設定画面を開き、CloverleafPDF を既定の PDF アプリとして設定できます。これを機能させるには、CloverleafPDF がインストールされている必要があります（開発モードでの実行だけでは不十分です）。",
+    "setAsDefault": "既定のアプリに設定"
+  },
+  "document": {
+    "pages": "ページ数",
+    "author": "作成者",
+    "title": "タイトル",
+    "subject": "件名",
+    "keywords": "キーワード",
+    "created": "作成日時",
+    "modified": "更新日時",
+    "creator": "作成アプリケーション",
+    "producer": "PDF 変換ソフト",
+    "version": "PDF バージョン",
+    "fileSize": "ファイルサイズ",
+    "encrypted": "暗号化",
+    "yes": "はい",
+    "no": "いいえ",
+    "propertiesTitle": "ドキュメントのプロパティ"
+  },
+  "error": {
+    "openFailed": "ファイルを開けませんでした",
+    "saveFailed": "ファイルを保存できませんでした",
+    "corrupted": "ファイルが破損しているか、有効な PDF ではありません",
+    "passwordRequired": "この PDF はパスワードで保護されています",
+    "wrongPassword": "パスワードが正しくありません",
+    "generic": "エラーが発生しました"
+  },
+  "password": {
+    "title": "パスワード保護",
+    "enter": "パスワードを入力してください",
+    "placeholder": "パスワード …",
+    "ok": "開く",
+    "cancel": "キャンセル"
+  },
+  "page": {
+    "rotate": "ページを回転",
+    "delete": "ページを削除",
+    "deleteConfirm": "{{num}} ページ目を本当に削除しますか?",
+    "insertBefore": "前にページを挿入",
+    "insertAfter": "後にページを挿入",
+    "moveUp": "ページを上に移動",
+    "moveDown": "ページを下に移動"
+  },
+  "action": {
+    "ok": "OK",
+    "cancel": "キャンセル",
+    "yes": "はい",
+    "no": "いいえ",
+    "confirm": "確認"
+  }
+}
