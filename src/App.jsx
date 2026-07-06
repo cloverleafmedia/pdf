@@ -90,6 +90,7 @@ export default function App() {
       if (Array.isArray(settings.pinnedTools)) useStore.setState({ pinnedTools: settings.pinnedTools })
       if (Array.isArray(settings.watermarkTemplates)) useStore.setState({ watermarkTemplates: settings.watermarkTemplates })
       if (Array.isArray(settings.headerFooterTemplates)) useStore.setState({ headerFooterTemplates: settings.headerFooterTemplates })
+      if (Array.isArray(settings.stampTemplates)) useStore.setState({ stampTemplates: settings.stampTemplates })
       if (Array.isArray(settings.libraryFolders)) useStore.setState({ libraryFolders: settings.libraryFolders })
       if (settings.libraryTags && typeof settings.libraryTags === 'object') useStore.setState({ libraryTags: settings.libraryTags })
       setRecentFiles(recent)

@@ -54,6 +54,7 @@ export const useStore = create((set, get) => ({
   // ── Reusable templates (Wasserzeichen / Kopf-Fußzeile) ──────────────────
   watermarkTemplates:    [],
   headerFooterTemplates: [],
+  stampTemplates:        [],
 
   // ── UI state ────────────────────────────────────────────────────────────
   sidebarOpen:  true,
@@ -304,6 +305,16 @@ export const useStore = create((set, get) => ({
     const next = get().headerFooterTemplates.filter(t => t.id !== id)
     set({ headerFooterTemplates: next })
     window.api?.saveSettings({ headerFooterTemplates: next })
+  },
+  saveStampTemplate: (name, config) => {
+    const next = [...get().stampTemplates, { id: Date.now(), name, config }]
+    set({ stampTemplates: next })
+    window.api?.saveSettings({ stampTemplates: next })
+  },
+  deleteStampTemplate: (id) => {
+    const next = get().stampTemplates.filter(t => t.id !== id)
+    set({ stampTemplates: next })
+    window.api?.saveSettings({ stampTemplates: next })
   },
 
   // ── Actions: command palette / shortcuts ────────────────────────────────

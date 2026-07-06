@@ -3,6 +3,8 @@ import { Award, FolderOpen, X } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
+import TemplateBar from './TemplateBar'
+import { bytesToBase64, base64ToBytes } from '../../lib/base64'
 
 const PRESETS = [
   { id: 'approved',     label: 'Genehmigt',   text: 'GENEHMIGT',    color: '#10b981' },
@@ -12,8 +14,8 @@ const PRESETS = [
 
 export default function StampModal() {
   const {
-    pdfDoc, theme, closeStamp, setActiveTool, setPendingStampConfig,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, theme: state.theme, closeStamp: state.closeStamp, setActiveTool: state.setActiveTool, setPendingStampConfig: state.setPendingStampConfig })))
+    pdfDoc, theme, closeStamp, setActiveTool, setPendingStampConfig, stampTemplates, saveStampTemplate, deleteStampTemplate,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, theme: state.theme, closeStamp: state.closeStamp, setActiveTool: state.setActiveTool, setPendingStampConfig: state.setPendingStampConfig, stampTemplates: state.stampTemplates, saveStampTemplate: state.saveStampTemplate, deleteStampTemplate: state.deleteStampTemplate })))
   const isDark = theme === 'dark'
 
   const [preset, setPreset] = useState('approved')
@@ -45,6 +47,17 @@ export default function StampModal() {
   const clearCustomImage = () => {
     setCustomImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return null })
     setMode('preset')
+  }
+
+  // Object URLs aren't persistable across sessions, so a saved template's
+  // image (kept as base64, see src/lib/base64.js) gets a fresh one built
+  // each time it's loaded, exactly like when an image is first picked.
+  const loadStampTemplate = (config) => {
+    const bytes = base64ToBytes(config.imageBase64)
+    const previewUrl = URL.createObjectURL(new Blob([bytes], { type: config.imageExt === 'jpg' ? 'image/jpeg' : 'image/png' }))
+    setCustomImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return { bytes, ext: config.imageExt, aspect: config.aspect, previewUrl } })
+    setMode('custom')
+    setError('')
   }
 
   const place = () => {
@@ -97,6 +110,13 @@ export default function StampModal() {
 
         {mode === 'custom' && (
           <div className="space-y-2">
+            <TemplateBar
+              isDark={isDark}
+              templates={stampTemplates}
+              onLoad={loadStampTemplate}
+              onSave={(name) => customImage && saveStampTemplate(name, { imageBase64: bytesToBase64(customImage.bytes), imageExt: customImage.ext, aspect: customImage.aspect })}
+              onDelete={deleteStampTemplate}
+            />
             {customImage ? (
               <div className={`flex items-center gap-3 p-2 rounded-lg border ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>
                 <img src={customImage.previewUrl} alt="Stempel-Vorschau" className="h-12 w-auto rounded border border-black/10 bg-white/50 object-contain"/>

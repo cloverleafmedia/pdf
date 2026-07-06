@@ -241,3 +241,31 @@ describe('pending redactions', () => {
     expect(useStore.getState().pendingRedactions).toHaveLength(0)
   })
 })
+
+describe('stamp templates', () => {
+  // Template ids come from Date.now() (like tab ids elsewhere in the store) -
+  // two synchronous saves in the same millisecond would otherwise collide.
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('saveStampTemplate appends a named template with the given config', () => {
+    useStore.getState().saveStampTemplate('Firmenlogo', { imageBase64: 'abc', imageExt: 'png', aspect: 0.5 })
+    const templates = useStore.getState().stampTemplates
+    expect(templates).toHaveLength(1)
+    expect(templates[0].name).toBe('Firmenlogo')
+    expect(templates[0].config).toEqual({ imageBase64: 'abc', imageExt: 'png', aspect: 0.5 })
+  })
+
+  it('deleteStampTemplate removes only the matching template', () => {
+    useStore.getState().saveStampTemplate('Eins', { imageBase64: 'a' })
+    vi.advanceTimersByTime(10)
+    useStore.getState().saveStampTemplate('Zwei', { imageBase64: 'b' })
+    const [first, second] = useStore.getState().stampTemplates
+
+    useStore.getState().deleteStampTemplate(first.id)
+
+    const remaining = useStore.getState().stampTemplates
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].id).toBe(second.id)
+  })
+})
