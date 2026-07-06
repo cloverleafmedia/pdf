@@ -5,6 +5,18 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.8.1] – 2026-07-06
+
+### Hinzugefügt
+- Fünf weitere Sprachen: Französisch, Portugiesisch, Russisch, Koreanisch, Türkisch (zusätzlich zu den bestehenden 7 — jetzt 12 Sprachen total).
+- Kommentar-Zusammenfassung: zusätzlich zum bestehenden TXT-Export jetzt auch als eigenständiger, paginierter PDF-Bericht exportierbar.
+- Stempel: Größe nachträglich per Resize-Handle änderbar (bisher nur Verschieben möglich).
+- Stempel: eigene Bild-Stempel können jetzt als wiederverwendbare Vorlage gespeichert werden, analog zu Wasserzeichen-/Kopf-Fußzeilen-Vorlagen.
+- Formularfeld-Ausfüllen: echte Mehrfachauswahl bei Listenfeldern in Fremd-PDFs (bisher auf Einfachauswahl vereinfacht).
+
+### Behoben
+- `setFormFieldValue()` gab ein Array bei Dropdown-/Listenfeld-Auswahl bisher über `String(value)` verstümmelt weiter (`String(['a','b'])` → `"a,b"`) — betraf potenziell auch vor dieser Version, wurde aber erst bei der Mehrfachauswahl-Implementierung bemerkt.
+
 ## [1.8.0] – 2026-07-06
 
 ### Hinzugefügt
