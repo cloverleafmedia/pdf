@@ -13,6 +13,14 @@ const LANGS = [
   { id: 'deu+eng', label: 'Deutsch + Englisch' },
   { id: 'fra',     label: 'Français' },
   { id: 'spa',     label: 'Español' },
+  { id: 'ita',     label: 'Italiano' },
+  { id: 'chi_sim', label: '中文' },
+  { id: 'pol',     label: 'Polski' },
+  { id: 'jpn',     label: '日本語' },
+  { id: 'por',     label: 'Português' },
+  { id: 'rus',     label: 'Русский' },
+  { id: 'kor',     label: '한국어' },
+  { id: 'tur',     label: 'Türkçe' },
 ]
 
 const OCR_SCALE = 2
