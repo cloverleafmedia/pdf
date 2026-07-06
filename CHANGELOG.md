@@ -5,6 +5,26 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [Unreleased]
 
+## [1.8.0] – 2026-07-06
+
+### Hinzugefügt
+- Fünf neue Sprachen: Spanisch, Italienisch, Chinesisch, Polnisch, Japanisch (zusätzlich zu Deutsch/Englisch). Sprachumschalter in der Statusleiste ist jetzt ein Dropdown statt eines binären DE/EN-Toggles; Einstellungen-Sprachauswahl auf Grid-Layout umgestellt.
+- Systemsprache-Erkennung: solange noch keine explizite Sprachwahl in den Einstellungen gespeichert wurde, erkennt die App beim Start die Windows-Systemsprache und wendet sie an (Fallback Englisch bei nicht unterstützter Sprache, nicht Deutsch).
+- Barrierefreiheits-Autofix: Auto-Fix-Button im Barrierefreiheits-Check behebt drei einfache Punkte automatisch — fehlende Dokumentsprache, komplett fehlende Tag-Grundstruktur (MarkInfo/StructTreeRoot), fehlende Formularfeld-Beschriftung (Fallback auf Feldname).
+- Suchen-und-Schwärzen-Ergebnisse landen jetzt in einem eigenen Sidebar-Panel: Gruppierung nach Seite, Herkunfts-Kennzeichnung (manuell/PII/Suche), gezieltes Verwerfen nur der Suchtreffer oder PII-Treffer.
+- Kommentar-Zusammenfassung: neues Modal fasst alle Anmerkungen samt Antwort-Threads nach Seite gruppiert zusammen, mit TXT-Export.
+- Stempel-Werkzeug: vordefinierte Stempel (Genehmigt/Entwurf/Vertraulich) oder eigenes Bild, per Klick auf der Seite platzierbar, danach mit dem Hand-Werkzeug verschiebbar.
+- Formularfeld-Designer: zwei neue Feldtypen Dropdown-Liste und Listenfeld, zusätzlich zu Textfeld/Kontrollkästchen. Ausfüllen bereits bestehender Dropdown-/Listenfelder in Fremd-PDFs jetzt ebenfalls möglich (vorher nur Textfeld/Kontrollkästchen).
+- Formularfeld-Designer: dritter neuer Feldtyp Radio-Button-Gruppe (mehrere Buttons mit gemeinsamem Feldnamen). Ausfüllen bereits bestehender Radio-Buttons in Fremd-PDFs ebenfalls ergänzt.
+
+### Geändert
+- `xfdfExport.js` deckt jetzt auch Rechteck/Kreis/Pfeil-Anmerkungen ab (vorher nur Highlight/Unterstreichen/Durchstreichen/Freihand/Notiz/Textfeld) — Sidebars Anmerkungs-Icon-Map als geteilte `ANNOTATION_ICONS`-Konstante ausgelagert.
+- Formularfeld-Ausfüllen dispatcht jetzt nach dem tatsächlichen pdf-lib-Feldtyp (`instanceof PDFTextField/PDFCheckBox/PDFDropdown/PDFOptionList/PDFRadioGroup`) statt nach dem JS-Typ des eingegebenen Werts.
+
+### Hinweise
+- PDF-Report-Export für die Kommentar-Zusammenfassung (zusätzlich zum TXT-Export) bewusst zurückgestellt — Paginierungsaufwand unverhältnismäßig zum eigentlichen Anwendungsfall.
+- Echtes Tagging/Alt-Text-Zuordnung bleiben weiterhin manuelle Arbeit — der Autofix deckt bewusst nur die drei eindeutig automatisierbaren Punkte ab.
+
 ## [1.7.5] – 2026-07-05
 
 ### Geändert
