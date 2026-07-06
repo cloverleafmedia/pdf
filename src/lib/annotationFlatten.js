@@ -92,11 +92,13 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
           page.drawRectangle({ x: tx, y: ty - 14, width: 14, height: 14, color: rgb(1,0.8,0), borderWidth: 0 })
           page.drawText(a.text.slice(0, 60), { x: tx + 16, y: ty - 10, size: fSz, font: f, color: rgb(0,0,0) })
         } else {
+          const textFSz   = a.fontSize || fSz
+          const textColor = a.color ? hexRgb(a.color) : rgb(0,0,0)
           const lines = a.text.split('\n').slice(0, 5)
-          const boxW  = Math.max(...lines.map(l => f.widthOfTextAtSize(l.slice(0,35), fSz)), 40) + 8
-          const boxH  = lines.length * (fSz * 1.4) + 6
+          const boxW  = Math.max(...lines.map(l => f.widthOfTextAtSize(l.slice(0,35), textFSz)), 40) + 8
+          const boxH  = lines.length * (textFSz * 1.4) + 6
           page.drawRectangle({ x: tx, y: ty-boxH, width: boxW, height: boxH, color: rgb(1,1,1), borderColor: rgb(0.5,0.5,0.5), borderWidth: 0.7, opacity: 0.95 })
-          lines.forEach((line, i) => page.drawText(line.slice(0,35), { x: tx+4, y: ty - fSz*1.4*(i+1)+2, size: fSz, font: f, color: rgb(0,0,0) }))
+          lines.forEach((line, i) => page.drawText(line.slice(0,35), { x: tx+4, y: ty - textFSz*1.4*(i+1)+2, size: textFSz, font: f, color: textColor }))
         }
       } else if (a.type === 'rectangle' || a.type === 'circle') {
         const x  = a.x * sx,  w = a.w * sx,  h = a.h * sy

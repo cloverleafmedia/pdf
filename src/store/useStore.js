@@ -25,6 +25,7 @@ export const useStore = create((set, get) => ({
   lastAnnotateTool:   'highlight',
   drawColor:          '#f59e0b',
   drawWidth:          3,
+  textFontSize:       12,
 
   // ── Annotations ─────────────────────────────────────────────────────────
   annotations:        [],
@@ -184,6 +185,7 @@ export const useStore = create((set, get) => ({
   })),
   setDrawColor:  (c) => set({ drawColor: c }),
   setDrawWidth:  (w) => set({ drawWidth: w }),
+  setTextFontSize: (s) => set({ textFontSize: s }),
   setPendingStampConfig: (cfg) => set({ pendingStampConfig: cfg }),
   setActiveRadioGroupId: (id) => set({ activeRadioGroupId: id }),
 

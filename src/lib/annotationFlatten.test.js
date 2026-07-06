@@ -90,6 +90,25 @@ describe('flattenAnnotations', () => {
     expect(reloaded.getPageCount()).toBe(1)
   })
 
+  it('draws a text-box annotation with a custom font size and color', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'text', page: 1, x: 40, y: 60, text: 'big red text', fontSize: 20, color: '#ef4444' },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {}, 0.35, [], embedTestFont)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPageCount()).toBe(1)
+  })
+
+  it('produces different bytes for a text-box annotation with a custom font size/color than the default', async () => {
+    const bytes = await makePdfBytes()
+    const plain = [{ type: 'text', page: 1, x: 40, y: 60, text: 'sample' }]
+    const styled = [{ type: 'text', page: 1, x: 40, y: 60, text: 'sample', fontSize: 20, color: '#ef4444' }]
+    const plainResult  = await flattenAnnotations(bytes, plain, {}, 0.35, [], embedTestFont)
+    const styledResult = await flattenAnnotations(bytes, styled, {}, 0.35, [], embedTestFont)
+    expect(Buffer.from(styledResult).equals(Buffer.from(plainResult))).toBe(false)
+  })
+
   it('ignores annotations that target a page number beyond the document', async () => {
     const bytes = await makePdfBytes()
     const annotations = [{ type: 'highlight', page: 5, color: '#000000', rects: [{ x: 0, y: 0, w: 10, h: 10 }] }]
