@@ -13,6 +13,12 @@ export function setFormFieldValue(form, name, value) {
   if (!field) return
   if (field instanceof PDFCheckBox) { value ? field.check() : field.uncheck(); return }
   if (field instanceof PDFTextField) { field.setText(String(value ?? '')); return }
-  if (field instanceof PDFDropdown || field instanceof PDFOptionList) { field.select(String(value)); return }
+  if (field instanceof PDFDropdown || field instanceof PDFOptionList) {
+    // pdf-lib's select() takes a string or an array natively - only stringify
+    // for the single-value case, since String(['a','b']) would produce the
+    // wrong, comma-joined value instead of a real multi-selection.
+    field.select(Array.isArray(value) ? value : String(value))
+    return
+  }
   if (field instanceof PDFRadioGroup) { field.select(String(value)); return }
 }

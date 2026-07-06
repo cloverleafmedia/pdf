@@ -43,6 +43,15 @@ describe('setFormFieldValue', () => {
     expect(form.getOptionList('fruit').getSelected()).toEqual(['Birne'])
   })
 
+  it('selects multiple options on a PDFOptionList when given an array, not a comma-joined string', async () => {
+    const { page, form } = await makeForm()
+    const list = form.createOptionList('fruit')
+    list.addOptions(['Apfel', 'Birne', 'Kirsche'])
+    list.addToPage(page)
+    setFormFieldValue(form, 'fruit', ['Apfel', 'Kirsche'])
+    expect(form.getOptionList('fruit').getSelected().sort()).toEqual(['Apfel', 'Kirsche'])
+  })
+
   it('selects an option on a PDFRadioGroup', async () => {
     const { page, form } = await makeForm()
     const rg = form.createRadioGroup('wahl')

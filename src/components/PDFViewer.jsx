@@ -863,23 +863,30 @@ function PDFPage({ pageNum }) {
                 className="w-full h-full accent-clover-500 cursor-pointer"
               />
             )}
-            {field.fieldType === 'Ch' && (
-              // Simplified to single-selection even for multi-select listboxes -
-              // pdf-lib's field.select() takes an array for that case, but the
-              // fill-in UI here only ever writes one value via setFormFieldValue().
-              <select
-                value={formValues[key] ?? ''}
-                onChange={e => setFormValue(key, e.target.value)}
-                tabIndex={tabIndex}
-                size={!field.combo ? Math.min(field.options?.length || 1, 4) : undefined}
-                className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
-                style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}>
-                {field.combo && <option value="">—</option>}
-                {(field.options || []).map((opt, oi) => (
-                  <option key={oi} value={opt.exportValue}>{opt.displayValue}</option>
-                ))}
-              </select>
-            )}
+            {field.fieldType === 'Ch' && (() => {
+              // Real multi-selection for listboxes (field.multiSelect) - dropdowns
+              // stay single-select regardless, since PDF readers only ever render
+              // one selected value for a combo box even if pdf-lib technically
+              // allows more (see PDFDropdown.select()'s own doc comment).
+              const isMulti = !field.combo && field.multiSelect
+              return (
+                <select
+                  multiple={isMulti}
+                  value={isMulti ? (formValues[key] || []) : (formValues[key] ?? '')}
+                  onChange={e => setFormValue(key, isMulti
+                    ? Array.from(e.target.selectedOptions).map(o => o.value)
+                    : e.target.value)}
+                  tabIndex={tabIndex}
+                  size={!field.combo ? Math.min(field.options?.length || 1, 4) : undefined}
+                  className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
+                  style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}>
+                  {field.combo && <option value="">—</option>}
+                  {(field.options || []).map((opt, oi) => (
+                    <option key={oi} value={opt.exportValue}>{opt.displayValue}</option>
+                  ))}
+                </select>
+              )
+            })()}
           </div>
         )
       })}
