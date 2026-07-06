@@ -217,3 +217,27 @@ describe('tab management', () => {
     expect(useStore.getState().tabs).toHaveLength(0)
   })
 })
+
+describe('pending redactions', () => {
+  it('removeRedactionsBySource only removes entries matching that source', () => {
+    useStore.getState().addRedaction({ pageNum: 1, x: 0, y: 0, w: 10, h: 10, source: 'search', text: 'foo' })
+    useStore.getState().addRedaction({ pageNum: 1, x: 0, y: 0, w: 10, h: 10, source: 'pii', text: 'bar' })
+    useStore.getState().addRedaction({ pageNum: 1, x: 0, y: 0, w: 10, h: 10, source: 'manual' })
+
+    useStore.getState().removeRedactionsBySource('search')
+
+    const remaining = useStore.getState().pendingRedactions
+    expect(remaining).toHaveLength(2)
+    expect(remaining.some(r => r.source === 'search')).toBe(false)
+    expect(remaining.some(r => r.source === 'pii')).toBe(true)
+    expect(remaining.some(r => r.source === 'manual')).toBe(true)
+  })
+
+  it('clearRedactions removes all entries regardless of source', () => {
+    useStore.getState().addRedaction({ pageNum: 1, x: 0, y: 0, w: 10, h: 10, source: 'manual' })
+    useStore.getState().addRedaction({ pageNum: 2, x: 0, y: 0, w: 10, h: 10, source: 'search' })
+
+    useStore.getState().clearRedactions()
+    expect(useStore.getState().pendingRedactions).toHaveLength(0)
+  })
+})

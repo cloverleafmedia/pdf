@@ -382,17 +382,10 @@ export default function Toolbar() {
               <Search size={12}/> IBAN/E-Mail/Telefon erkennen
             </button>
             {pendingRedactions.length > 0 && (
-              <>
-                <button onClick={clearRedactions}
-                  className={`px-3 py-0.5 rounded text-xs transition-colors
-                    ${isDark ? 'hover:bg-red-900/40' : 'hover:bg-red-100'}`}>
-                  Zurücksetzen
-                </button>
-                <button onClick={() => window._applyRedactions?.()}
-                  className="flex items-center gap-1.5 px-3 py-0.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white transition-colors">
-                  <CheckCheck size={12}/> Anwenden
-                </button>
-              </>
+              <button onClick={() => window._applyRedactions?.()}
+                className="flex items-center gap-1.5 px-3 py-0.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white transition-colors">
+                <CheckCheck size={12}/> Anwenden
+              </button>
             )}
           </div>
         )}

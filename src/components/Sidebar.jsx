@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck } from 'lucide-react'
+import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck, Square } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
@@ -15,8 +15,8 @@ const THUMB_W = 200
 export default function Sidebar() {
   const { t } = useTranslation()
   const {
-    sidebarTab, setSidebarTab, theme,
-  } = useStore(useShallow(state => ({ sidebarTab: state.sidebarTab, setSidebarTab: state.setSidebarTab, theme: state.theme })))
+    sidebarTab, setSidebarTab, theme, pendingRedactions,
+  } = useStore(useShallow(state => ({ sidebarTab: state.sidebarTab, setSidebarTab: state.setSidebarTab, theme: state.theme, pendingRedactions: state.pendingRedactions })))
   const isDark = theme === 'dark'
 
   const tabs = [
@@ -24,6 +24,7 @@ export default function Sidebar() {
     { id: 'bookmarks',   icon: <BookOpen size={15}/>,       label: t('sidebar.bookmarks') },
     { id: 'search',      icon: <Search size={15}/>,         label: t('sidebar.search') },
     { id: 'annotations', icon: <MessageSquare size={15}/>,  label: t('sidebar.annotations') },
+    { id: 'redact',      icon: <Square size={15}/>,         label: 'Schwärzung', badge: pendingRedactions.length || null },
   ]
 
   return (
@@ -33,12 +34,17 @@ export default function Sidebar() {
       <div className={`flex flex-shrink-0 border-b ${isDark ? 'border-zinc-800' : 'border-gray-200'}`}>
         {tabs.map(tab => (
           <button key={tab.id} title={tab.label} onClick={() => setSidebarTab(tab.id)}
-            className={`flex-1 flex flex-col items-center py-2.5 transition-colors
+            className={`relative flex-1 flex flex-col items-center py-2.5 transition-colors
               ${sidebarTab === tab.id
                 ? 'text-clover-400 border-b-2 border-clover-500'
                 : isDark ? 'text-zinc-600 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'
               }`}>
             {tab.icon}
+            {tab.badge > 0 && (
+              <span className="absolute top-1 right-1/4 min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-500 text-white text-[9px] leading-[14px] text-center">
+                {tab.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -48,6 +54,7 @@ export default function Sidebar() {
         {sidebarTab === 'bookmarks'   && <Bookmarks isDark={isDark} />}
         {sidebarTab === 'search'      && <SearchPanel isDark={isDark} />}
         {sidebarTab === 'annotations' && <AnnotationsList isDark={isDark} />}
+        {sidebarTab === 'redact'      && <RedactionResultsPanel isDark={isDark} />}
       </div>
     </div>
   )
@@ -609,6 +616,86 @@ function AnnotationsList({ isDark }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── Pending redactions, grouped by page — lets the user review/deselect
+// search & PII matches before committing to the (permanent) Apply step. ──
+const SOURCE_LABELS = { manual: 'Manuell', pii: 'PII-Erkennung', search: 'Suche' }
+
+function RedactionResultsPanel({ isDark }) {
+  const {
+    pendingRedactions, removeRedaction, removeRedactionsBySource, clearRedactions,
+  } = useStore(useShallow(state => ({ pendingRedactions: state.pendingRedactions, removeRedaction: state.removeRedaction, removeRedactionsBySource: state.removeRedactionsBySource, clearRedactions: state.clearRedactions })))
+
+  const byPage = useMemo(() => {
+    const groups = {}
+    for (const r of pendingRedactions) (groups[r.pageNum] ||= []).push(r)
+    return Object.entries(groups).map(([page, items]) => [Number(page), items]).sort((a, b) => a[0] - b[0])
+  }, [pendingRedactions])
+
+  const bySource = useMemo(() => {
+    const counts = {}
+    for (const r of pendingRedactions) counts[r.source || 'manual'] = (counts[r.source || 'manual'] || 0) + 1
+    return counts
+  }, [pendingRedactions])
+
+  if (!pendingRedactions.length)
+    return <div className={`p-4 text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Keine ausstehenden Schwärzungen. Bereiche im Dokument aufziehen, oder über die Suche/PII-Erkennung Treffer markieren.</div>
+
+  return (
+    <div className="h-full overflow-y-auto p-2 space-y-2">
+      <div className={`px-2 py-1.5 rounded-lg text-xs space-y-1 ${isDark ? 'bg-zinc-800/60' : 'bg-gray-50'}`}>
+        <div className={`font-medium ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
+          {pendingRedactions.length} ausstehend
+          {Object.entries(bySource).map(([src, n]) => ` · ${n} ${SOURCE_LABELS[src] || src}`).join('')}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {bySource.search > 0 && (
+            <button onClick={() => removeRedactionsBySource('search')}
+              className={`px-2 py-0.5 rounded text-[11px] transition-colors ${isDark ? 'hover:bg-zinc-700 text-zinc-400' : 'hover:bg-gray-200 text-gray-600'}`}>
+              Diese Suche verwerfen
+            </button>
+          )}
+          {bySource.pii > 0 && (
+            <button onClick={() => removeRedactionsBySource('pii')}
+              className={`px-2 py-0.5 rounded text-[11px] transition-colors ${isDark ? 'hover:bg-zinc-700 text-zinc-400' : 'hover:bg-gray-200 text-gray-600'}`}>
+              PII-Treffer verwerfen
+            </button>
+          )}
+          <button onClick={clearRedactions}
+            className={`px-2 py-0.5 rounded text-[11px] transition-colors ${isDark ? 'hover:bg-zinc-700 text-zinc-400' : 'hover:bg-gray-200 text-gray-600'}`}>
+            Alle entfernen
+          </button>
+        </div>
+      </div>
+
+      {byPage.map(([page, items]) => (
+        <div key={page} className={`rounded-lg text-xs ${isDark ? 'bg-zinc-800/60' : 'bg-gray-50'}`}>
+          <div className={`px-2 pt-1.5 pb-1 font-semibold ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>
+            S. {page} · {items.length}
+          </div>
+          <div className="px-1 pb-1 space-y-0.5">
+            {items.map(r => (
+              <div key={r.id} onClick={() => navigateToPage(page, { setPage: false })}
+                className={`flex items-center gap-2 px-1.5 py-1 rounded cursor-pointer group transition-colors
+                  ${isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-100'}`}>
+                <span className={`text-[10px] flex-shrink-0 px-1 py-0.5 rounded ${isDark ? 'bg-zinc-700 text-zinc-400' : 'bg-gray-200 text-gray-500'}`}>
+                  {SOURCE_LABELS[r.source] || 'Manuell'}
+                </span>
+                <span className={`flex-1 min-w-0 truncate ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
+                  {r.text || r.label || '(Bereich)'}
+                </span>
+                <button onClick={e => { e.stopPropagation(); removeRedaction(r.id) }}
+                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0">
+                  <X size={12}/>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

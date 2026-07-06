@@ -30,7 +30,7 @@ export function useRedactTool({ pageNum, size, getPos, overlayRef, redraw, addRe
     const s = rectStartRef.current
     const x = Math.min(s.x, pos.x), y = Math.min(s.y, pos.y)
     const w = Math.abs(pos.x - s.x), h = Math.abs(pos.y - s.y)
-    if (w > 5 && h > 5) addRedaction({ pageNum, x, y, w, h, logicalW: size.w, logicalH: size.h })
+    if (w > 5 && h > 5) addRedaction({ pageNum, x, y, w, h, logicalW: size.w, logicalH: size.h, source: 'manual' })
     rectStartRef.current = null
     redraw()
   }

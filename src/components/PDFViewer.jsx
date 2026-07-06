@@ -277,7 +277,9 @@ export default function PDFViewer() {
         matches.forEach(m => addRect({
           pageNum: m.pageNum, x: m.x, y: m.y, w: m.w, h: m.h,
           logicalW: m.logicalW, logicalH: m.logicalH,
+          label: m.label, text: m.text, source: 'pii',
         }))
+        if (matches.length) useStore.getState().setSidebarTab('redact')
         setStatus(matches.length ? `${matches.length} Treffer gefunden` : 'Keine Treffer gefunden')
       } catch (e) { setStatus('Fehler: ' + e.message) }
     }
@@ -294,7 +296,9 @@ export default function PDFViewer() {
         matches.forEach(m => addRect({
           pageNum: m.pageNum, x: m.x, y: m.y, w: m.w, h: m.h,
           logicalW: m.logicalW, logicalH: m.logicalH,
+          label: m.label, text: m.text, source: 'search',
         }))
+        if (matches.length) useStore.getState().setSidebarTab('redact')
         setStatus(matches.length ? `${matches.length} Treffer gefunden` : 'Keine Treffer gefunden')
       } catch (e) { setStatus('Fehler: ' + (opts?.regex ? 'Ungültiger regulärer Ausdruck' : e.message)) }
     }

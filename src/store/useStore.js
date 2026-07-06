@@ -241,6 +241,7 @@ export const useStore = create((set, get) => ({
   addRedaction:    (r) => set(s => ({ pendingRedactions: [...s.pendingRedactions, { ...r, id: Date.now() }] })),
   removeRedaction: (id) => set(s => ({ pendingRedactions: s.pendingRedactions.filter(r => r.id !== id) })),
   clearRedactions: ()  => set({ pendingRedactions: [] }),
+  removeRedactionsBySource: (source) => set(s => ({ pendingRedactions: s.pendingRedactions.filter(r => r.source !== source) })),
 
   addFormFieldDraft:    (f) => set(s => ({ pendingFormFields: [...s.pendingFormFields, { ...f, id: Date.now() }] })),
   updateFormFieldDraft: (id, updates) => set(s => ({
