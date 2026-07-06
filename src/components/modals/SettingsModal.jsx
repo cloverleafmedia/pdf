@@ -78,10 +78,10 @@ export default function SettingsModal() {
 
               {/* Language */}
               <Field label={t('settings.language')} isDark={isDark}>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {LANGUAGES.map(opt => (
                     <button key={opt.id} onClick={() => setLocalLang(opt.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm whitespace-nowrap transition-colors
                         ${localLang === opt.id
                           ? 'border-clover-500 bg-clover-600 text-white'
                           : isDark ? 'border-zinc-700 text-zinc-300 hover:border-zinc-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
