@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck, Square } from 'lucide-react'
+import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck, Square, Pencil, AlertTriangle } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
 import { navigateToPage } from '../lib/navigate'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
+import { writeOutline } from '../lib/pdfOutline'
 import { ANNOTATION_ICONS } from '../lib/annotationIcons'
 
 // Fixed thumbnail render width — also used to pre-compute placeholder height
@@ -290,52 +291,103 @@ async function renderThumb(pageNum, canvas, pdfDoc, rotation, renderRef) {
 }
 
 // ── Bookmarks ──────────────────────────────────────────────────────────────
+// "Eigene Lesezeichen" are now real, native PDF /Outlines entries (written via
+// src/lib/pdfOutline.js on every add/rename/delete/reorder), not a
+// localStorage-only app fake — so they show up in Acrobat/any other reader
+// too. A document's own pre-existing native outline (e.g. from a Word
+// export) stays read-only under "Dokument-Gliederung" until the user adds
+// their first own bookmark - at that point it gets replaced by the editable
+// list (a real merge of "foreign nested outline" + "flat user list" would be
+// a much bigger, riskier feature; the user is warned up front instead).
 function Bookmarks({ isDark }) {
   const {
-    pdfDoc, currentPage, filePath,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, filePath: state.filePath })))
-  const [outline,   setOutline]   = useState(null)
-  const [userMarks, setUserMarks] = useState([])  // [{page, label}]
+    pdfDoc, pdfBytes, currentPage, filePath, fileName, openDocument, setStatus,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, currentPage: state.currentPage, filePath: state.filePath, fileName: state.fileName, openDocument: state.openDocument, setStatus: state.setStatus })))
+  const [nativeOutline,     setNativeOutline]     = useState(null)
+  const [ownMarks,          setOwnMarks]          = useState([]) // [{page, label}], display order
+  const [wroteOwnOutline,   setWroteOwnOutline]   = useState(false)
   const [adding,    setAdding]    = useState(false)
   const [newLabel,  setNewLabel]  = useState('')
+  const [renaming,  setRenaming]  = useState(null) // index into ownMarks
+  const [renameText, setRenameText] = useState('')
+  const [saving,    setSaving]    = useState(false)
+  const [dragFrom,  setDragFrom]  = useState(null)
+  const [dragOver,  setDragOver]  = useState(null)
 
-  // Load PDF native outline
+  // Load PDF native outline (also re-fetches after our own edits, reflecting
+  // whatever /Outlines now contains - harmless once wroteOwnOutline is true,
+  // since that section is hidden from then on).
   useEffect(() => {
     if (!pdfDoc) return
-    pdfDoc.getOutline().then(o => setOutline(o || [])).catch(() => setOutline([]))
+    pdfDoc.getOutline().then(o => setNativeOutline(o || [])).catch(() => setNativeOutline([]))
   }, [pdfDoc])
 
-  // Persist user bookmarks per file in localStorage
-  const storageKey = filePath ? 'bm_' + encodeURIComponent(filePath) : null
-
+  // A newly opened file starts with an empty editable list - own bookmarks
+  // are not persisted across files/sessions beyond what's baked into the PDF
+  // itself (and re-importing an existing native outline into the editable
+  // list is out of scope, see comment above).
   useEffect(() => {
-    if (!storageKey) return
-    try { setUserMarks(JSON.parse(localStorage.getItem(storageKey) || '[]')) } catch { setUserMarks([]) }
-  }, [storageKey])
+    setOwnMarks([]); setWroteOwnOutline(false)
+  }, [filePath, fileName])
 
-  const saveMarks = (marks) => {
-    setUserMarks(marks)
-    if (storageKey) localStorage.setItem(storageKey, JSON.stringify(marks))
+  const persist = async (marks) => {
+    setSaving(true)
+    try {
+      const bytes = await writeOutline(pdfBytes, marks)
+      const reloaded = await reloadPdfDoc(bytes)
+      openDocument(reloaded, bytes, filePath, fileName, bytes.byteLength)
+      setOwnMarks(marks)
+      setWroteOwnOutline(true)
+    } catch (e) {
+      setStatus('Fehler beim Speichern der Lesezeichen: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const addMark = () => {
     const label = newLabel.trim() || `Seite ${currentPage}`
-    const marks = [...userMarks.filter(m => m.page !== currentPage), { page: currentPage, label }]
-      .sort((a, b) => a.page - b.page)
-    saveMarks(marks)
+    const existingIdx = ownMarks.findIndex(m => m.page === currentPage)
+    const marks = existingIdx >= 0
+      ? ownMarks.map((m, i) => i === existingIdx ? { ...m, label } : m)
+      : [...ownMarks, { page: currentPage, label }]
+    persist(marks)
     setAdding(false); setNewLabel('')
   }
 
-  const deleteMark = (page) => saveMarks(userMarks.filter(m => m.page !== page))
+  const confirmRename = (i) => {
+    const label = renameText.trim()
+    if (label) persist(ownMarks.map((m, idx) => idx === i ? { ...m, label } : m))
+    setRenaming(null)
+  }
+
+  const deleteMark = (i) => persist(ownMarks.filter((_, idx) => idx !== i))
+
+  const reorderMarks = (from, to) => {
+    if (from === to) return
+    const marks = [...ownMarks]
+    const [moved] = marks.splice(from, 1)
+    marks.splice(to, 0, moved)
+    persist(marks)
+  }
 
   const goTo = (n) => navigateToPage(n)
 
   if (!pdfDoc) return <Empty isDark={isDark} />
 
+  const showNativeOutline = !wroteOwnOutline && nativeOutline !== null && nativeOutline.length > 0
+
   return (
     <div className="flex flex-col h-full">
       {/* Add bookmark toolbar */}
       <div className={`p-2 border-b flex-shrink-0 ${isDark ? 'border-zinc-800' : 'border-gray-200'}`}>
+        {showNativeOutline && ownMarks.length === 0 && (
+          <div className={`flex items-start gap-1.5 mb-2 px-2 py-1.5 rounded text-[11px]
+            ${isDark ? 'bg-amber-900/20 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+            <AlertTriangle size={12} className="flex-shrink-0 mt-0.5"/>
+            <span>Dieses Dokument hat bereits eine Gliederung — eigene Lesezeichen ersetzen sie beim Speichern.</span>
+          </div>
+        )}
         {adding ? (
           <div className="flex gap-1">
             <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
@@ -347,8 +399,8 @@ function Bookmarks({ isDark }) {
             <button onClick={() => setAdding(false)} className={`px-2 py-1 text-xs rounded ${isDark ? 'bg-zinc-700 text-zinc-400' : 'bg-gray-100 text-gray-500'}`}>✕</button>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)}
-            className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors
+          <button onClick={() => setAdding(true)} disabled={saving}
+            className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors disabled:opacity-50
               ${isDark ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`}>
             <Plus size={12}/> Lesezeichen für Seite {currentPage} hinzufügen
           </button>
@@ -356,22 +408,38 @@ function Bookmarks({ isDark }) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* User-defined bookmarks */}
-        {userMarks.length > 0 && (
+        {/* User-defined bookmarks — rename/delete/drag-reorder, real /Outlines entries */}
+        {ownMarks.length > 0 && (
           <>
             <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
               Eigene Lesezeichen
             </div>
-            {userMarks.map(m => (
-              <div key={m.page}
-                className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer group text-xs
-                  ${isDark ? 'hover:bg-zinc-800 text-zinc-300' : 'hover:bg-gray-100 text-gray-700'}`}
-                onClick={() => goTo(m.page)}>
+            {ownMarks.map((m, i) => (
+              <div key={i}
+                draggable={renaming !== i}
+                onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragFrom(i) }}
+                onDragOver={e => { e.preventDefault(); setDragOver(i) }}
+                onDragEnd={() => { if (dragFrom !== null && dragOver !== null) reorderMarks(dragFrom, dragOver); setDragFrom(null); setDragOver(null) }}
+                className={`flex items-center gap-1 px-2 py-1.5 group text-xs
+                  ${dragOver === i && dragFrom !== i ? (isDark ? 'bg-zinc-700' : 'bg-gray-200') : isDark ? 'hover:bg-zinc-800 text-zinc-300' : 'hover:bg-gray-100 text-gray-700'}`}>
+                <GripVertical size={11} className={`flex-shrink-0 cursor-grab ${isDark ? 'text-zinc-600' : 'text-gray-300'}`}/>
                 <BookmarkCheck size={12} className="text-clover-400 flex-shrink-0"/>
-                <span className="flex-1 truncate">{m.label}</span>
+                {renaming === i ? (
+                  <input autoFocus value={renameText} onChange={e => setRenameText(e.target.value)}
+                    onBlur={() => confirmRename(i)}
+                    onKeyDown={e => { if (e.key === 'Enter') confirmRename(i); if (e.key === 'Escape') setRenaming(null) }}
+                    className={`flex-1 px-1 py-0.5 text-xs rounded border outline-none focus:border-clover-500
+                      ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'bg-white border-gray-200 text-gray-900'}`} />
+                ) : (
+                  <span className="flex-1 truncate cursor-pointer" onClick={() => goTo(m.page)}>{m.label}</span>
+                )}
                 <span className={`text-[10px] flex-shrink-0 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>S.{m.page}</span>
-                <button onClick={e => { e.stopPropagation(); deleteMark(m.page) }}
-                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 ml-1 flex-shrink-0">
+                <button onClick={e => { e.stopPropagation(); setRenaming(i); setRenameText(m.label) }}
+                  className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200 ml-1 flex-shrink-0">
+                  <Pencil size={10}/>
+                </button>
+                <button onClick={e => { e.stopPropagation(); deleteMark(i) }}
+                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 flex-shrink-0">
                   <X size={10}/>
                 </button>
               </div>
@@ -379,19 +447,19 @@ function Bookmarks({ isDark }) {
           </>
         )}
 
-        {/* PDF native outline */}
-        {outline === null && (
+        {/* PDF native outline — only shown until the user starts their own list */}
+        {!wroteOwnOutline && nativeOutline === null && (
           <div className={`p-4 text-xs animate-pulse ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>Lade …</div>
         )}
-        {outline !== null && outline.length > 0 && (
+        {showNativeOutline && (
           <>
             <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
               Dokument-Gliederung
             </div>
-            {outline.map((item, i) => <OutlineItem key={i} item={item} isDark={isDark} depth={0} />)}
+            {nativeOutline.map((item, i) => <OutlineItem key={i} item={item} isDark={isDark} depth={0} />)}
           </>
         )}
-        {outline !== null && outline.length === 0 && userMarks.length === 0 && (
+        {!wroteOwnOutline && nativeOutline !== null && nativeOutline.length === 0 && ownMarks.length === 0 && (
           <div className={`p-4 text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>Keine Lesezeichen vorhanden</div>
         )}
       </div>
