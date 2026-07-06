@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { useFloatingMenu, FloatingMenu } from './FloatingMenu.jsx'
 import {
   FolderOpen, Save, Printer, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   ZoomIn, ZoomOut, Maximize, AlignJustify, RotateCcw, RotateCw,
@@ -11,7 +11,7 @@ import {
   FileDown, QrCode, Crop, Layers, Search, Archive, SplitSquareHorizontal, BookmarkPlus, Package2,
   Wrench, Eye, Pin, Terminal, Keyboard,
   ShieldCheck, FileSpreadsheet, FileCheck2, Accessibility, Library, Lock, Images,
-  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes
+  Upload, Download, BadgeCheck, Stethoscope, Table2, SquarePlus, Shapes, ClipboardList, Award
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -23,60 +23,11 @@ const COLORS = ['#f59e0b','#ef4444','#3b82f6','#10b981','#a855f7','#ec4899','#00
 // Whether every button in the toolbar shows a text label next to its icon.
 const LabelsContext = createContext(false)
 
-// ── Floating menu plumbing ───────────────────────────────────────────────
-// The toolbar row uses `overflow-x-auto`, and per the CSS spec that forces
-// the other axis to `overflow-y: auto` too — so any dropdown positioned
-// `absolute` inside the row gets silently clipped to the row's own height.
-// Rendering dropdown content through a portal, positioned `fixed` from the
-// trigger's own bounding rect, sidesteps that clipping entirely.
-function useFloatingMenu() {
-  const [open, setOpen] = useState(false)
-  const anchorRef = useRef(null)
-  const menuRef   = useRef(null)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
-
-  useEffect(() => {
-    if (!open) return
-    const update = () => {
-      if (!anchorRef.current) return
-      const r = anchorRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 4, left: r.left })
-    }
-    update()
-    const onDown = (e) => {
-      if (anchorRef.current?.contains(e.target)) return
-      if (menuRef.current?.contains(e.target)) return
-      setOpen(false)
-    }
-    const onEsc = (e) => { if (e.key === 'Escape') setOpen(false) }
-    window.addEventListener('resize', update)
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onEsc)
-    return () => {
-      window.removeEventListener('resize', update)
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onEsc)
-    }
-  }, [open])
-
-  return { open, setOpen, anchorRef, menuRef, pos }
-}
-
-function FloatingMenu({ open, pos, menuRef, children }) {
-  if (!open) return null
-  return createPortal(
-    <div ref={menuRef} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}>
-      {children}
-    </div>,
-    document.body
-  )
-}
-
 export default function Toolbar() {
   const { t } = useTranslation()
   const {
-    pdfDoc, currentPage, totalPages, zoom, theme, sidebarOpen, nightMode, twoPageView, magnifierActive, activeTool, lastAnnotateTool, drawColor, drawWidth, pendingRedactions, annotationHistory, annotationFuture, toolbarLabels, pinnedTools, pendingFormFields, newFieldType, shapeType, setActiveTool, setZoom, zoomIn, zoomOut, setDrawColor, setDrawWidth, setCurrentPage, toggleSidebar, openSettings, openProperties, openSplit, openOCR, rotatePageLeft, rotatePageRight, clearRedactions, setNewFieldType, clearFormFieldDrafts, setShapeType, toggleNightMode, openWatermark, openSignature, openHeaderFooter, togglePresentation, undoAnnotation, redoAnnotation, setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool, openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare, openCommandPalette, openShortcuts, openPrintDialog, openSanitize, openMailMerge, openPdfa, openA11y, openLibrary, openEncrypt, openImagesToPdf, openSignatureVerify, openTableExtract,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, totalPages: state.totalPages, zoom: state.zoom, theme: state.theme, sidebarOpen: state.sidebarOpen, nightMode: state.nightMode, twoPageView: state.twoPageView, magnifierActive: state.magnifierActive, activeTool: state.activeTool, lastAnnotateTool: state.lastAnnotateTool, drawColor: state.drawColor, drawWidth: state.drawWidth, pendingRedactions: state.pendingRedactions, annotationHistory: state.annotationHistory, annotationFuture: state.annotationFuture, toolbarLabels: state.toolbarLabels, pinnedTools: state.pinnedTools, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, shapeType: state.shapeType, setActiveTool: state.setActiveTool, setZoom: state.setZoom, zoomIn: state.zoomIn, zoomOut: state.zoomOut, setDrawColor: state.setDrawColor, setDrawWidth: state.setDrawWidth, setCurrentPage: state.setCurrentPage, toggleSidebar: state.toggleSidebar, openSettings: state.openSettings, openProperties: state.openProperties, openSplit: state.openSplit, openOCR: state.openOCR, rotatePageLeft: state.rotatePageLeft, rotatePageRight: state.rotatePageRight, clearRedactions: state.clearRedactions, setNewFieldType: state.setNewFieldType, clearFormFieldDrafts: state.clearFormFieldDrafts, setShapeType: state.setShapeType, toggleNightMode: state.toggleNightMode, openWatermark: state.openWatermark, openSignature: state.openSignature, openHeaderFooter: state.openHeaderFooter, togglePresentation: state.togglePresentation, undoAnnotation: state.undoAnnotation, redoAnnotation: state.redoAnnotation, setTwoPageView: state.setTwoPageView, toggleMagnifier: state.toggleMagnifier, setToolbarLabels: state.setToolbarLabels, togglePinnedTool: state.togglePinnedTool, openCompress: state.openCompress, openExportImages: state.openExportImages, openQRCode: state.openQRCode, openCrop: state.openCrop, openBatch: state.openBatch, openCompare: state.openCompare, openCommandPalette: state.openCommandPalette, openShortcuts: state.openShortcuts, openPrintDialog: state.openPrintDialog, openSanitize: state.openSanitize, openMailMerge: state.openMailMerge, openPdfa: state.openPdfa, openA11y: state.openA11y, openLibrary: state.openLibrary, openEncrypt: state.openEncrypt, openImagesToPdf: state.openImagesToPdf, openSignatureVerify: state.openSignatureVerify, openTableExtract: state.openTableExtract })))
+    pdfDoc, currentPage, totalPages, zoom, theme, sidebarOpen, nightMode, twoPageView, magnifierActive, activeTool, lastAnnotateTool, drawColor, drawWidth, pendingRedactions, annotationHistory, annotationFuture, toolbarLabels, pinnedTools, pendingFormFields, newFieldType, shapeType, setActiveTool, setZoom, zoomIn, zoomOut, setDrawColor, setDrawWidth, setCurrentPage, toggleSidebar, openSettings, openProperties, openSplit, openOCR, rotatePageLeft, rotatePageRight, setNewFieldType, clearFormFieldDrafts, setShapeType, toggleNightMode, openWatermark, openSignature, openHeaderFooter, togglePresentation, undoAnnotation, redoAnnotation, setTwoPageView, toggleMagnifier, setToolbarLabels, togglePinnedTool, openCompress, openExportImages, openQRCode, openCrop, openBatch, openCompare, openCommandPalette, openShortcuts, openPrintDialog, openSanitize, openMailMerge, openPdfa, openA11y, openLibrary, openEncrypt, openImagesToPdf, openSignatureVerify, openTableExtract, openCommentsSummary, openStamp,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, currentPage: state.currentPage, totalPages: state.totalPages, zoom: state.zoom, theme: state.theme, sidebarOpen: state.sidebarOpen, nightMode: state.nightMode, twoPageView: state.twoPageView, magnifierActive: state.magnifierActive, activeTool: state.activeTool, lastAnnotateTool: state.lastAnnotateTool, drawColor: state.drawColor, drawWidth: state.drawWidth, pendingRedactions: state.pendingRedactions, annotationHistory: state.annotationHistory, annotationFuture: state.annotationFuture, toolbarLabels: state.toolbarLabels, pinnedTools: state.pinnedTools, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, shapeType: state.shapeType, setActiveTool: state.setActiveTool, setZoom: state.setZoom, zoomIn: state.zoomIn, zoomOut: state.zoomOut, setDrawColor: state.setDrawColor, setDrawWidth: state.setDrawWidth, setCurrentPage: state.setCurrentPage, toggleSidebar: state.toggleSidebar, openSettings: state.openSettings, openProperties: state.openProperties, openSplit: state.openSplit, openOCR: state.openOCR, rotatePageLeft: state.rotatePageLeft, rotatePageRight: state.rotatePageRight, setNewFieldType: state.setNewFieldType, clearFormFieldDrafts: state.clearFormFieldDrafts, setShapeType: state.setShapeType, toggleNightMode: state.toggleNightMode, openWatermark: state.openWatermark, openSignature: state.openSignature, openHeaderFooter: state.openHeaderFooter, togglePresentation: state.togglePresentation, undoAnnotation: state.undoAnnotation, redoAnnotation: state.redoAnnotation, setTwoPageView: state.setTwoPageView, toggleMagnifier: state.toggleMagnifier, setToolbarLabels: state.setToolbarLabels, togglePinnedTool: state.togglePinnedTool, openCompress: state.openCompress, openExportImages: state.openExportImages, openQRCode: state.openQRCode, openCrop: state.openCrop, openBatch: state.openBatch, openCompare: state.openCompare, openCommandPalette: state.openCommandPalette, openShortcuts: state.openShortcuts, openPrintDialog: state.openPrintDialog, openSanitize: state.openSanitize, openMailMerge: state.openMailMerge, openPdfa: state.openPdfa, openA11y: state.openA11y, openLibrary: state.openLibrary, openEncrypt: state.openEncrypt, openImagesToPdf: state.openImagesToPdf, openSignatureVerify: state.openSignatureVerify, openTableExtract: state.openTableExtract, openCommentsSummary: state.openCommentsSummary, openStamp: state.openStamp })))
 
   const [pageInput, setPageInput]     = useState(String(currentPage))
   const [zoomInput, setZoomInput]     = useState(String(Math.round(zoom)))
@@ -156,6 +107,8 @@ export default function Toolbar() {
     { id: 'encrypt',     icon: <Lock size={15}/>,                label: 'Verschlüsseln',             onClick: openEncrypt,                 disabled: !pdfDoc },
     { id: 'imagestopdf', icon: <Images size={15}/>,              label: 'Bilder zu PDF',             onClick: openImagesToPdf },
     { id: 'tableextract', icon: <Table2 size={15}/>,             label: 'Tabellen als CSV exportieren', onClick: openTableExtract, disabled: !pdfDoc },
+    { id: 'commentssummary', icon: <ClipboardList size={15}/>,   label: 'Kommentar-Zusammenfassung', onClick: openCommentsSummary, disabled: !pdfDoc },
+    { id: 'stamp',        icon: <Award size={15}/>,              label: 'Stempel',                   onClick: openStamp,                 disabled: !pdfDoc },
   ]
 
   const viewItems = [

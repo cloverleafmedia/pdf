@@ -98,6 +98,22 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
         const headAngle = Math.PI / 7
         page.drawLine({ start: { x: x2, y: y2 }, end: { x: x2 - headLen * Math.cos(angle - headAngle), y: y2 - headLen * Math.sin(angle - headAngle) }, thickness: lw, color })
         page.drawLine({ start: { x: x2, y: y2 }, end: { x: x2 - headLen * Math.cos(angle + headAngle), y: y2 - headLen * Math.sin(angle + headAngle) }, thickness: lw, color })
+      } else if (a.type === 'stamp') {
+        const x = a.x * sx, w = a.w * sx, h = a.h * sy
+        const y = ph - (a.y + a.h) * sy
+        if (a.kind === 'custom' && a.imageBytes) {
+          const isJpg = a.imageExt === 'jpg' || a.imageExt === 'jpeg'
+          const image = isJpg ? await doc.embedJpg(a.imageBytes) : await doc.embedPng(a.imageBytes)
+          page.drawImage(image, { x, y, width: w, height: h })
+        } else {
+          const f = await getFont()
+          const bw = Math.max(3 * sx, 1)
+          page.drawRectangle({ x, y, width: w, height: h, borderColor: color, borderWidth: bw })
+          const text = a.text || ''
+          const fSz = Math.min(h * 0.4, 24)
+          const textW = f.widthOfTextAtSize(text, fSz)
+          page.drawText(text, { x: x + (w - textW) / 2, y: y + h / 2 - fSz * 0.35, size: fSz, font: f, color })
+        }
       }
     }
   }

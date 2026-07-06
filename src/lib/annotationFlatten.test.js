@@ -125,6 +125,29 @@ describe('flattenAnnotations', () => {
     await expect(flattenAnnotations(bytes, annotations, {})).resolves.toBeTruthy()
   })
 
+  it('draws a text-preset stamp as a bordered rectangle with centered text', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'stamp', page: 1, kind: 'approved', text: 'GENEHMIGT', color: '#10b981', x: 10, y: 10, w: 150, h: 50, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {}, 0.35, [], embedTestFont)
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPageCount()).toBe(1)
+  })
+
+  it('draws a custom-image stamp by embedding the given PNG bytes', async () => {
+    // Minimal valid 1x1 transparent PNG.
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+    const imageBytes = new Uint8Array(Buffer.from(pngBase64, 'base64'))
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'stamp', page: 1, kind: 'custom', imageBytes, imageExt: 'png', x: 10, y: 10, w: 60, h: 60, pageW: 200, pageH: 200 },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {})
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPageCount()).toBe(1)
+  })
+
   it('silently skips shape annotations targeting a page number beyond the document', async () => {
     const bytes = await makePdfBytes()
     const annotations = [

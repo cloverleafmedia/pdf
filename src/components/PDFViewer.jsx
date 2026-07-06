@@ -26,7 +26,8 @@ const REDACTION_RASTER_DPI = 300
 // Tool-id groups checked in multiple places below (text-selection annotations
 // vs. freehand-drag tools) — kept as single constants so both checks can't drift.
 const HIGHLIGHT_TOOLS = ['highlight', 'underline', 'strikethrough']
-const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield', 'shape']
+const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield', 'shape', 'stamp']
+const STAMP_DEFAULT_W = 150
 
 // Opacity for freehand-drawn/highlight annotation strokes when rendered and
 // when flattened into the saved PDF. No settings UI exposes this - it is a
@@ -673,6 +674,20 @@ function PDFPage({ pageNum }) {
       return
     }
 
+    // ── Stamp: single click places it at default size, then hands back
+    // to the hand tool so drag-to-reposition (DraggableAnnotationMarker,
+    // already generic for note/text) works immediately ─────────────────
+    if (tool === 'stamp') {
+      if (!pendingStampConfig) { setActiveTool('hand'); return }
+      const pos = getPos(e)
+      const w = STAMP_DEFAULT_W
+      const h = pendingStampConfig.kind === 'custom' ? w * (pendingStampConfig.aspect || 1) : w / 3
+      addAnnotation({ type: 'stamp', page: pageNum, x: pos.x - w / 2, y: pos.y - h / 2, w, h, pageW: size.w, pageH: size.h, ...pendingStampConfig })
+      setPendingStampConfig(null)
+      setActiveTool('hand')
+      return
+    }
+
     // ── Freehand drawing ──────────────────────────────────────────────
     drawTool.onMouseDown(e)
   }
@@ -772,6 +787,28 @@ function PDFPage({ pageNum }) {
           onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
           onRemove={() => removeAnnotation(a.id)}>
           {a.text}
+        </DraggableAnnotationMarker>
+      ))}
+
+      {/* 6b. Stamp overlays */}
+      {annotations.filter(a => a.page === pageNum && a.type === 'stamp').map(a => (
+        <DraggableAnnotationMarker key={a.id} activeTool={activeTool}
+          className={`absolute select-none z-10 flex items-center justify-center overflow-hidden
+            ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
+          style={{
+            left: a.x, top: a.y, width: a.w, height: a.h, userSelect: 'none',
+            ...(a.kind !== 'custom' ? {
+              border: `3px solid ${a.color}`, borderRadius: 4,
+              color: a.color, fontWeight: 'bold', letterSpacing: 1,
+              fontSize: Math.max(10, a.h * 0.32),
+            } : {}),
+          }}
+          title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : (a.text || undefined)}
+          onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
+          onRemove={() => removeAnnotation(a.id)}>
+          {a.kind === 'custom'
+            ? <img src={a.imageUrl} alt="Stempel" className="w-full h-full object-contain pointer-events-none" draggable={false}/>
+            : a.text}
         </DraggableAnnotationMarker>
       ))}
 

@@ -44,6 +44,7 @@ const AltTextModal                = lazy(() => import('./components/modals/AltTe
 const SignatureVerifyModal        = lazy(() => import('./components/modals/SignatureVerifyModal'))
 const TableExtractModal           = lazy(() => import('./components/modals/TableExtractModal'))
 const CommentsSummaryModal        = lazy(() => import('./components/modals/CommentsSummaryModal'))
+const StampModal                  = lazy(() => import('./components/modals/StampModal'))
 const PresentationMode            = lazy(() => import('./components/PresentationMode'))
 const CompareView                 = lazy(() => import('./components/CompareView'))
 
@@ -394,6 +395,7 @@ export default function App() {
         {signatureVerifyOpen && <SignatureVerifyModal />}
         {tableExtractOpen  && <TableExtractModal />}
         {commentsSummaryOpen && <CommentsSummaryModal />}
+        {stampOpen         && <StampModal />}
       </Suspense>
       <CommandPalette />
     </div>
