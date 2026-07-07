@@ -6,6 +6,17 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- Fett-Schalter für Textfeld-Anmerkungen (Folgeschritt zu Schriftgröße/Farbe aus v1.9.0), nutzt die bereits gebündelte Liberation Sans Bold-Schriftdatei.
+- Bild-Wasserzeichen: eigenes Bild/Logo statt nur Text als Wasserzeichen platzierbar, mit Größe/Deckkraft/Rotation und Vorlagen-Speicherung wie beim Text-Wasserzeichen.
+- PDF nach Lesezeichen aufteilen: neuer Teilen-Modus erstellt eine Datei je Top-Level-Lesezeichen (direkte Fortsetzung der in v1.9.0 editierbaren nativen Lesezeichen).
+- Digitale Signatur: optionaler vertrauenswürdiger Zeitstempel (RFC 3161) über einen externen TSA-Server, damit eine Signatur auch nach Ablauf des Signaturzertifikats beweisbar bleibt.
+
+### Hinweise
+- Der Live-Rundlauf gegen eine echte RFC-3161-Zeitstempel-Autorität ist in der Entwicklungsumgebung nicht automatisiert testbar (externe Netzwerkabhängigkeit) — analog zum OCR-Sprachpaket-Hinweis in v1.9.0 manuell vor Release geprüft, u. a. durch Öffnen einer zeitgestempelten PDF in Adobe Acrobat Reader.
+
+## [1.9.0] – 2026-07-06
+
+### Hinzugefügt
 - Native PDF-Lesezeichen: eigene Lesezeichen werden jetzt echt ins PDF geschrieben (statt nur app-lokal in `localStorage`), umbenennbar, löschbar und per Drag verschiebbar. Ein bereits vorhandenes natives Inhaltsverzeichnis bleibt read-only mit Warnhinweis vor dem Ersetzen.
 - Anhänge-Verwaltung: neues Modal zeigt im PDF eingebettete Dateien an, erlaubt Extrahieren auf die Festplatte sowie Hinzufügen neuer Anhänge.
 - OCR-Sprachen um acht Pakete erweitert (Italienisch, Chinesisch, Polnisch, Japanisch, Portugiesisch, Russisch, Koreanisch, Türkisch) — jetzt Parität mit den 12 UI-Sprachen.
