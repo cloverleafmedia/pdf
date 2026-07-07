@@ -17,6 +17,9 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Batch-Verarbeitung: Ausgabedateinamen wurden per reinem Text-Replace aus `.pdf` gebildet — bei Quelldateien mit großgeschriebener Endung (z. B. `Scan001.PDF`, häufig bei Scannern/Exporten) blieb der Name unverändert; wählte man denselben Ordner als Ziel, wurde die Originaldatei dadurch stillschweigend überschrieben. Derselbe Fix auch in "Kommentar-Zusammenfassung" und "Teilen" angewendet.
 - Serienbrief (Mail-Merge): zwei CSV-Zeilen mit demselben Wert in der für den Dateinamen gewählten Spalte überschrieben sich gegenseitig, ohne dass die Erfolgsmeldung das bemerkte — Duplikate erhalten jetzt einen laufenden Zahlen-Suffix.
 - Bilder zu PDF: die EXIF-Rotation von Fotos (z. B. Hochkant-Aufnahmen vom Handy) wurde ignoriert — solche Seiten kamen seitlich oder auf dem Kopf stehend heraus, obwohl jeder EXIF-fähige Betrachter sie korrekt anzeigt.
+- Automatische PII-Erkennung (Schwärzen): IBAN im üblichen 4er-gruppierten Anzeigeformat (z. B. `DE44 5001 0517 5407 3249 31`) wurde nicht erkannt.
+- Automatische PII-Erkennung (Schwärzen): E-Mail-Adressen mit Subdomain oder mehrteiliger Endung (z. B. `mail.firma.de`, `.co.uk`) wurden nur bis vor den letzten Punkt erkannt — der Rest blieb ungeschwärzt.
+- Barrierefreiheits-Check: ein PDF ganz ohne Tag-Struktur (die häufigste reale Situation) wurde für Bild-Alternativtexte als "nicht prüfbar" statt als tatsächlicher Fehlschlag angezeigt, obwohl vorhandene Bilder ohne jeden Alternativtext genau der häufigste echte Mangel sind.
 
 ## [1.11.0] – 2026-07-07
 

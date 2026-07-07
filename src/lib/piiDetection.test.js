@@ -49,6 +49,25 @@ describe('findTextMatches / findPIIRedactions', () => {
     expect(matches.some(m => m.label === 'E-Mail' && m.text === 'max.mustermann@example.com')).toBe(true)
   })
 
+  it('finds an IBAN printed in the standard 4-char-grouped display format', async () => {
+    const doc = fakePdfDoc(['IBAN: DE44 5001 0517 5407 3249 31 bitte angeben'])
+    const matches = await findPIIRedactions(doc, {})
+    const iban = matches.find(m => m.label === 'IBAN')
+    expect(iban?.text).toBe('DE44 5001 0517 5407 3249 31')
+  })
+
+  it('finds a full email address with a subdomain/multi-part TLD, including the trailing part', async () => {
+    const doc = fakePdfDoc(['Kontakt: kontakt@mail.firma.de fuer Rueckfragen'])
+    const matches = await findPIIRedactions(doc, {})
+    expect(matches.some(m => m.label === 'E-Mail' && m.text === 'kontakt@mail.firma.de')).toBe(true)
+  })
+
+  it('finds a co.uk-style email address in full', async () => {
+    const doc = fakePdfDoc(['Email: sales@example.co.uk today'])
+    const matches = await findPIIRedactions(doc, {})
+    expect(matches.some(m => m.label === 'E-Mail' && m.text === 'sales@example.co.uk')).toBe(true)
+  })
+
   it('finds a German phone number with at least 7 digits', async () => {
     const doc = fakePdfDoc(['Rufen Sie an: 0151 12345678'])
     const matches = await findPIIRedactions(doc, {})

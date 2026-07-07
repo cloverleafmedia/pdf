@@ -117,7 +117,17 @@ export function checkTransparencyAndColorSpace(doc) {
 // on the /Figure struct element's /Alt entry, not on the image XObject itself.
 export function checkImageAltText(doc) {
   const structTreeRoot = doc.catalog.lookup(PDFName.of('StructTreeRoot'))
-  if (!(structTreeRoot instanceof PDFDict)) return { supported: false, total: 0, withAlt: 0 }
+  if (!(structTreeRoot instanceof PDFDict)) {
+    // No tag tree at all is the overwhelming majority of ordinary PDFs - and
+    // exactly the case that most needs flagging, not waved through as merely
+    // "not checkable". Only report it as a real failure if the document
+    // actually has images to tag; a text-only document with no StructTreeRoot
+    // genuinely has nothing to check here.
+    const imageCount = listImagesForAltText(doc).length
+    return imageCount > 0
+      ? { supported: true, total: imageCount, withAlt: 0 }
+      : { supported: false, total: 0, withAlt: 0 }
+  }
 
   let total = 0, withAlt = 0
   const visited = new Set()

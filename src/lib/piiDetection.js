@@ -4,8 +4,15 @@
 // won't be caught, which is an acceptable trade-off for a suggestion feature
 // the user reviews before applying.
 export const PII_PATTERNS = [
-  { label: 'IBAN',           re: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/g },
-  { label: 'E-Mail',         re: /\b[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}\b/g },
+  // Allows the standard 4-char-grouped display format (e.g. the German
+  // "DE44 5001 0517 5407 3249 31") in addition to the unspaced form - a
+  // printed invoice/letter almost always shows an IBAN grouped like this.
+  { label: 'IBAN',           re: /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){2,7}(?:[ ]?[A-Z0-9]{1,3})?\b/g },
+  // Domain part allows any number of dot-separated segments before the final
+  // one (subdomains, co.uk/com.au-style multi-part TLDs) - a single-dot-only
+  // pattern stops matching right before the last segment for any address
+  // with more than one domain dot, leaving that trailing part unredacted.
+  { label: 'E-Mail',         re: /\b[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-zA-Z]{2,}\b/g },
   { label: 'Telefonnummer',  re: /(?:\+49[\s\-/]?|\b0)[1-9][0-9\s\-/()]{5,14}[0-9]\b/g },
 ]
 

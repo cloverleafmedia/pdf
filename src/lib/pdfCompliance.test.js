@@ -235,9 +235,19 @@ function attachFigure(doc, { alt, imgRef, pageRef } = {}) {
 }
 
 describe('checkImageAltText', () => {
-  it('reports unsupported when there is no StructTreeRoot at all', async () => {
+  it('reports unsupported when there is no StructTreeRoot at all and no images either', async () => {
     const doc = await makeDoc()
     expect(checkImageAltText(doc)).toEqual({ supported: false, total: 0, withAlt: 0 })
+  })
+
+  it('reports a real failure (not "unsupported") when images exist but there is no StructTreeRoot', async () => {
+    const doc = await makeDoc()
+    const imgRef = doc.context.register(doc.context.obj({ Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') }))
+    doc.getPage(0).node.Resources().set(PDFName.of('XObject'), doc.context.obj({ Im1: imgRef }))
+
+    // The single most common real case - an ordinary PDF with images and no
+    // tagging at all - used to surface as "not checkable" rather than a fail.
+    expect(checkImageAltText(doc)).toEqual({ supported: true, total: 1, withAlt: 0 })
   })
 
   it('counts Figure elements with and without Alt text', async () => {
