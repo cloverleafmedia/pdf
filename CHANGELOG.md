@@ -6,6 +6,11 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 ## [Unreleased]
 
 ### Hinzugefügt
+- Test-Tooling: echte Electron-Funktionstests via Playwright (`e2e/`, `npm run test:e2e`) — startet einen echten Vite-Dev-Server + das tatsächliche App-Fenster, erlaubt Klicks/Screenshots/Zustandsprüfung statt nur Unit-Tests. Bewusst getrennt von der schnellen `npm run test`-Suite gehalten (eigene `vitest.e2e.config.js`).
+
+## [1.10.0] – 2026-07-07
+
+### Hinzugefügt
 - Fett-Schalter für Textfeld-Anmerkungen (Folgeschritt zu Schriftgröße/Farbe aus v1.9.0), nutzt die bereits gebündelte Liberation Sans Bold-Schriftdatei.
 - Bild-Wasserzeichen: eigenes Bild/Logo statt nur Text als Wasserzeichen platzierbar, mit Größe/Deckkraft/Rotation und Vorlagen-Speicherung wie beim Text-Wasserzeichen.
 - PDF nach Lesezeichen aufteilen: neuer Teilen-Modus erstellt eine Datei je Top-Level-Lesezeichen (direkte Fortsetzung der in v1.9.0 editierbaren nativen Lesezeichen).
