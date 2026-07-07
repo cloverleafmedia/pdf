@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, net } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const os   = require('os')
@@ -276,6 +276,35 @@ ipcMain.handle('shell:showInFolder', (_, filePath) => shell.showItemInFolder(fil
 // keeping the certificate file + its password out of the renderer entirely
 // (the renderer only ever sees a file path, chosen via dialog:openCert) is a
 // deliberate defense-in-depth choice, same spirit as the fs read/write allowlist.
+// Electron's net.request (not Node's raw https/http) so the TSA request
+// respects the system/corporate proxy config a packaged Windows app may run
+// behind; explicit timeout since neither module has one by default and an
+// unreachable TSA would otherwise hang the whole signing operation.
+function postTsq(url, tsqDerBytes, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const request = net.request({ method: 'POST', url })
+    request.setHeader('Content-Type', 'application/timestamp-query')
+    request.setHeader('Accept', 'application/timestamp-reply')
+    const timer = setTimeout(() => { request.abort(); reject(new Error('Zeitüberschreitung bei der Zeitstempel-Anfrage.')) }, timeoutMs)
+    request.on('response', (response) => {
+      const chunks = []
+      response.on('data', (chunk) => chunks.push(chunk))
+      response.on('end', () => {
+        clearTimeout(timer)
+        if (response.statusCode !== 200) {
+          reject(new Error(`Zeitstempel-Server antwortete mit HTTP ${response.statusCode}.`))
+          return
+        }
+        resolve(Buffer.concat(chunks))
+      })
+      response.on('error', (err) => { clearTimeout(timer); reject(err) })
+    })
+    request.on('error', (err) => { clearTimeout(timer); reject(err) })
+    request.write(tsqDerBytes)
+    request.end()
+  })
+}
+
 async function signPdf(pdfBytes, certPath, password, meta) {
   try {
     assertExtension(certPath, new Set(['.p12', '.pfx']))
@@ -283,6 +312,8 @@ async function signPdf(pdfBytes, certPath, password, meta) {
     const { plainAddPlaceholder } = require('@signpdf/placeholder-plain')
     const signpdf = require('@signpdf/signpdf').default
     const { P12Signer } = require('@signpdf/signer-p12')
+
+    const wantsTimestamp = !!meta?.timestamp
 
     // @signpdf's placeholder logic expects a classic (plain-text) xref table;
     // pdf-lib's default .save() uses compressed xref streams, which it can't
@@ -297,9 +328,54 @@ async function signPdf(pdfBytes, certPath, password, meta) {
       reason:   meta?.reason   || '',
       name:     meta?.name     || '',
       location: meta?.location || '',
+      // A timestamp token embeds the TSA's own certificate chain (several KB) -
+      // must be reserved upfront, since the placeholder can't grow after
+      // signpdf.sign() below. Left at @signpdf's own default (8192) otherwise.
+      ...(wantsTimestamp ? { signatureLength: 32768 } : {}),
     })
     const signer = new P12Signer(certBuffer, { passphrase: password || '' })
-    const signed = await signpdf.sign(pdfWithPlaceholder, signer)
+    let signed = await signpdf.sign(pdfWithPlaceholder, signer)
+
+    if (wantsTimestamp) {
+      const rfc3161 = require('./rfc3161')
+      const forge = require('node-forge')
+      const { findSignatureDicts } = await import('../src/lib/pdfSignatureFields.js')
+
+      // signpdf.lastSignature (hex of the just-produced, unpadded CMS bytes)
+      // avoids re-parsing the signed PDF for the original signature value.
+      const cmsBytes = Buffer.from(signpdf.lastSignature, 'hex')
+      const signatureValueBytes = rfc3161.extractSignatureValue(cmsBytes)
+
+      const digest = forge.md.sha256.create()
+      digest.update(signatureValueBytes.toString('binary'))
+      const hashBytes = Buffer.from(digest.digest().bytes(), 'binary')
+
+      const tsaUrl = meta?.tsaUrl || 'http://timestamp.digicert.com'
+      const { timeStampTokenAsn1 } = await rfc3161.requestTimestamp(tsaUrl, hashBytes, postTsq)
+      const augmentedCms = rfc3161.augmentSignerInfoWithTimestamp(cmsBytes, timeStampTokenAsn1)
+
+      // Locate the already-finalized /ByteRange/placeholder on the just-signed
+      // PDF (read-only load - re-saving via pdf-lib here would rewrite the
+      // xref/object structure and shift every byte offset, silently
+      // corrupting the file) and splice the larger, timestamped CMS into the
+      // exact same reserved slot, replicating signpdf.js's own patch logic.
+      const readDoc = await PDFDocument.load(signed)
+      const [sigDict] = findSignatureDicts(readDoc)
+      if (!sigDict) throw new Error('Signatur-Platzhalter nach dem Signieren nicht gefunden.')
+      const [, placeholderStart, placeholderEnd] = sigDict.byteRange
+      const placeholderLength = (placeholderEnd - placeholderStart) - 2 // hex chars, minus the < > brackets
+      const newHex = augmentedCms.toString('hex')
+      if (newHex.length > placeholderLength) {
+        throw new Error(`Zeitstempel-Signatur ist größer als der reservierte Platz (${newHex.length} > ${placeholderLength}).`)
+      }
+      const paddedHex = newHex + '0'.repeat(placeholderLength - newHex.length)
+      signed = Buffer.concat([
+        signed.slice(0, placeholderStart + 1),
+        Buffer.from(paddedHex, 'ascii'),
+        signed.slice(placeholderEnd - 1),
+      ])
+    }
+
     return { success: true, bytes: signed.buffer.slice(signed.byteOffset, signed.byteOffset + signed.byteLength) }
   } catch (e) {
     return { success: false, error: e.message || 'Unbekannter Fehler' }

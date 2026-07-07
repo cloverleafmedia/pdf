@@ -66,6 +66,8 @@ export default function SignatureModal() {
   const [signerName,   setSignerName]   = useState('')
   const [signError,    setSignError]    = useState('')
   const [auditTrail,   setAuditTrail]   = useState([])
+  const [useTimestamp, setUseTimestamp] = useState(false)
+  const [tsaUrl,       setTsaUrl]       = useState('http://timestamp.digicert.com')
 
   useEffect(() => {
     if (!pdfBytes) { setAuditTrail([]); return }
@@ -208,6 +210,7 @@ export default function SignatureModal() {
     try {
       const result = await window.api?.signPDF(pdfBytes, certPath, certPassword, {
         reason: signReason, location: signLocation, name: signerName,
+        timestamp: useTimestamp, tsaUrl: tsaUrl.trim(),
       })
       if (!result?.success) {
         setSignError(result?.error || 'Signieren fehlgeschlagen')
@@ -310,6 +313,24 @@ export default function SignatureModal() {
             <div>
               <label className={lbl}>Name (optional)</label>
               <input value={signerName} onChange={e => setSignerName(e.target.value)} className={inp} placeholder="Name des Unterzeichners" />
+            </div>
+
+            <div className={`rounded-lg border p-3 space-y-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={useTimestamp} onChange={e => setUseTimestamp(e.target.checked)}
+                  className="accent-clover-500" />
+                <span className={isDark ? 'text-zinc-200' : 'text-gray-800'}>Vertrauenswürdigen Zeitstempel hinzufügen (RFC 3161)</span>
+              </label>
+              <p className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+                Bestätigt den Signaturzeitpunkt über einen externen Zeitstempel-Server, damit die Signatur auch nach
+                Ablauf des Zertifikats beweisbar bleibt. Erfordert eine Internetverbindung.
+              </p>
+              {useTimestamp && (
+                <div>
+                  <label className={lbl}>Zeitstempel-Server (TSA-URL)</label>
+                  <input value={tsaUrl} onChange={e => setTsaUrl(e.target.value)} className={inp} placeholder="http://timestamp.digicert.com" />
+                </div>
+              )}
             </div>
 
             {signError && (
@@ -426,7 +447,7 @@ export default function SignatureModal() {
           Abbrechen
         </button>
         {tab === 'cert' ? (
-          <button onClick={signWithCertificate} disabled={running || !certPath || !certPassword}
+          <button onClick={signWithCertificate} disabled={running || !certPath || !certPassword || (useTimestamp && !tsaUrl.trim())}
             className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
             <FileKey size={14} /> {running ? 'Wird signiert …' : 'Signieren & Speichern'}
           </button>
