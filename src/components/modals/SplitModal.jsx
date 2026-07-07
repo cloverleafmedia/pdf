@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Scissors } from 'lucide-react'
 import { PDFDocument } from 'pdf-lib'
@@ -6,6 +6,13 @@ import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
+import { resolveOutlineBookmarks, bookmarksToRanges } from '../../lib/resolveOutlineDest'
+
+// Windows-invalid filename characters + control chars, collapsed to '_'.
+function sanitizeFilename(name) {
+  const cleaned = (name || '').replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim()
+  return cleaned || 'Lesezeichen'
+}
 
 function parseRanges(input, total) {
   const pages = new Set()
@@ -25,13 +32,22 @@ function parseRanges(input, total) {
 export default function SplitModal() {
   const { t } = useTranslation()
   const {
-    pdfBytes, totalPages, fileName, theme, closeSplit, setStatus,
-  } = useStore(useShallow(state => ({ pdfBytes: state.pdfBytes, totalPages: state.totalPages, fileName: state.fileName, theme: state.theme, closeSplit: state.closeSplit, setStatus: state.setStatus })))
-  const [mode, setMode]       = useState('range') // 'range' | 'each'
+    pdfDoc, pdfBytes, totalPages, fileName, theme, closeSplit, setStatus,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, totalPages: state.totalPages, fileName: state.fileName, theme: state.theme, closeSplit: state.closeSplit, setStatus: state.setStatus })))
+  const [mode, setMode]       = useState('range') // 'range' | 'each' | 'bookmarks'
   const [rangeInput, setRangeInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState([])
+  const [bookmarkRanges, setBookmarkRanges] = useState(null) // null = loading, [] = none found
   const isDark = theme === 'dark'
+
+  useEffect(() => {
+    if (!pdfDoc) return
+    pdfDoc.getOutline()
+      .then(outline => resolveOutlineBookmarks(pdfDoc, outline || []))
+      .then(bookmarks => setBookmarkRanges(bookmarksToRanges(bookmarks, totalPages)))
+      .catch(() => setBookmarkRanges([]))
+  }, [pdfDoc, totalPages])
 
   const updatePreview = (val) => {
     setRangeInput(val)
@@ -54,6 +70,19 @@ export default function SplitModal() {
           const bytes = await out.save()
           await saveAsNewFile(`${fileName?.replace('.pdf','')||'dokument'}_Seite${p}.pdf`, bytes)
         }
+      } else if (mode === 'bookmarks') {
+        if (!bookmarkRanges?.length) { setLoading(false); return }
+        for (const range of bookmarkRanges) {
+          const src = await PDFDocument.load(pdfBytes)
+          const out = await PDFDocument.create()
+          const pageIndices = []
+          for (let i = range.startPageIndex; i <= range.endPageIndex; i++) pageIndices.push(i)
+          const copied = await out.copyPages(src, pageIndices)
+          copied.forEach(pg => out.addPage(pg))
+          const bytes = await out.save()
+          await saveAsNewFile(`${sanitizeFilename(range.title)}.pdf`, bytes)
+        }
+        setStatus(`${bookmarkRanges.length} Datei(en) nach Lesezeichen erstellt`)
       } else {
         const pages = parseRanges(rangeInput, totalPages)
         if (!pages.length) { setLoading(false); return }
@@ -79,9 +108,11 @@ export default function SplitModal() {
           {[
             { id: 'range', label: 'Seitenbereich' },
             { id: 'each',  label: 'Jede Seite einzeln' },
+            { id: 'bookmarks', label: 'Nach Lesezeichen', disabled: !bookmarkRanges?.length },
           ].map(opt => (
-            <button key={opt.id} onClick={() => setMode(opt.id)}
-              className={`flex-1 py-2 rounded-lg text-sm transition-colors border
+            <button key={opt.id} onClick={() => !opt.disabled && setMode(opt.id)} disabled={opt.disabled}
+              title={opt.disabled ? 'Dieses Dokument hat keine (Top-Level-)Lesezeichen' : undefined}
+              className={`flex-1 py-2 rounded-lg text-sm transition-colors border disabled:opacity-40 disabled:cursor-default
                 ${mode === opt.id
                   ? 'border-clover-500 bg-clover-600 text-white'
                   : isDark ? 'border-zinc-700 text-zinc-400 hover:border-zinc-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
@@ -119,6 +150,25 @@ export default function SplitModal() {
           <div className={`text-xs p-3 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-50 text-gray-500'}`}>
             Es werden <span className="font-medium text-clover-400">{totalPages}</span> separate PDF-Dateien erstellt.
             Du wirst für jede Datei nach einem Speicherort gefragt.
+          </div>
+        )}
+
+        {mode === 'bookmarks' && (
+          <div className="space-y-2">
+            <div className={`text-xs p-2 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-50 text-gray-500'}`}>
+              Es werden <span className="font-medium text-clover-400">{bookmarkRanges?.length || 0}</span> Datei(en) erstellt,
+              eine je Top-Level-Lesezeichen. Du wirst für jede Datei nach einem Speicherort gefragt.
+            </div>
+            <div className={`text-xs rounded border divide-y max-h-40 overflow-y-auto ${isDark ? 'border-zinc-700 divide-zinc-700' : 'border-gray-200 divide-gray-200'}`}>
+              {(bookmarkRanges || []).map((r, i) => (
+                <div key={i} className={`px-2 py-1.5 flex justify-between gap-2 ${isDark ? 'text-zinc-300' : 'text-gray-700'}`}>
+                  <span className="truncate">{r.title || '(ohne Titel)'}</span>
+                  <span className={`flex-shrink-0 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+                    S. {r.startPageIndex + 1}–{r.endPageIndex + 1}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
