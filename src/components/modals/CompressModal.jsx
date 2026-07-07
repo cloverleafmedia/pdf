@@ -5,6 +5,21 @@ import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { formatBytes } from '../../lib/formatBytes'
+import { findCompressibleImages, replaceImage } from '../../lib/imageCompress'
+
+// Decodes a JPEG's raw bytes to a bitmap and re-encodes it at the given
+// quality via canvas - the browser-native decode/encode path, same idiom
+// ExportImagesModal.jsx already uses for page rasterization.
+async function reencodeJpeg(bytes, quality) {
+  const blob = new Blob([bytes], { type: 'image/jpeg' })
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  canvas.getContext('2d').drawImage(bitmap, 0, 0)
+  const newBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality))
+  return new Uint8Array(await newBlob.arrayBuffer())
+}
 
 export default function CompressModal() {
   const {
@@ -13,13 +28,17 @@ export default function CompressModal() {
   const isDark = theme === 'dark'
   const [removeMetadata,  setRemoveMeta]  = useState(true)
   const [objectStreams,   setObjStreams]   = useState(true)
+  const [compressImages,  setCompressImages] = useState(true)
+  const [imageQuality,    setImageQuality]   = useState(70)
   const [running,         setRunning]      = useState(false)
   const [resultSize,      setResultSize]   = useState(null)
+  const [imageStats,      setImageStats]   = useState(null) // { found, compressed }
 
   const compress = async () => {
     if (!pdfBytes) return
     setRunning(true)
     setResultSize(null)
+    setImageStats(null)
     try {
       const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
 
@@ -32,12 +51,33 @@ export default function CompressModal() {
         doc.setCreator('')
       }
 
+      let stats = null
+      if (compressImages) {
+        const images = findCompressibleImages(doc)
+        let compressedCount = 0
+        for (const entry of images) {
+          try {
+            const newBytes = await reencodeJpeg(entry.bytes, imageQuality / 100)
+            // Only swap in the re-encoded version if it's actually smaller -
+            // an already well-compressed image could grow at a "lower"
+            // quality setting depending on its content.
+            if (newBytes.length < entry.bytes.length) {
+              await replaceImage(doc, entry, newBytes)
+              compressedCount++
+            }
+          } catch (_) { /* image failed to decode (unexpected JPEG variant) - leave it untouched */ }
+        }
+        stats = { found: images.length, compressed: compressedCount }
+        setImageStats(stats)
+      }
+
       const newBytes = await doc.save({ useObjectStreams: objectStreams })
       setResultSize(newBytes.byteLength)
 
       const reloaded = await reloadPdfDoc(newBytes)
       openDocument(reloaded, newBytes, filePath, fileName, newBytes.byteLength)
-      setStatus(`Komprimiert: ${formatBytes(pdfBytes.byteLength)} → ${formatBytes(newBytes.byteLength)}`)
+      const imgSuffix = stats ? ` · ${stats.compressed}/${stats.found} Bild(er) komprimiert` : ''
+      setStatus(`Komprimiert: ${formatBytes(pdfBytes.byteLength)} → ${formatBytes(newBytes.byteLength)}${imgSuffix}`)
       closeCompress()
     } catch (e) {
       setStatus('Fehler: ' + e.message)
@@ -64,14 +104,32 @@ export default function CompressModal() {
           label="Objekt-Streams aktivieren"
           hint="Komprimiert interne PDF-Strukturen (PDF 1.5+)" />
 
+        <div>
+          <Option isDark={isDark} checked={compressImages} onChange={setCompressImages}
+            label="Bilder komprimieren"
+            hint="Verkleinert eingebettete JPEG-Bilder (z. B. Scans/Fotos) auf die gewählte Qualität" />
+          {compressImages && (
+            <div className="mt-2 ml-7">
+              <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
+                Bildqualität: {imageQuality}%
+              </label>
+              <input type="range" min={40} max={90} step={5} value={imageQuality}
+                onChange={e => setImageQuality(Number(e.target.value))}
+                className="w-full accent-clover-500" />
+            </div>
+          )}
+        </div>
+
         <div className={`text-xs rounded-lg px-3 py-2 ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-blue-50 text-blue-700'}`}>
-          Hinweis: Für maximale Komprimierung empfiehlt sich ein spezialisiertes Tool wie Ghostscript,
-          da PDF-Bilddaten hiermit nicht verändert werden.
+          Hinweis: "Bilder komprimieren" verkleinert nur bereits als JPEG eingebettete Bilder ohne
+          Transparenz. Für Schwarz-Weiß-Scans (CCITT/JBIG2) oder maximale Komprimierung empfiehlt sich
+          weiterhin ein spezialisiertes Tool wie Ghostscript.
         </div>
 
         {resultSize && (
           <div className={`text-sm rounded-lg px-3 py-2 font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
             Ersparnis: {formatBytes(saved)} ({pct}% kleiner)
+            {imageStats && ` · ${imageStats.compressed}/${imageStats.found} Bild(er) komprimiert`}
           </div>
         )}
       </div>
