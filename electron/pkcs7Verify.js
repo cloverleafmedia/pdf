@@ -19,6 +19,7 @@
 // round-trips against forge's own signer (sign with forge, verify with this
 // file), rather than by trusting any of the above dead code as a reference.
 const forge = require('node-forge')
+const { parseEmbeddedTimestamp } = require('./rfc3161')
 
 const { asn1, pki } = forge
 
@@ -102,6 +103,7 @@ const signerInfoValidator = {
     type: 1,
     constructed: true,
     optional: true,
+    captureAsn1: 'unauthenticatedAttributesAsn1',
   }],
 }
 
@@ -203,6 +205,14 @@ function verifyDetachedSignature(cmsDerBytes, signedContentBytes) {
       valid = false
     }
 
+    // Optional RFC 3161 timestamp (see electron/rfc3161.js) - undefined if
+    // this signature was never timestamped, so existing signatures/callers
+    // are unaffected.
+    let timestamp
+    if (siCapture.unauthenticatedAttributesAsn1) {
+      timestamp = parseEmbeddedTimestamp(siCapture.unauthenticatedAttributesAsn1) || undefined
+    }
+
     return {
       valid,
       supported: true,
@@ -213,6 +223,7 @@ function verifyDetachedSignature(cmsDerBytes, signedContentBytes) {
         notBefore: cert.validity.notBefore,
         notAfter:  cert.validity.notAfter,
       },
+      timestamp,
     }
   } catch (e) {
     return { valid: false, supported: false, reason: 'Signatur konnte nicht geparst werden: ' + e.message }

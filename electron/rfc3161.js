@@ -15,7 +15,7 @@
 // not performed here.
 const forge = require('node-forge')
 
-const { asn1 } = forge
+const { asn1, pki } = forge
 
 const OID_SHA256 = '2.16.840.1.101.3.4.2.1'
 const OID_SIGNATURE_TIMESTAMP_TOKEN = '1.2.840.113549.1.9.16.2.14'
@@ -199,6 +199,77 @@ function augmentSignerInfoWithTimestamp(cmsDerBytes, timeStampTokenAsn1) {
   return Buffer.from(asn1.toDer(contentInfoAsn1).getBytes(), 'binary')
 }
 
+// Minimal TSTInfo schema (RFC 3161 §2.4.2) - only genTime is needed for
+// display, so later optional fields (accuracy/ordering/nonce/tsa/extensions)
+// are deliberately left out of the schema; forge's validate doesn't require
+// the schema to cover every trailing child of the actual SEQUENCE.
+const tstInfoValidator = {
+  name: 'TSTInfo',
+  tagClass: asn1.Class.UNIVERSAL,
+  type: asn1.Type.SEQUENCE,
+  constructed: true,
+  value: [
+    { name: 'version', tagClass: asn1.Class.UNIVERSAL, type: asn1.Type.INTEGER, constructed: false },
+    { name: 'policy', tagClass: asn1.Class.UNIVERSAL, type: asn1.Type.OID, constructed: false },
+    { name: 'messageImprint', tagClass: asn1.Class.UNIVERSAL, type: asn1.Type.SEQUENCE, constructed: true },
+    { name: 'serialNumber', tagClass: asn1.Class.UNIVERSAL, type: asn1.Type.INTEGER, constructed: false },
+    { name: 'genTime', tagClass: asn1.Class.UNIVERSAL, type: asn1.Type.GENERALIZEDTIME, constructed: false, capture: 'genTime' },
+  ],
+}
+
+// Reverse of augmentSignerInfoWithTimestamp(): given a SignerInfo's already-
+// parsed unauthenticatedAttributesAsn1 node (see pkcs7Verify.js), finds the
+// signature-timestamp-token attribute (if present) and extracts the
+// timestamp's genTime + the TSA's own certificate CN (present because our own
+// TSQ always sends certReq: true) for display in "Signatur prüfen". Returns
+// null if no timestamp attribute is present or it can't be parsed - callers
+// treat that exactly like "this signature was never timestamped".
+function parseEmbeddedTimestamp(unauthAttrsAsn1) {
+  if (!unauthAttrsAsn1?.value) return null
+  try {
+    for (const attribute of unauthAttrsAsn1.value) {
+      const oidNode = attribute.value?.[0]
+      if (!oidNode || asn1.derToOid(oidNode.value) !== OID_SIGNATURE_TIMESTAMP_TOKEN) continue
+
+      const valuesSetNode = attribute.value[1]
+      const tokenContentInfoAsn1 = valuesSetNode?.value?.[0]
+      if (!tokenContentInfoAsn1) return null
+
+      const ciCapture = {}
+      if (!asn1.validate(tokenContentInfoAsn1, forge.pkcs7.asn1.contentInfoValidator, ciCapture, [])) return null
+      const tokenSignedDataAsn1 = ciCapture.content?.value?.[0]
+      if (!tokenSignedDataAsn1) return null
+
+      const sdCapture = {}
+      if (!asn1.validate(tokenSignedDataAsn1, forge.pkcs7.asn1.signedDataValidator, sdCapture, [])) return null
+
+      // TSTInfo bytes live in the timestamp token's own encapContentInfo.eContent
+      // ([0] EXPLICIT OCTET STRING) - unlike a detached PDF signature, a
+      // timestamp token's content is NOT detached, it's embedded right here.
+      const tstInfoOctetStringNode = sdCapture.content?.value?.[0]
+      if (!tstInfoOctetStringNode) return null
+
+      const tstInfoAsn1 = asn1.fromDer(forge.util.createBuffer(tstInfoOctetStringNode.value))
+      const tstCapture = {}
+      if (!asn1.validate(tstInfoAsn1, tstInfoValidator, tstCapture, [])) return null
+      const genTime = tstCapture.genTime ? asn1.generalizedTimeToDate(tstCapture.genTime) : null
+
+      let tsaName = null
+      if (sdCapture.certificates?.value?.length) {
+        try {
+          const cert = pki.certificateFromAsn1(sdCapture.certificates.value[0])
+          tsaName = cert.subject.getField('CN')?.value || null
+        } catch (_) { /* TSA cert missing/unparseable - genTime alone is still useful */ }
+      }
+
+      return { genTime, tsaName }
+    }
+  } catch (_) {
+    return null
+  }
+  return null
+}
+
 // Orchestrates: build TSQ for hashBytes -> POST via the injected transport ->
 // parse TSR. `postFn(url, tsqDerBytes) => Promise<Buffer>` performs the actual
 // HTTP request - injected so this module stays electron-independent/testable;
@@ -214,6 +285,7 @@ module.exports = {
   buildTimeStampRequest,
   parseTimeStampResponse,
   augmentSignerInfoWithTimestamp,
+  parseEmbeddedTimestamp,
   requestTimestamp,
   OID_SIGNATURE_TIMESTAMP_TOKEN,
 }

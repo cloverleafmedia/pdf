@@ -5,6 +5,7 @@ import {
   buildTimeStampRequest,
   parseTimeStampResponse,
   augmentSignerInfoWithTimestamp,
+  parseEmbeddedTimestamp,
   requestTimestamp,
   OID_SIGNATURE_TIMESTAMP_TOKEN,
 } from './rfc3161.js'
@@ -15,16 +16,19 @@ const { asn1 } = forge
 // Same round-trip-against-forge's-own-signer approach as pkcs7Verify.test.js,
 // reused here as both a source of a real CMS to augment and a stand-in for a
 // TSA's own "timeStampToken" (itself just another CMS SignedData).
-function makeSelfSignedCert() {
+function makeSelfSignedCert(commonName = 'Test Signer') {
   const keys = forge.pki.rsa.generateKeyPair(1024)
   const cert = forge.pki.createCertificate()
   cert.publicKey = keys.publicKey
   cert.serialNumber = '01'
   cert.validity.notBefore = new Date('2024-01-01')
   cert.validity.notAfter = new Date('2030-01-01')
-  const attrs = [{ name: 'commonName', value: 'Test Signer' }]
+  const attrs = [{ name: 'commonName', value: commonName }]
   cert.setSubject(attrs)
   cert.setIssuer(attrs)
+  // setSubject/setIssuer must happen before sign() - forge bakes the subject
+  // into the signed tbsCertificate at sign time, a later setSubject() call
+  // only updates the in-memory JS object, not what actually gets serialized.
   cert.sign(keys.privateKey, forge.md.sha256.create())
   return { cert, privateKey: keys.privateKey }
 }
@@ -50,6 +54,47 @@ function signDetached(contentBytes, cert, privateKey) {
 function makeFixtureTimeStampTokenAsn1() {
   const { cert, privateKey } = makeSelfSignedCert()
   const cms = signDetached(Buffer.from('dummy TSA response content'), cert, privateKey)
+  return asn1.fromDer(forge.util.createBuffer(cms.toString('binary')))
+}
+
+// A real (embedded, not detached) CMS SignedData whose eContent is an actual
+// TSTInfo DER structure with a known genTime - unlike
+// makeFixtureTimeStampTokenAsn1() above (arbitrary dummy content, fine for
+// testing the TSQ/TSR plumbing but not genTime extraction), this is what a
+// real TSA response's timeStampToken looks like.
+function makeFixtureTimeStampTokenWithGenTime(genTimeDate, tsaCN = 'Test TSA') {
+  const { cert, privateKey } = makeSelfSignedCert(tsaCN)
+
+  const messageImprint = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
+      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer('2.16.840.1.101.3.4.2.1').getBytes()),
+      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.NULL, false, ''),
+    ]),
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OCTETSTRING, false, 'x'.repeat(32)),
+  ])
+  const tstInfo = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.INTEGER, false, asn1.integerToDer(1).getBytes()),
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer('1.2.3.4.5').getBytes()), // dummy policy OID
+    messageImprint,
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.INTEGER, false, asn1.integerToDer(1).getBytes()),
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.GENERALIZEDTIME, false, asn1.dateToGeneralizedTime(genTimeDate)),
+  ])
+  const tstInfoDer = asn1.toDer(tstInfo).getBytes()
+
+  const p7 = forge.pkcs7.createSignedData()
+  p7.content = forge.util.createBuffer(tstInfoDer) // embedded, not detached
+  p7.addCertificate(cert)
+  p7.addSigner({
+    key: privateKey,
+    certificate: cert,
+    digestAlgorithm: forge.pki.oids.sha256,
+    authenticatedAttributes: [
+      { type: forge.pki.oids.contentType, value: forge.pki.oids.data },
+      { type: forge.pki.oids.messageDigest },
+    ],
+  })
+  p7.sign()
+  const cms = Buffer.from(forge.asn1.toDer(p7.toAsn1()).getBytes(), 'binary')
   return asn1.fromDer(forge.util.createBuffer(cms.toString('binary')))
 }
 
@@ -176,6 +221,67 @@ describe('augmentSignerInfoWithTimestamp', () => {
     expect(unauthNode.type).toBe(1)
     const attribute = unauthNode.value[0]
     expect(asn1.derToOid(attribute.value[0].value)).toBe(OID_SIGNATURE_TIMESTAMP_TOKEN)
+  })
+})
+
+describe('parseEmbeddedTimestamp', () => {
+  function wrapAsUnauthenticatedAttributes(tokenAsn1) {
+    const attributeNode = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
+      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer(OID_SIGNATURE_TIMESTAMP_TOKEN).getBytes()),
+      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SET, true, [tokenAsn1]),
+    ])
+    return asn1.create(asn1.Class.CONTEXT_SPECIFIC, 1, true, [attributeNode])
+  }
+
+  it('extracts genTime and the TSA certificate CN from a real timestamp token', () => {
+    const genTime = new Date('2026-03-15T10:30:00Z')
+    const tokenAsn1 = makeFixtureTimeStampTokenWithGenTime(genTime, 'Example TSA GmbH')
+    const unauthAttrsAsn1 = wrapAsUnauthenticatedAttributes(tokenAsn1)
+
+    const result = parseEmbeddedTimestamp(unauthAttrsAsn1)
+    expect(result).toBeTruthy()
+    expect(result.genTime.toISOString()).toBe(genTime.toISOString())
+    expect(result.tsaName).toBe('Example TSA GmbH')
+  })
+
+  it('returns null when there is no unauthenticatedAttributes node at all', () => {
+    expect(parseEmbeddedTimestamp(undefined)).toBeNull()
+    expect(parseEmbeddedTimestamp(null)).toBeNull()
+  })
+
+  it('returns null when unauthenticatedAttributes is present but has no timestamp-token attribute', () => {
+    const otherAttribute = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
+      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer('1.2.3.4').getBytes()),
+      asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SET, true, []),
+    ])
+    const unauthAttrsAsn1 = asn1.create(asn1.Class.CONTEXT_SPECIFIC, 1, true, [otherAttribute])
+    expect(parseEmbeddedTimestamp(unauthAttrsAsn1)).toBeNull()
+  })
+
+  it('full round-trip: a signature timestamped via augmentSignerInfoWithTimestamp reports the correct genTime through verifyDetachedSignature', () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('content covered by /ByteRange')
+    const cms = signDetached(content, cert, privateKey)
+
+    const genTime = new Date('2025-11-20T08:00:00Z')
+    const tokenAsn1 = makeFixtureTimeStampTokenWithGenTime(genTime, 'Round-Trip TSA')
+    const augmented = augmentSignerInfoWithTimestamp(cms, tokenAsn1)
+
+    const result = verifyDetachedSignature(augmented, content)
+    expect(result.valid).toBe(true)
+    expect(result.timestamp).toBeTruthy()
+    expect(result.timestamp.genTime.toISOString()).toBe(genTime.toISOString())
+    expect(result.timestamp.tsaName).toBe('Round-Trip TSA')
+  })
+
+  it('a signature without a timestamp has no `timestamp` field (existing signatures unaffected)', () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('plain, never-timestamped content')
+    const cms = signDetached(content, cert, privateKey)
+
+    const result = verifyDetachedSignature(cms, content)
+    expect(result.valid).toBe(true)
+    expect(result.timestamp).toBeUndefined()
   })
 })
 

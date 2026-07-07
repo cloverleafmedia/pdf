@@ -26,6 +26,12 @@ function fmtDate(d) {
   catch { return '—' }
 }
 
+function fmtDateTime(d) {
+  if (!d) return '—'
+  try { return new Date(d).toLocaleString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }
+  catch { return '—' }
+}
+
 export default function SignatureVerifyModal() {
   const {
     pdfBytes, theme, closeSignatureVerify,
@@ -103,6 +109,12 @@ export default function SignatureVerifyModal() {
                       Zertifikat gültig: {fmtDate(cert.notBefore)} – {fmtDate(cert.notAfter)}
                       {cert.expired && <span className="text-amber-500"> (abgelaufen)</span>}
                       {cert.notYetValid && <span className="text-amber-500"> (noch nicht gültig)</span>}
+                    </div>
+                  )}
+                  {sig.timestamp?.genTime && (
+                    <div className={`text-xs ${isDark ? 'text-zinc-400' : 'text-gray-600'}`}>
+                      Zeitgestempelt am: {fmtDateTime(sig.timestamp.genTime)}
+                      {sig.timestamp.tsaName && <> (TSA: {sig.timestamp.tsaName})</>}
                     </div>
                   )}
                   {sig.coverage && (
