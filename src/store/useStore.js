@@ -271,6 +271,18 @@ export const useStore = create((set, get) => ({
 
   // ── Actions: form fields ────────────────────────────────────────────────
   setFormValue: (key, value) => set(s => ({ formValues: { ...s.formValues, [key]: value }, isDirty: true })),
+  // Fills in a field's own pre-existing value from the PDF (read-only display
+  // purposes) without marking the document dirty - unlike setFormValue, this
+  // isn't a user edit. Never overwrites a key that's already present, so it
+  // can't clobber a value the user has already typed/changed.
+  seedFormValues: (entries) => set(s => {
+    const next = { ...s.formValues }
+    let changed = false
+    for (const [key, value] of Object.entries(entries)) {
+      if (!(key in next)) { next[key] = value; changed = true }
+    }
+    return changed ? { formValues: next } : {}
+  }),
 
   // ── Actions: sidebar ────────────────────────────────────────────────────
   setSidebarOpen: (v) => set({ sidebarOpen: v }),

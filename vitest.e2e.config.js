@@ -10,5 +10,9 @@ export default defineConfig({
     include: ['e2e/**/*.test.js'],
     testTimeout: 30000,
     hookTimeout: 30000,
+    // Each test file launches its own Vite dev server + Electron window on a
+    // fixed port (see e2e/helpers.js) - running files in parallel makes them
+    // collide on that port. E2E tests are already slow; sequential is fine.
+    fileParallelism: false,
   },
 })

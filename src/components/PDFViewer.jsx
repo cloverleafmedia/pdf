@@ -347,8 +347,8 @@ export default function PDFViewer() {
 // ── Single PDF page ────────────────────────────────────────────────────────
 function PDFPage({ pageNum }) {
   const {
-    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, textFontSize, textBold, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, textFontSize: state.textFontSize, textBold: state.textBold, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId })))
+    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, textFontSize, textBold, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, seedFormValues, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, textFontSize: state.textFontSize, textBold: state.textBold, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, seedFormValues: state.seedFormValues, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId })))
 
   const canvasRef     = useRef(null)
   const textLayerRef  = useRef(null)
@@ -387,8 +387,23 @@ function PDFPage({ pageNum }) {
         widgets.map(f => ({ ...f, top: f.rect ? -f.rect[3] : 0, left: f.rect ? f.rect[0] : 0 }))
       )
       setFormFields(sorted)
+
+      // Seed formValues from the PDF's own pre-existing field values (e.g. a
+      // form someone already partly filled in) so they actually show up in
+      // the fill overlay - previously only radio groups had this fallback
+      // (`formValues[key] ?? field.fieldValue` at render time); Tx/checkbox/Ch
+      // silently ignored any value already present in the source PDF.
+      const key = (f) => f.fieldName || ''
+      const entries = {}
+      for (const f of widgets) {
+        if (!key(f)) continue
+        if (f.fieldType === 'Tx' && f.fieldValue) entries[key(f)] = f.fieldValue
+        else if (f.fieldType === 'Btn' && !f.radioButton) entries[key(f)] = f.fieldValue === f.exportValue
+        else if (f.fieldType === 'Ch' && f.fieldValue != null) entries[key(f)] = f.fieldValue
+      }
+      if (Object.keys(entries).length) seedFormValues(entries)
     }).catch(() => {})
-  }, [pdfDoc, pageNum, activeTool])
+  }, [pdfDoc, pageNum, activeTool, seedFormValues])
 
   // ── Annotation drag (hand tool) ─────────────────────────────────────────
   useEffect(() => {
@@ -871,7 +886,16 @@ function PDFPage({ pageNum }) {
           // multiple widgets - the React list key needs the map index too so
           // sibling radio buttons don't collide.
           <div key={`${key}-${i}`} className="absolute z-20" style={{ left, top, width, height }}>
-            {field.fieldType === 'Tx' && (
+            {field.fieldType === 'Tx' && (field.multiLine ? (
+              <textarea
+                value={formValues[key] || ''}
+                onChange={e => setFormValue(key, e.target.value)}
+                placeholder={field.alternativeText || ''}
+                tabIndex={tabIndex}
+                className="w-full h-full px-1 py-0.5 resize-none outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
+                style={{ fontSize: Math.max(8, Math.min(height * 0.3, 14)) }}
+              />
+            ) : (
               <input
                 value={formValues[key] || ''}
                 onChange={e => setFormValue(key, e.target.value)}
@@ -880,7 +904,7 @@ function PDFPage({ pageNum }) {
                 className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
                 style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}
               />
-            )}
+            ))}
             {isCheckbox && (
               <input type="checkbox"
                 checked={!!formValues[key]}
