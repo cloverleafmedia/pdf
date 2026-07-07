@@ -7,26 +7,12 @@ import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
 import { resolveOutlineBookmarks, bookmarksToRanges } from '../../lib/resolveOutlineDest'
+import { parsePageRanges } from '../../lib/parsePageRanges'
 
 // Windows-invalid filename characters + control chars, collapsed to '_'.
 function sanitizeFilename(name) {
   const cleaned = (name || '').replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim()
   return cleaned || 'Lesezeichen'
-}
-
-function parseRanges(input, total) {
-  const pages = new Set()
-  const parts = input.split(',').map(s => s.trim()).filter(Boolean)
-  for (const part of parts) {
-    if (part.includes('-')) {
-      const [a, b] = part.split('-').map(Number)
-      for (let i = Math.max(1, a); i <= Math.min(total, b || total); i++) pages.add(i)
-    } else {
-      const n = Number(part)
-      if (n >= 1 && n <= total) pages.add(n)
-    }
-  }
-  return [...pages].sort((a, b) => a - b)
 }
 
 export default function SplitModal() {
@@ -52,7 +38,7 @@ export default function SplitModal() {
   const updatePreview = (val) => {
     setRangeInput(val)
     if (!val.trim()) { setPreview([]); return }
-    setPreview(parseRanges(val, totalPages))
+    setPreview(parsePageRanges(val, totalPages))
   }
 
   const run = async () => {
@@ -84,7 +70,7 @@ export default function SplitModal() {
         }
         setStatus(`${bookmarkRanges.length} Datei(en) nach Lesezeichen erstellt`)
       } else {
-        const pages = parseRanges(rangeInput, totalPages)
+        const pages = parsePageRanges(rangeInput, totalPages)
         if (!pages.length) { setLoading(false); return }
         const src = await PDFDocument.load(pdfBytes)
         const out = await PDFDocument.create()

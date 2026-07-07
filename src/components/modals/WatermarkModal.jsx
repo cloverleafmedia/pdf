@@ -9,6 +9,7 @@ import RotationPresetButtons from './RotationPresetButtons'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { embedAppFont } from '../../lib/embeddedFont'
 import { bytesToBase64, base64ToBytes } from '../../lib/base64'
+import { parsePageRanges } from '../../lib/parsePageRanges'
 
 const COLORS = [
   { hex: '#888888', label: 'Grau' },
@@ -29,7 +30,8 @@ export default function WatermarkModal() {
   const [opacity,  setOpacity] = useState(25)
   const [rotation, setRotation] = useState(45)
   const [colorHex, setColor]   = useState('#888888')
-  const [scope,    setScope]   = useState('all')
+  const [scope,      setScope]      = useState('all')
+  const [rangeInput, setRangeInput] = useState('')
   const [running,  setRunning] = useState(false)
   const [customImage, setCustomImage] = useState(null) // { bytes, ext, aspect, previewUrl }
   const [imageScale,  setImageScale]  = useState(40) // % of page width
@@ -63,10 +65,13 @@ export default function WatermarkModal() {
     if (!pdfBytes) return
     if (mode === 'text' && !text.trim()) return
     if (mode === 'image' && !customImage) { setImageError('Bitte zuerst ein Bild wählen.'); return }
+    if (scope === 'range' && !parsePageRanges(rangeInput, totalPages).length) return
     setRunning(true)
     try {
       const doc = await PDFDocument.load(pdfBytes)
-      const pageIndices = scope === 'all' ? doc.getPageIndices() : [currentPage - 1]
+      const pageIndices = scope === 'all' ? doc.getPageIndices()
+        : scope === 'range' ? parsePageRanges(rangeInput, totalPages).map(p => p - 1)
+        : [currentPage - 1]
 
       if (mode === 'image') {
         const isJpg = customImage.ext === 'jpg' || customImage.ext === 'jpeg'
@@ -131,6 +136,7 @@ export default function WatermarkModal() {
     setRotation(config.rotation ?? 45)
     setColor(config.colorHex ?? '#888888')
     setScope(config.scope ?? 'all')
+    setRangeInput(config.rangeInput ?? '')
     if (config.mode === 'image' && config.imageBase64) {
       const bytes = base64ToBytes(config.imageBase64)
       const previewUrl = URL.createObjectURL(new Blob([bytes], { type: config.imageExt === 'jpg' ? 'image/jpeg' : 'image/png' }))
@@ -152,8 +158,8 @@ export default function WatermarkModal() {
           templates={watermarkTemplates}
           onLoad={loadTemplate}
           onSave={(name) => saveWatermarkTemplate(name, mode === 'image'
-            ? { mode, opacity, rotation, scope, imageBase64: customImage ? bytesToBase64(customImage.bytes) : undefined, imageExt: customImage?.ext, aspect: customImage?.aspect, imageScale }
-            : { mode, text, fontSize, opacity, rotation, colorHex, scope })}
+            ? { mode, opacity, rotation, scope, rangeInput, imageBase64: customImage ? bytesToBase64(customImage.bytes) : undefined, imageExt: customImage?.ext, aspect: customImage?.aspect, imageScale }
+            : { mode, text, fontSize, opacity, rotation, colorHex, scope, rangeInput })}
           onDelete={deleteWatermarkTemplate}
         />
 
@@ -250,7 +256,7 @@ export default function WatermarkModal() {
         <div>
           <label className={lbl}>Bereich</label>
           <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? '#3f3f46' : '#e5e7eb' }}>
-            {[{ id: 'all', l: `Alle (${totalPages})` }, { id: 'current', l: `S. ${currentPage}` }].map(opt => (
+            {[{ id: 'all', l: `Alle (${totalPages})` }, { id: 'current', l: `S. ${currentPage}` }, { id: 'range', l: 'Bereich' }].map(opt => (
               <button key={opt.id} onClick={() => setScope(opt.id)}
                 className={`flex-1 py-2 text-sm transition-colors
                   ${scope === opt.id ? 'bg-clover-600 text-white' : isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
@@ -258,6 +264,26 @@ export default function WatermarkModal() {
               </button>
             ))}
           </div>
+          {scope === 'range' && (
+            <div className="mt-2">
+              <input
+                className={inp}
+                placeholder="z.B. 1-5, 8, 10-12"
+                value={rangeInput}
+                onChange={e => setRangeInput(e.target.value)}
+              />
+              {rangeInput.trim() && (
+                <div className={`text-xs mt-1.5 p-2 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-50 text-gray-500'}`}>
+                  {(() => {
+                    const pages = parsePageRanges(rangeInput, totalPages)
+                    return pages.length
+                      ? <><span className="font-medium text-clover-400">{pages.length}</span> Seite(n): {pages.join(', ')}</>
+                      : 'Keine gültigen Seiten in diesem Bereich'
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Preview */}
@@ -291,7 +317,7 @@ export default function WatermarkModal() {
           className={`px-4 py-1.5 rounded-lg text-sm ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-600 hover:bg-gray-100'}`}>
           Abbrechen
         </button>
-        <button onClick={apply} disabled={running || (mode === 'text' ? !text.trim() : !customImage)}
+        <button onClick={apply} disabled={running || (mode === 'text' ? !text.trim() : !customImage) || (scope === 'range' && !parsePageRanges(rangeInput, totalPages).length)}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
           <Stamp size={14} /> {running ? 'Wird angewendet …' : 'Anwenden'}
         </button>
