@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { Images, ArrowUp, ArrowDown, X, FilePlus } from 'lucide-react'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, degrees } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
+import { readJpegOrientation, exifCorrectedPlacement } from '../../lib/exifOrientation'
 
 // Images are assumed scanned/exported at 96 DPI (the same convention the
 // screen uses) so a typical photo becomes a plausible physical page size
@@ -49,8 +50,15 @@ export default function ImagesToPdfModal() {
         const image = isJpg ? await doc.embedJpg(bytes) : await doc.embedPng(bytes)
         const pw = image.width * PT_PER_PX
         const ph = image.height * PT_PER_PX
-        const page = doc.addPage([pw, ph])
-        page.drawImage(image, { x: 0, y: 0, width: pw, height: ph })
+        // A phone/camera photo taken in portrait mode commonly stores its
+        // rotation via the EXIF Orientation tag rather than physically
+        // rotating the pixels (embedJpg only ever reads raw pixel
+        // width/height) - without this, such a page would come out sideways
+        // or upside-down even though every EXIF-aware viewer shows it upright.
+        const orientation = isJpg ? readJpegOrientation(bytes) : 1
+        const { pageWidth, pageHeight, x, y, rotate } = exifCorrectedPlacement(orientation, pw, ph)
+        const page = doc.addPage([pageWidth, pageHeight])
+        page.drawImage(image, { x, y, width: pw, height: ph, rotate: degrees(rotate) })
       }
       const pdfBytes = await doc.save()
 

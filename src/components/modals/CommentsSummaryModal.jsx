@@ -22,7 +22,7 @@ export default function CommentsSummaryModal() {
     const blob = new Blob([text], { type: 'text/plain' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
-    a.href = url; a.download = (fileName || 'dokument').replace('.pdf', '') + '_kommentare.txt'
+    a.href = url; a.download = (fileName || 'dokument').replace(/\.pdf$/i, '') + '_kommentare.txt'
     a.click(); URL.revokeObjectURL(url)
   }
 
@@ -30,7 +30,7 @@ export default function CommentsSummaryModal() {
     setExportingPdf(true)
     try {
       const bytes = await buildCommentsSummaryPdf(annotations)
-      const savedPath = await saveAsNewFile((fileName || 'dokument').replace('.pdf', '') + '_kommentare.pdf', bytes)
+      const savedPath = await saveAsNewFile((fileName || 'dokument').replace(/\.pdf$/i, '') + '_kommentare.pdf', bytes)
       if (savedPath) setStatus('Kommentar-Bericht gespeichert: ' + savedPath.split(/[\\/]/).pop())
     } catch (e) {
       setStatus('Fehler: ' + e.message)

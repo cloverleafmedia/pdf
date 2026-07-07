@@ -54,7 +54,7 @@ export default function SplitModal() {
           const [copied] = await out.copyPages(src, [p - 1])
           out.addPage(copied)
           const bytes = await out.save()
-          await saveAsNewFile(`${fileName?.replace('.pdf','')||'dokument'}_Seite${p}.pdf`, bytes)
+          await saveAsNewFile(`${fileName?.replace(/\.pdf$/i, '')||'dokument'}_Seite${p}.pdf`, bytes)
         }
       } else if (mode === 'bookmarks') {
         if (!bookmarkRanges?.length) { setLoading(false); return }
@@ -77,7 +77,7 @@ export default function SplitModal() {
         const copied = await out.copyPages(src, pages.map(p => p - 1))
         copied.forEach(pg => out.addPage(pg))
         const bytes = await out.save()
-        const savedPath = await saveAsNewFile(`${fileName?.replace('.pdf','')||'dokument'}_Split.pdf`, bytes)
+        const savedPath = await saveAsNewFile(`${fileName?.replace(/\.pdf$/i, '')||'dokument'}_Split.pdf`, bytes)
         if (savedPath) setStatus(`${pages.length} Seite(n) extrahiert`)
       }
       setLoading(false)

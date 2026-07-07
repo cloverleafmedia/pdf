@@ -4,6 +4,7 @@ import { PDFDocument, PDFTextField, PDFCheckBox, PDFDropdown, PDFOptionList, PDF
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
+import { dedupeFilename } from '../../lib/dedupeFilename'
 
 // Minimal RFC4180-ish CSV parser: handles quoted fields (with embedded commas,
 // quotes doubled as "", and newlines inside quotes). Good enough for the
@@ -122,6 +123,12 @@ export default function MailMergeModal() {
       if (res?.canceled || !res?.filePaths?.[0]) { setRunning(false); return }
       const dir = res.filePaths[0]
 
+      // Two rows resolving to the same filename (e.g. a duplicate value in
+      // the column used for the filename template) would otherwise silently
+      // overwrite each other, while the final status still counted every row
+      // as a success. A numeric suffix keeps every row's output on disk.
+      const usedNames = new Map()
+      let duplicates = 0
       for (let i = 0; i < rows.length; i++) {
         setProgress(`Erzeuge ${i + 1} / ${rows.length} …`)
         const doc = await PDFDocument.load(templateBytes)
@@ -129,11 +136,13 @@ export default function MailMergeModal() {
         for (const header of headers) setFieldValue(form, header, rows[i][header])
         if (flatten) form.flatten()
         const bytes = await doc.save()
-        const filename = resolveFilename(filenameTmpl, rows[i], i) + '.pdf'
-        await window.api?.writeFile(dir + '/' + filename, bytes)
+        const baseName = resolveFilename(filenameTmpl, rows[i], i)
+        const { name, wasDuplicate } = dedupeFilename(usedNames, baseName)
+        if (wasDuplicate) duplicates++
+        await window.api?.writeFile(dir + '/' + name + '.pdf', bytes)
       }
       setProgress('')
-      setStatus(`${rows.length} PDF(s) erzeugt → ${dir}`)
+      setStatus(`${rows.length} PDF(s) erzeugt${duplicates ? ` (davon ${duplicates} mit angepasstem Dateinamen wegen Duplikat)` : ''} → ${dir}`)
       closeMailMerge()
     } catch (e) {
       console.error(e)

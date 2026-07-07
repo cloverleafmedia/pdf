@@ -98,7 +98,7 @@ export default function BatchModal() {
             })
             if (!signResult?.success) throw new Error(signResult?.error || 'Signieren fehlgeschlagen')
             bytes = signResult.bytes
-            outName = f.name.replace('.pdf', '_signiert.pdf')
+            outName = f.name.replace(/\.pdf$/i, '_signiert.pdf')
           } else {
             const doc = await PDFDocument.load(new Uint8Array(buf))
             if (op === 'compress') {
@@ -121,7 +121,13 @@ export default function BatchModal() {
               for (const page of doc.getPages()) page.setRotation(degrees(rotation))
             }
             bytes = await doc.save({ useObjectStreams: op === 'compress' })
-            outName = f.name.replace('.pdf', '_bearbeitet.pdf')
+            // Case-insensitive, end-anchored: a plain string .replace('.pdf', ...)
+            // only matches a literal lowercase ".pdf" - a source file named
+            // e.g. "Scan001.PDF" (common from scanners/exports) would pass
+            // through with its name completely unchanged, risking a silent
+            // overwrite of the original if the output folder is the same as
+            // the input folder.
+            outName = f.name.replace(/\.pdf$/i, '_bearbeitet.pdf')
           }
 
           await window.api?.writeFile(dir + '/' + outName, bytes)

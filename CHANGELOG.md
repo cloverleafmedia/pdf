@@ -14,6 +14,9 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Alt-Text-Editor löschte eine bereits vorhandene Barrierefreiheits-Tag-Struktur (z. B. aus einem Word-Export) komplett, sobald bei einem einzigen Bild ein Alternativtext ergänzt wurde — bestehende Struktur bleibt jetzt erhalten.
 - PDF/A-Export: die Farbraum-Prüfung lief immer nach dem Einbetten des Farbprofils und konnte dadurch nie mehr eine Lücke melden — läuft jetzt vorher.
 - Formular-Ausfüllen: reine Schaltflächen (z. B. "Drucken"/"Zurücksetzen") wurden fälschlich als ankreuzbares Kontrollkästchen angezeigt, obwohl ein Klick darauf beim Speichern wirkungslos blieb.
+- Batch-Verarbeitung: Ausgabedateinamen wurden per reinem Text-Replace aus `.pdf` gebildet — bei Quelldateien mit großgeschriebener Endung (z. B. `Scan001.PDF`, häufig bei Scannern/Exporten) blieb der Name unverändert; wählte man denselben Ordner als Ziel, wurde die Originaldatei dadurch stillschweigend überschrieben. Derselbe Fix auch in "Kommentar-Zusammenfassung" und "Teilen" angewendet.
+- Serienbrief (Mail-Merge): zwei CSV-Zeilen mit demselben Wert in der für den Dateinamen gewählten Spalte überschrieben sich gegenseitig, ohne dass die Erfolgsmeldung das bemerkte — Duplikate erhalten jetzt einen laufenden Zahlen-Suffix.
+- Bilder zu PDF: die EXIF-Rotation von Fotos (z. B. Hochkant-Aufnahmen vom Handy) wurde ignoriert — solche Seiten kamen seitlich oder auf dem Kopf stehend heraus, obwohl jeder EXIF-fähige Betrachter sie korrekt anzeigt.
 
 ## [1.11.0] – 2026-07-07
 
