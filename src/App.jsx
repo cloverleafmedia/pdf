@@ -184,26 +184,30 @@ export default function App() {
   }, [pdfBytes, setHasSignatures])
 
   // ── Detect embedded JavaScript (drives the "⚠ Enthält JavaScript" badge) ──
-  // Keyed on pdfDoc (the live pdf.js proxy), not pdfBytes, since pdf.js's own
-  // getJSActions() is used directly here - it already covers catalog /Names
-  // + catalog /A//AA + AcroForm-field JS in one call, a strictly more complete
-  // check than pdfCompliance.js's hand-rolled catalog/Names/JavaScript-only
-  // check (which nothing in the UI reads anyway). Per-page/annotation-level
-  // JS (PDFPageProxy.getJSActions()) is deliberately out of scope - it would
-  // require walking every page just to show a one-time badge on load.
+  // Keyed on pdfBytes and using pdfCompliance.js's findJavaScriptLocations()
+  // (a pdf-lib dict walk) rather than pdf.js's own getJSActions() - that only
+  // covers catalog /Names/JavaScript + catalog-level /AA, NOT page-level /AA
+  // or annotation/AcroForm-field-level /AA (Keystroke/Format/Validate/
+  // Calculate), despite an earlier version of this comment claiming
+  // otherwise. Using the same function SanitizeModal.jsx/PdfaExportModal.jsx
+  // use for removal keeps detection and removal from ever disagreeing again.
   useEffect(() => {
     let cancelled = false
-    if (!pdfDoc) { setHasJavaScriptActions(false); return }
+    if (!pdfBytes) { setHasJavaScriptActions(false); return }
     ;(async () => {
       try {
-        const actions = await pdfDoc.getJSActions()
-        if (!cancelled) setHasJavaScriptActions(!!actions && Object.keys(actions).length > 0)
+        const [{ PDFDocument }, { findJavaScriptLocations }] = await Promise.all([
+          import('pdf-lib'),
+          import('./lib/pdfCompliance'),
+        ])
+        const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
+        if (!cancelled) setHasJavaScriptActions(findJavaScriptLocations(doc).length > 0)
       } catch {
         if (!cancelled) setHasJavaScriptActions(false)
       }
     })()
     return () => { cancelled = true }
-  }, [pdfDoc, setHasJavaScriptActions])
+  }, [pdfBytes, setHasJavaScriptActions])
 
   // ── Open file passed via command-line or second-instance ─────────────
   useEffect(() => {

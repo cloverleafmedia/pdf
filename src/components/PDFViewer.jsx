@@ -398,7 +398,7 @@ function PDFPage({ pageNum }) {
       for (const f of widgets) {
         if (!key(f)) continue
         if (f.fieldType === 'Tx' && f.fieldValue) entries[key(f)] = f.fieldValue
-        else if (f.fieldType === 'Btn' && !f.radioButton) entries[key(f)] = f.fieldValue === f.exportValue
+        else if (f.fieldType === 'Btn' && !f.radioButton && !f.pushButton) entries[key(f)] = f.fieldValue === f.exportValue
         else if (f.fieldType === 'Ch' && f.fieldValue != null) {
           // pdf.js always represents a Ch field's fieldValue as an array,
           // even for an ordinary single-select combo box/dropdown - only a
@@ -884,7 +884,12 @@ function PDFPage({ pageNum }) {
         const width  = (x2 - x1) * scaleX
         const height = (y2 - y1) * scaleY
         const key    = field.fieldName || String(i)
-        const isCheckbox = field.fieldType === 'Btn' && !field.radioButton
+        // pdf.js flags a plain pushbutton (e.g. a "Drucken"/"Zurücksetzen"
+        // button) as field.pushButton - it's neither a checkbox nor a radio,
+        // and toggling it as a checkbox would silently do nothing on save
+        // (setFormFieldValue only knows PDFCheckBox), so it's excluded here
+        // rather than rendered as a misleading interactive control.
+        const isCheckbox = field.fieldType === 'Btn' && !field.radioButton && !field.pushButton
         // Reading-order tab index, offset per page so Tab crosses page
         // boundaries into the topmost field of the next page (pages already
         // mount in DOM order 1..N). 1000 is safe headroom per page for any

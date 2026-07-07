@@ -10,6 +10,10 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Anmerkungen (Markierungen, Freihandzeichnungen, Formen, Notizen, Stempel, neue Formularfelder) auf einer per Werkzeugleiste gedrehten Seite landeten beim Speichern verzerrt und falsch platziert.
 - Formular-Ausfüllen: ein bereits im PDF vorausgewähltes Dropdown-/Listenfeld führte zu einer React-Fehlermeldung und wurde nicht zuverlässig als vorbelegt angezeigt (pdf.js liefert den Feldwert intern immer als Array, auch für Single-Select-Dropdowns).
 - Schwärzen: mehrere in derselben Millisekunde per Suche/automatischer PII-Erkennung gefundene Treffer erhielten dieselbe interne ID — ein einzelner Treffer löschen konnte dadurch mehrere gleichzeitig entfernen.
+- Dokument bereinigen / PDF/A-Export: JavaScript-Entfernung erfasste nur zwei von fünf möglichen Fundorten (Katalog-Ebene) und meldete "kein JavaScript gefunden", obwohl z. B. ein Formularfeld noch ausführbaren Code enthielt; Erkennung (Warn-Badge) und Entfernung nutzen jetzt dieselbe vollständige Prüfung.
+- Alt-Text-Editor löschte eine bereits vorhandene Barrierefreiheits-Tag-Struktur (z. B. aus einem Word-Export) komplett, sobald bei einem einzigen Bild ein Alternativtext ergänzt wurde — bestehende Struktur bleibt jetzt erhalten.
+- PDF/A-Export: die Farbraum-Prüfung lief immer nach dem Einbetten des Farbprofils und konnte dadurch nie mehr eine Lücke melden — läuft jetzt vorher.
+- Formular-Ausfüllen: reine Schaltflächen (z. B. "Drucken"/"Zurücksetzen") wurden fälschlich als ankreuzbares Kontrollkästchen angezeigt, obwohl ein Klick darauf beim Speichern wirkungslos blieb.
 
 ## [1.11.0] – 2026-07-07
 

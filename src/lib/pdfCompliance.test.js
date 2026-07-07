@@ -15,6 +15,8 @@ import {
   checkFormFieldLabels,
   setDocumentLang,
   setFormFieldLabelsFallback,
+  findJavaScriptLocations,
+  removeJavaScript,
 } from './pdfCompliance.js'
 
 async function makeDoc() {
@@ -350,6 +352,103 @@ describe('setImageAltText', () => {
     setImageAltText(doc, images) // alt is still '' for every image
 
     expect(checkImageAltText(doc)).toEqual({ supported: true, total: 0, withAlt: 0 })
+  })
+
+  it('preserves a pre-existing tag tree instead of rebuilding it from scratch', async () => {
+    const doc = await makeDoc()
+    const imgARef = doc.context.register(doc.context.obj({ Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') }))
+    const imgBRef = doc.context.register(doc.context.obj({ Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') }))
+    doc.getPage(0).node.Resources().set(PDFName.of('XObject'), doc.context.obj({ ImA: imgARef, ImB: imgBRef }))
+
+    // Pre-existing tree: an unrelated Heading + a Figure already tagging imgA.
+    const headingRef = doc.context.register(doc.context.obj({ Type: PDFName.of('StructElem'), S: PDFName.of('H1') }))
+    const figureARef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('StructElem'), S: PDFName.of('Figure'), Alt: PDFString.of('existing alt'),
+      K: doc.context.obj({ Type: PDFName.of('OBJR'), Pg: doc.getPage(0).ref, Obj: imgARef }),
+    }))
+    const docElemRef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('StructElem'), S: PDFName.of('Document'), K: doc.context.obj([headingRef, figureARef]),
+    }))
+    doc.catalog.set(PDFName.of('StructTreeRoot'), doc.context.register(doc.context.obj({
+      Type: PDFName.of('StructTreeRoot'), K: doc.context.obj([docElemRef]),
+    })))
+
+    const images = listImagesForAltText(doc)
+    expect(images).toHaveLength(2)
+    const imgA = images.find(i => i.ref.toString() === imgARef.toString())
+    const imgB = images.find(i => i.ref.toString() === imgBRef.toString())
+    expect(imgA.alt).toBe('existing alt') // already merged in by listImagesForAltText
+
+    imgA.alt = 'updated alt'
+    imgB.alt = 'brand new alt'
+    setImageAltText(doc, images)
+
+    // The unrelated pre-existing Heading must still be there.
+    const docElem = doc.context.lookup(docElemRef)
+    const kAfter = docElem.lookup(PDFName.of('K'))
+    const kRefs = Array.from({ length: kAfter.size() }, (_, i) => kAfter.get(i).toString())
+    expect(kRefs).toContain(headingRef.toString())
+
+    const roundTripped = listImagesForAltText(doc)
+    expect(roundTripped.find(i => i.ref.toString() === imgARef.toString()).alt).toBe('updated alt')
+    expect(roundTripped.find(i => i.ref.toString() === imgBRef.toString()).alt).toBe('brand new alt')
+
+    // Exactly one Figure per image (imgA updated in place, not duplicated).
+    expect(checkImageAltText(doc).total).toBe(2)
+  })
+})
+
+describe('findJavaScriptLocations / removeJavaScript', () => {
+  it('finds catalog Names/JavaScript, OpenAction, and catalog-level AA', async () => {
+    const doc = await makeDoc()
+    doc.catalog.set(PDFName.of('Names'), doc.context.obj({ JavaScript: doc.context.obj({}) }))
+    doc.catalog.set(PDFName.of('OpenAction'), doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('app.alert(1)') }))
+    doc.catalog.set(PDFName.of('AA'), doc.context.obj({ WC: doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('1') }) }))
+
+    const kinds = findJavaScriptLocations(doc).map(l => l.kind).sort()
+    expect(kinds).toEqual(['catalogAA', 'namesJavaScript', 'openAction'])
+  })
+
+  it('finds JavaScript hidden in a page-level AA', async () => {
+    const doc = await makeDoc()
+    doc.getPage(0).node.set(PDFName.of('AA'), doc.context.obj({ O: doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('1') }) }))
+    expect(findJavaScriptLocations(doc).map(l => l.kind)).toEqual(['pageAA'])
+  })
+
+  it('finds JavaScript hidden in an annotation/AcroForm-field-level AA (the gap a catalog-only check misses)', async () => {
+    const doc = await makeDoc()
+    const widgetRef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('Annot'), Subtype: PDFName.of('Widget'),
+      AA: doc.context.obj({ K: doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('1') }) }),
+    }))
+    doc.getPage(0).node.set(PDFName.of('Annots'), doc.context.obj([widgetRef]))
+
+    expect(findJavaScriptLocations(doc).map(l => l.kind)).toEqual(['annotAA'])
+  })
+
+  it('reports nothing found on a clean document', async () => {
+    const doc = await makeDoc()
+    expect(findJavaScriptLocations(doc)).toEqual([])
+  })
+
+  it('removeJavaScript deletes every location it finds and reports that something was removed', async () => {
+    const doc = await makeDoc()
+    doc.catalog.set(PDFName.of('Names'), doc.context.obj({ JavaScript: doc.context.obj({}) }))
+    doc.catalog.set(PDFName.of('OpenAction'), doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('1') }))
+    doc.getPage(0).node.set(PDFName.of('AA'), doc.context.obj({ O: doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('1') }) }))
+    const widgetRef = doc.context.register(doc.context.obj({
+      Type: PDFName.of('Annot'), Subtype: PDFName.of('Widget'),
+      AA: doc.context.obj({ K: doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('1') }) }),
+    }))
+    doc.getPage(0).node.set(PDFName.of('Annots'), doc.context.obj([widgetRef]))
+
+    expect(removeJavaScript(doc)).toBe(true)
+    expect(findJavaScriptLocations(doc)).toEqual([])
+  })
+
+  it('removeJavaScript reports false when there is nothing to remove', async () => {
+    const doc = await makeDoc()
+    expect(removeJavaScript(doc)).toBe(false)
   })
 })
 

@@ -5,6 +5,7 @@ import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
+import { removeJavaScript } from '../../lib/pdfCompliance'
 
 const OPTIONS = [
   { id: 'metadata',     label: 'Metadaten entfernen',            hint: 'Titel, Autor, Thema, Stichwörter, Programm' },
@@ -27,12 +28,8 @@ async function sanitizePdf(pdfBytes, opts) {
     report.push(had || hadXmp ? 'Metadaten gefunden und entfernt' : 'Keine Metadaten gefunden')
   }
   if (opts.javascript) {
-    const namesDict = doc.catalog.lookup(PDFName.of('Names'))
-    const hadJs = !!(namesDict && namesDict.lookup(PDFName.of('JavaScript')))
-    const hadOpenAction = !!doc.catalog.get(PDFName.of('OpenAction'))
-    doc.catalog.delete(PDFName.of('OpenAction'))
-    if (namesDict) namesDict.delete(PDFName.of('JavaScript'))
-    report.push((hadJs || hadOpenAction) ? 'JavaScript gefunden und entfernt' : 'Kein JavaScript gefunden')
+    const hadJs = removeJavaScript(doc)
+    report.push(hadJs ? 'JavaScript gefunden und entfernt' : 'Kein JavaScript gefunden')
   }
   if (opts.attachments) {
     const namesDict = doc.catalog.lookup(PDFName.of('Names'))

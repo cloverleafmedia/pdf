@@ -4,7 +4,7 @@ import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
-import { checkFontEmbedding, checkStructure, checkTransparencyAndColorSpace } from '../../lib/pdfCompliance'
+import { checkFontEmbedding, checkStructure, checkTransparencyAndColorSpace, removeJavaScript } from '../../lib/pdfCompliance'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import iccUrl from '../../assets/sRGB2014.icc?url'
 
@@ -86,8 +86,14 @@ export default function PdfaExportModal() {
       // Achievable, low-risk steps: strip content PDF/A explicitly forbids and
       // tag the document with PDF/A identification metadata (XMP).
       const namesDict = doc.catalog.lookup(PDFName.of('Names'))
-      if (namesDict) { namesDict.delete(PDFName.of('JavaScript')); namesDict.delete(PDFName.of('EmbeddedFiles')) }
-      doc.catalog.delete(PDFName.of('OpenAction'))
+      if (namesDict) namesDict.delete(PDFName.of('EmbeddedFiles'))
+      removeJavaScript(doc)
+
+      // Must run before embedOutputIntent() - checkTransparencyAndColorSpace's
+      // colorSpaceRisk is defined relative to whether an OutputIntent is
+      // present, so checking after embedOutputIntent() has already set one
+      // would mean this gap can never be reported.
+      const transparency = checkTransparencyAndColorSpace(doc)
 
       const now = new Date()
       const producer = 'CloverleafPDF'
@@ -127,7 +133,6 @@ export default function PdfaExportModal() {
       // than claiming full compliance we can't verify without a real validator.
       const fonts = checkFontEmbedding(doc)
       const structure = checkStructure(doc)
-      const transparency = checkTransparencyAndColorSpace(doc)
       const foundGaps = []
       if (fonts.unembedded.length) foundGaps.push(`${fonts.unembedded.length} Schriftart(en) nicht eingebettet: ${fonts.unembedded.join(', ')}`)
       if (structure.hasEncryption) foundGaps.push('Dokument ist verschlüsselt (PDF/A erlaubt keine Verschlüsselung)')

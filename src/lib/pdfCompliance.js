@@ -224,13 +224,86 @@ export function listImagesForAltText(doc) {
 // rather than a marked-content span, so the page content streams never need
 // to be touched — the safer of the two spec-sanctioned tagging mechanisms
 // for objects that are already their own indirect object (ISO 32000-1,
-// 14.7.4.3). Rebuilds the tree from scratch each save rather than patching
-// an existing one, since this editor is the only thing expected to write it.
+// 14.7.4.3). If a StructTreeRoot already exists (e.g. from a Word/InDesign
+// export with real Heading/Paragraph/List structure), it is preserved and
+// only extended with new/updated Figure elements - only a document with NO
+// pre-existing tag tree gets this flat skeleton built from scratch.
 // Known limitation (documented, not hidden): no ParentTree is built, so this
 // is enough for our own checker and for Alt text to be associated with the
 // right image, but not a full PDF/UA-certified tag tree.
 export function setImageAltText(doc, images) {
   const withAlt = images.filter(img => img.alt && img.alt.trim())
+  const existingRootRef = doc.catalog.get(PDFName.of('StructTreeRoot'))
+  const existingRoot = existingRootRef ? doc.context.lookup(existingRootRef) : null
+
+  if (existingRoot instanceof PDFDict) {
+    // A real, pre-existing tag tree (e.g. a Word/InDesign export with actual
+    // Heading/Paragraph/List structure) - never rebuild it from scratch (that
+    // used to silently discard the whole thing the moment a user added Alt
+    // text to a single image). Only ADD a Figure for an image that doesn't
+    // already have one, and UPDATE /Alt in place for one that does - matched
+    // by which image object each existing Figure's OBJR points at, same
+    // matching listImagesForAltText() already does when merging Alt text
+    // back for display.
+    const byObjKey = new Map() // refString -> existing Figure StructElem dict
+    const visited = new Set()
+    const walk = (node) => {
+      if (node instanceof PDFArray) { for (let i = 0; i < node.size(); i++) walk(node.lookup(i)); return }
+      if (!(node instanceof PDFDict) || visited.has(node)) return
+      visited.add(node)
+      const s = node.lookup(PDFName.of('S'))
+      const sName = s instanceof PDFName ? s.asString().replace(/^\//, '') : ''
+      if (sName === 'Figure') {
+        const k = node.lookup(PDFName.of('K'))
+        if (k instanceof PDFDict) {
+          const objRef = k.get(PDFName.of('Obj'))
+          const key = objRef?.toString?.()
+          if (key) byObjKey.set(key, node)
+        }
+      }
+      walk(node.lookup(PDFName.of('K')))
+    }
+    walk(existingRoot.lookup(PDFName.of('K')))
+
+    const newFigureRefs = []
+    for (const img of withAlt) {
+      const existingFigure = byObjKey.get(img.ref.toString())
+      if (existingFigure) {
+        existingFigure.set(PDFName.of('Alt'), PDFString.of(img.alt.trim()))
+        continue
+      }
+      for (const pageIndex of img.pages) {
+        const pageRef = doc.getPage(pageIndex).ref
+        const figureDict = doc.context.obj({
+          Type: PDFName.of('StructElem'),
+          S: PDFName.of('Figure'),
+          P: existingRootRef,
+          Pg: pageRef,
+          Alt: PDFString.of(img.alt.trim()),
+          K: doc.context.obj({ Type: PDFName.of('OBJR'), Pg: pageRef, Obj: img.ref }),
+        })
+        newFigureRefs.push(doc.context.register(figureDict))
+      }
+    }
+
+    if (newFigureRefs.length) {
+      // Preserve whatever was already in /K exactly as-is (raw ref/dict/array
+      // entries, via .get() not .lookup()) and just append the new figures -
+      // never inline/replace the existing subtree by value.
+      const rawK = existingRoot.get(PDFName.of('K'))
+      const kArray = doc.context.obj([])
+      if (rawK instanceof PDFArray) { for (let i = 0; i < rawK.size(); i++) kArray.push(rawK.get(i)) }
+      else if (rawK) kArray.push(rawK)
+      for (const ref of newFigureRefs) kArray.push(ref)
+      existingRoot.set(PDFName.of('K'), kArray)
+    }
+    return
+  }
+
+  // No pre-existing tag tree - build the minimal flat skeleton as before.
+  // Known limitation (documented, not hidden): no ParentTree is built, so
+  // this is enough for our own checker and for Alt text to be associated
+  // with the right image, but not a full PDF/UA-certified tag tree.
   doc.catalog.set(PDFName.of('MarkInfo'), doc.context.obj({ Marked: PDFBool.True }))
 
   const docElemRef = doc.context.nextRef()
@@ -262,6 +335,64 @@ export function setImageAltText(doc, images) {
     K: doc.context.obj([docElemRef]),
   })
   doc.catalog.set(PDFName.of('StructTreeRoot'), doc.context.register(structTreeRoot))
+}
+
+// Finds every place a PDF can carry a JavaScript/auto-run action: catalog
+// /Names/JavaScript, catalog /OpenAction, catalog /AA (document actions),
+// every page's own /AA, and every annotation's /AA - this last one is where
+// AcroForm field Keystroke/Format/Validate/Calculate JS lives, since a
+// terminal field's widget annotation dict is the same dict as the field
+// itself for the common (merged Field/Widget) case. Shared by the
+// JavaScript-removal option in SanitizeModal.jsx, PdfaExportModal.jsx's
+// export cleanup, and the "contains JavaScript" detection badge in App.jsx -
+// previously each had its own (differently incomplete) check, so a document
+// could trip the warning badge while "Bereinigen" reported nothing found.
+export function findJavaScriptLocations(doc) {
+  const AA = PDFName.of('AA')
+  const locations = []
+
+  const namesDict = doc.catalog.lookup(PDFName.of('Names'))
+  if (namesDict instanceof PDFDict && namesDict.lookup(PDFName.of('JavaScript'))) {
+    locations.push({ kind: 'namesJavaScript' })
+  }
+  if (doc.catalog.get(PDFName.of('OpenAction'))) {
+    locations.push({ kind: 'openAction' })
+  }
+  if (doc.catalog.lookup(AA)) {
+    locations.push({ kind: 'catalogAA' })
+  }
+  for (const page of doc.getPages()) {
+    if (page.node.lookup(AA)) locations.push({ kind: 'pageAA', page })
+    const annots = page.node.Annots()
+    if (annots instanceof PDFArray) {
+      for (let i = 0; i < annots.size(); i++) {
+        const annotDict = doc.context.lookup(annots.get(i))
+        if (annotDict instanceof PDFDict && annotDict.lookup(AA)) {
+          locations.push({ kind: 'annotAA', dict: annotDict })
+        }
+      }
+    }
+  }
+  return locations
+}
+
+// Removes every location findJavaScriptLocations() finds. Returns whether
+// anything was actually present, so callers can report "found and removed"
+// vs. "nothing found" without a second traversal.
+export function removeJavaScript(doc) {
+  const locations = findJavaScriptLocations(doc)
+  const AA = PDFName.of('AA')
+
+  const namesDict = doc.catalog.lookup(PDFName.of('Names'))
+  if (namesDict instanceof PDFDict) namesDict.delete(PDFName.of('JavaScript'))
+  doc.catalog.delete(PDFName.of('OpenAction'))
+  doc.catalog.delete(AA)
+  for (const loc of locations) {
+    if (loc.kind === 'pageAA') loc.page.node.delete(AA)
+    else if (loc.kind === 'annotAA') loc.dict.delete(AA)
+  }
+
+  return locations.length > 0
 }
 
 export function checkFormFieldLabels(doc) {
