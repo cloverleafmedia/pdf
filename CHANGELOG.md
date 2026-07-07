@@ -3,7 +3,11 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [Unreleased]
+## [1.12.0] – 2026-07-07
+
+Diese Version behebt 14 Bugs, die bei einem systematischen Funktionsaudit
+(automatisierte Electron-Funktionstests + gezielte Code-Durchsicht) gefunden
+wurden — kein neues Feature, ausschließlich Fehlerbehebungen.
 
 ### Behoben
 - Seitenrotation (Werkzeugleiste "Links/Rechts drehen") wurde beim Speichern nie in die PDF-Datei übernommen — nur die Anzeige zeigte die Drehung, die gespeicherte Datei blieb unrotiert.
@@ -20,6 +24,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 - Automatische PII-Erkennung (Schwärzen): IBAN im üblichen 4er-gruppierten Anzeigeformat (z. B. `DE44 5001 0517 5407 3249 31`) wurde nicht erkannt.
 - Automatische PII-Erkennung (Schwärzen): E-Mail-Adressen mit Subdomain oder mehrteiliger Endung (z. B. `mail.firma.de`, `.co.uk`) wurden nur bis vor den letzten Punkt erkannt — der Rest blieb ungeschwärzt.
 - Barrierefreiheits-Check: ein PDF ganz ohne Tag-Struktur (die häufigste reale Situation) wurde für Bild-Alternativtexte als "nicht prüfbar" statt als tatsächlicher Fehlschlag angezeigt, obwohl vorhandene Bilder ohne jeden Alternativtext genau der häufigste echte Mangel sind.
+- Schwärzen-Warnbanner korrigiert: Formularfelder gehen bei jeder Schwärzung für das **gesamte Dokument** verloren (nicht nur auf den geschwärzten Seiten selbst) — der Hinweistext behauptete bisher das Gegenteil.
 
 ## [1.11.0] – 2026-07-07
 
