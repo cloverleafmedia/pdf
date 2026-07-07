@@ -347,8 +347,8 @@ export default function PDFViewer() {
 // ── Single PDF page ────────────────────────────────────────────────────────
 function PDFPage({ pageNum }) {
   const {
-    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, textFontSize, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, textFontSize: state.textFontSize, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId })))
+    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, textFontSize, textBold, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, textFontSize: state.textFontSize, textBold: state.textBold, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId })))
 
   const canvasRef     = useRef(null)
   const textLayerRef  = useRef(null)
@@ -739,7 +739,7 @@ function PDFPage({ pageNum }) {
 
   const confirmInline = (text) => {
     if (text?.trim()) {
-      const extra = inlineInput.type === 'text' ? { color: drawColor, fontSize: textFontSize } : {}
+      const extra = inlineInput.type === 'text' ? { color: drawColor, fontSize: textFontSize, bold: textBold } : {}
       addAnnotation({ type: inlineInput.type, page: pageNum, x: inlineInput.x, y: inlineInput.y, text, pageW: size.w, pageH: size.h, ...extra })
     }
     setInline(null)
@@ -810,7 +810,7 @@ function PDFPage({ pageNum }) {
             ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none select-none'}
             ${isDark ? 'bg-zinc-800/95 border-zinc-500' : 'bg-white border-gray-400'}
             ${a.color ? '' : (isDark ? 'text-zinc-100' : 'text-gray-900')}`}
-          style={{ left: a.x, top: a.y, userSelect: 'none', fontSize: a.fontSize || 12, color: a.color || undefined }}
+          style={{ left: a.x, top: a.y, userSelect: 'none', fontSize: a.fontSize || 12, color: a.color || undefined, fontWeight: a.bold ? 'bold' : undefined }}
           title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : undefined}
           onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
           onRemove={() => removeAnnotation(a.id)}>

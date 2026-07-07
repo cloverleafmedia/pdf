@@ -4,8 +4,10 @@ import { flattenAnnotations } from './annotationFlatten.js'
 
 // Stands in for the real embedAppFont() (which fetches the bundled Liberation
 // Sans asset - a browser-only operation) so text-drawing tests can run
-// against a plain StandardFont with no network/asset dependency.
-const embedTestFont = (doc) => doc.embedFont(StandardFonts.Helvetica)
+// against a plain StandardFont with no network/asset dependency. Mirrors
+// embedAppFont's (doc, bold) signature so bold-annotation tests exercise a
+// genuinely different font instance/metrics, not the same one twice.
+const embedTestFont = (doc, bold = false) => doc.embedFont(bold ? StandardFonts.HelveticaBold : StandardFonts.Helvetica)
 
 async function makePdfBytes() {
   const doc = await PDFDocument.create()
@@ -107,6 +109,36 @@ describe('flattenAnnotations', () => {
     const plainResult  = await flattenAnnotations(bytes, plain, {}, 0.35, [], embedTestFont)
     const styledResult = await flattenAnnotations(bytes, styled, {}, 0.35, [], embedTestFont)
     expect(Buffer.from(styledResult).equals(Buffer.from(plainResult))).toBe(false)
+  })
+
+  it('embeds a separate bold font instance for a bold text-box annotation, reused for a second bold annotation', async () => {
+    const bytes = await makePdfBytes()
+    const annotations = [
+      { type: 'text', page: 1, x: 10, y: 40, text: 'regular' },
+      { type: 'text', page: 1, x: 10, y: 80, text: 'bold one', bold: true },
+      { type: 'text', page: 1, x: 10, y: 120, text: 'bold two', bold: true },
+    ]
+    const result = await flattenAnnotations(bytes, annotations, {}, 0.35, [], embedTestFont)
+    const reloaded = await PDFDocument.load(result)
+    const fontDict = reloaded.getPage(0).node.Resources()?.lookup(PDFName.of('Font'), PDFDict)
+    // pdf-lib allocates a fresh resource-dict alias key per drawText() call
+    // even when the same PDFFont instance is reused, so dedup on the
+    // underlying object refs instead of the alias keys: exactly 2 distinct
+    // embedded fonts (regular + bold) - not 1 (wrongly shared) and not 3
+    // (re-embedded for every bold annotation instead of cached).
+    const distinctRefs = new Set(fontDict.keys().map(k => fontDict.get(k).toString()))
+    expect(distinctRefs.size).toBe(2)
+  })
+
+  it('a bold text-box annotation measures wider than the same text in regular weight', async () => {
+    const bytes = await makePdfBytes()
+    const regularBytes = await flattenAnnotations(bytes, [{ type: 'text', page: 1, x: 10, y: 40, text: 'sample' }], {}, 0.35, [], embedTestFont)
+    const boldBytes    = await flattenAnnotations(bytes, [{ type: 'text', page: 1, x: 10, y: 40, text: 'sample', bold: true }], {}, 0.35, [], embedTestFont)
+    // Same fontSize/text - the only difference is the box width baked from
+    // each font's own widthOfTextAtSize, so a byte-length/content difference
+    // here is a reasonable, cheap proxy for "the bold weight was actually used"
+    // without re-parsing the content stream.
+    expect(Buffer.from(boldBytes).equals(Buffer.from(regularBytes))).toBe(false)
   })
 
   it('ignores annotations that target a page number beyond the document', async () => {

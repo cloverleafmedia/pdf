@@ -36,11 +36,21 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
   const hasNewFields  = newFields.length > 0
   if (!annotations.length && !hasFormValues && !hasNewFields) return pdfBytes
   const doc  = await PDFDocument.load(pdfBytes)
-  let   font = null
-  const getFont = async () => {
+  let font = null, boldFont = null
+  // Separate cache for the bold weight - a single shared variable would either
+  // wrongly reuse the regular-weight font for a bold annotation or re-embed
+  // the bold font on every single bold annotation (bloating the saved PDF).
+  const getFont = async (bold = false) => {
+    if (bold) {
+      if (!boldFont) {
+        const embed = embedFont || (await import('./embeddedFont.js')).embedAppFont
+        boldFont = await embed(doc, true)
+      }
+      return boldFont
+    }
     if (!font) {
       const embed = embedFont || (await import('./embeddedFont.js')).embedAppFont
-      font = await embed(doc)
+      font = await embed(doc, false)
     }
     return font
   }
@@ -85,7 +95,7 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
         for (let i = 1; i < a.path.length; i++)
           page.drawLine({ start: { x: a.path[i-1].x*sx, y: ph-a.path[i-1].y*sy }, end: { x: a.path[i].x*sx, y: ph-a.path[i].y*sy }, thickness: lw, color })
       } else if ((a.type === 'note' || a.type === 'text') && a.text) {
-        const f   = await getFont()
+        const f   = await getFont(a.type === 'text' && a.bold)
         const tx  = (a.x || 0) * sx,  ty = ph - (a.y || 0) * sy
         const fSz = 9
         if (a.type === 'note') {
