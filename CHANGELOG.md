@@ -3,10 +3,20 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
-## [Unreleased]
+## [1.11.0] – 2026-07-07
 
 ### Hinzugefügt
-- Test-Tooling: echte Electron-Funktionstests via Playwright (`e2e/`, `npm run test:e2e`) — startet einen echten Vite-Dev-Server + das tatsächliche App-Fenster, erlaubt Klicks/Screenshots/Zustandsprüfung statt nur Unit-Tests. Bewusst getrennt von der schnellen `npm run test`-Suite gehalten (eigene `vitest.e2e.config.js`).
+- Wasserzeichen: dritter Bereichs-Modus "Bereich" (z. B. `1-5, 8, 10-12`) neben "Alle"/"Aktuelle Seite".
+- Kopf-/Fußzeile: optionales Logo/Bild einfügbar (Position Kopf-/Fußzeile, Ausrichtung, Größe), analog zum Bild-Wasserzeichen.
+- Digitale Signatur: "Signatur prüfen" zeigt jetzt zusätzlich einen vorhandenen RFC-3161-Zeitstempel (Datum + ausstellende TSA) an, falls die Signatur einen enthält.
+- PDF komprimieren: neue Option "Bilder komprimieren" verkleinert bereits als JPEG eingebettete Bilder ohne Transparenz auf eine wählbare Qualitätsstufe (Scans/Fotos ohne CCITT/JBIG2/CMYK/Alphakanal).
+
+### Behoben
+- Formularfeld-Ausfüllen: mehrzeilige Textfelder (PDF-Mehrzeilig-Flag gesetzt) ließen sich nicht mehrzeilig befüllen (rendern jetzt als `<textarea>` statt einzeiligem Textfeld).
+- Formularfeld-Ausfüllen: bereits im PDF vorhandene Feldwerte (Text/Checkbox/Dropdown) wurden beim Öffnen ignoriert und erschienen leer/nicht angehakt, obwohl das Dokument einen Wert mitbrachte — werden jetzt korrekt angezeigt, ohne das Dokument fälschlich als geändert zu markieren.
+
+### Test-Tooling
+- Echte Electron-Funktionstests via Playwright (`e2e/`, `npm run test:e2e`) — startet einen echten Vite-Dev-Server + das tatsächliche App-Fenster, erlaubt Klicks/Screenshots/Zustandsprüfung statt nur Unit-Tests. Bewusst getrennt von der schnellen `npm run test`-Suite gehalten (eigene `vitest.e2e.config.js`).
 
 ## [1.10.0] – 2026-07-07
 
