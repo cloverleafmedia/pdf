@@ -269,3 +269,38 @@ describe('stamp templates', () => {
     expect(remaining[0].id).toBe(second.id)
   })
 })
+
+describe('pending redactions', () => {
+  // Regression test: search/auto-PII-detect add several matches synchronously
+  // in a forEach loop - a plain Date.now() id would give them all the exact
+  // same id if that loop runs within one millisecond, breaking React's list
+  // keys and making removeRedaction(id) remove every same-id entry at once.
+  it('gives two redactions added within the same millisecond distinct ids', () => {
+    vi.useFakeTimers()
+    try {
+      useStore.getState().addRedaction({ pageNum: 1, x: 0, y: 0, w: 10, h: 10 })
+      useStore.getState().addRedaction({ pageNum: 1, x: 20, y: 0, w: 10, h: 10 })
+      const [first, second] = useStore.getState().pendingRedactions
+      expect(first.id).not.toBe(second.id)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('removeRedaction removes only the matching entry, not same-millisecond siblings', () => {
+    vi.useFakeTimers()
+    try {
+      useStore.getState().addRedaction({ pageNum: 1, x: 0, y: 0, w: 10, h: 10 })
+      useStore.getState().addRedaction({ pageNum: 1, x: 20, y: 0, w: 10, h: 10 })
+      const [first, second] = useStore.getState().pendingRedactions
+
+      useStore.getState().removeRedaction(first.id)
+
+      const remaining = useStore.getState().pendingRedactions
+      expect(remaining).toHaveLength(1)
+      expect(remaining[0].id).toBe(second.id)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

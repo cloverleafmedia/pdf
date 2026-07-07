@@ -255,7 +255,13 @@ export const useStore = create((set, get) => ({
   },
 
   // ── Actions: redactions ─────────────────────────────────────────────────
-  addRedaction:    (r) => set(s => ({ pendingRedactions: [...s.pendingRedactions, { ...r, id: Date.now() }] })),
+  // Date.now() + Math.random() (same pattern as addAnnotation above) rather
+  // than Date.now() alone - multiple matches from search/auto-PII-detect are
+  // added synchronously in a forEach loop and would otherwise collide on the
+  // same millisecond, giving several redactions an identical id (React
+  // duplicate-key warning, and removeRedaction(id) would remove all of them
+  // at once instead of just one).
+  addRedaction:    (r) => set(s => ({ pendingRedactions: [...s.pendingRedactions, { ...r, id: Date.now() + Math.random() }] })),
   removeRedaction: (id) => set(s => ({ pendingRedactions: s.pendingRedactions.filter(r => r.id !== id) })),
   clearRedactions: ()  => set({ pendingRedactions: [] }),
   removeRedactionsBySource: (source) => set(s => ({ pendingRedactions: s.pendingRedactions.filter(r => r.source !== source) })),

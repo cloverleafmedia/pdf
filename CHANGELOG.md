@@ -3,6 +3,14 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [Unreleased]
+
+### Behoben
+- Seitenrotation (Werkzeugleiste "Links/Rechts drehen") wurde beim Speichern nie in die PDF-Datei übernommen — nur die Anzeige zeigte die Drehung, die gespeicherte Datei blieb unrotiert.
+- Anmerkungen (Markierungen, Freihandzeichnungen, Formen, Notizen, Stempel, neue Formularfelder) auf einer per Werkzeugleiste gedrehten Seite landeten beim Speichern verzerrt und falsch platziert.
+- Formular-Ausfüllen: ein bereits im PDF vorausgewähltes Dropdown-/Listenfeld führte zu einer React-Fehlermeldung und wurde nicht zuverlässig als vorbelegt angezeigt (pdf.js liefert den Feldwert intern immer als Array, auch für Single-Select-Dropdowns).
+- Schwärzen: mehrere in derselben Millisekunde per Suche/automatischer PII-Erkennung gefundene Treffer erhielten dieselbe interne ID — ein einzelner Treffer löschen konnte dadurch mehrere gleichzeitig entfernen.
+
 ## [1.11.0] – 2026-07-07
 
 ### Hinzugefügt

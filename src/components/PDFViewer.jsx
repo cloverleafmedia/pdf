@@ -113,7 +113,7 @@ export default function PDFViewer() {
   // ── Save (with annotation flattening) ────────────────────────────────────
   useEffect(() => {
     window._savePDF = async (forceDialog = false) => {
-      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, pendingFormFields } = useStore.getState()
+      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, pendingFormFields, pageRotations } = useStore.getState()
       if (!b) return
       try {
         setStatus('Speichern …')
@@ -126,7 +126,7 @@ export default function PDFViewer() {
           page: f.pageNum, type: f.type, name: f.name,
           x: f.x, y: f.y, w: f.w, h: f.h, pageW: f.logicalW, pageH: f.logicalH,
         }))
-        const bytes = await flattenAnnotations(b, annotations, formValues, ANNOTATION_OPACITY, newFields)
+        const bytes = await flattenAnnotations(b, annotations, formValues, ANNOTATION_OPACITY, newFields, null, pageRotations)
         let target = fp
         if (!target || forceDialog) {
           const r = await window.api?.savePDF(fn)
@@ -399,7 +399,16 @@ function PDFPage({ pageNum }) {
         if (!key(f)) continue
         if (f.fieldType === 'Tx' && f.fieldValue) entries[key(f)] = f.fieldValue
         else if (f.fieldType === 'Btn' && !f.radioButton) entries[key(f)] = f.fieldValue === f.exportValue
-        else if (f.fieldType === 'Ch' && f.fieldValue != null) entries[key(f)] = f.fieldValue
+        else if (f.fieldType === 'Ch' && f.fieldValue != null) {
+          // pdf.js always represents a Ch field's fieldValue as an array,
+          // even for an ordinary single-select combo box/dropdown - only a
+          // real multi-select listbox should keep it as one. Passing the raw
+          // array straight into a non-multiple <select>'s value prop throws
+          // a React "must be a scalar value" warning and silently fails to
+          // show the pre-selected option.
+          const isMulti = !f.combo && f.multiSelect
+          entries[key(f)] = isMulti ? f.fieldValue : (Array.isArray(f.fieldValue) ? f.fieldValue[0] : f.fieldValue)
+        }
       }
       if (Object.keys(entries).length) seedFormValues(entries)
     }).catch(() => {})
@@ -928,10 +937,15 @@ function PDFPage({ pageNum }) {
               // one selected value for a combo box even if pdf-lib technically
               // allows more (see PDFDropdown.select()'s own doc comment).
               const isMulti = !field.combo && field.multiSelect
+              const rawValue = formValues[key]
+              // Defensive: a single-select value must never reach <select> as
+              // an array (pdf.js hands us Ch fieldValue as an array even for
+              // an ordinary combo box - see the formFields-seeding effect above).
+              const singleValue = Array.isArray(rawValue) ? (rawValue[0] ?? '') : (rawValue ?? '')
               return (
                 <select
                   multiple={isMulti}
-                  value={isMulti ? (formValues[key] || []) : (formValues[key] ?? '')}
+                  value={isMulti ? (rawValue || []) : singleValue}
                   onChange={e => setFormValue(key, isMulti
                     ? Array.from(e.target.selectedOptions).map(o => o.value)
                     : e.target.value)}

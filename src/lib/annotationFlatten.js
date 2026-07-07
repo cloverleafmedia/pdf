@@ -20,6 +20,54 @@ function rotatePointAroundPivot(x, y, cx, cy, rotation) {
   return { x: cx + rx, y: cy + ry }
 }
 
+// Maps a point from on-screen "rotated" pixel space (y-down, origin top-left,
+// size pageWpx x pageHpx - the CSS-pixel viewport the annotation was actually
+// drawn on, at whatever page rotation/zoom was active) to the page's raw,
+// always-un-rotated PDF content space (y-up, origin bottom-left, size rawW x
+// rawH - what pdf-lib's page.getSize() returns). This is needed because
+// pdf-lib's drawX() calls always operate in that raw content-stream space
+// regardless of the page's own /Rotate entry: a PDF viewer rotates the
+// ENTIRE rendered page (content + our annotations together) as one rigid
+// unit at display time - it never touches the content stream's own
+// coordinates. This is the inverse of pdf.js's page.getViewport({ rotation })
+// transform, which is what actually produced the on-screen canvas the user
+// drew on (see PDFViewer.jsx).
+export function screenPointToRawPoint(screenX, screenY, pageWpx, pageHpx, rawW, rawH, rotation) {
+  const rot  = ((rotation || 0) % 360 + 360) % 360
+  const rotW = (rot === 90 || rot === 270) ? rawH : rawW
+  const rotH = (rot === 90 || rot === 270) ? rawW : rawH
+  const u = screenX * (rotW / pageWpx)
+  const v = rotH - screenY * (rotH / pageHpx)
+  if (rot === 90)  return { x: rawW - v, y: u }
+  if (rot === 180) return { x: rawW - u, y: rawH - v }
+  if (rot === 270) return { x: v, y: rawH - u }
+  return { x: u, y: v }
+}
+
+// Transforms an axis-aligned screen-space rect's 4 corners and returns the
+// resulting bounding box in raw PDF space. A 90°-multiple rotation never
+// shears a rectangle, so the transformed corners still form an axis-aligned
+// box - taking min/max reconstructs it regardless of which original corner
+// ends up where.
+export function screenRectToRawRect(rx, ry, rw, rh, pageWpx, pageHpx, rawW, rawH, rotation) {
+  const corners = [
+    [rx, ry], [rx + rw, ry], [rx, ry + rh], [rx + rw, ry + rh],
+  ].map(([x, y]) => screenPointToRawPoint(x, y, pageWpx, pageHpx, rawW, rawH, rotation))
+  const xs = corners.map(c => c.x), ys = corners.map(c => c.y)
+  const x = Math.min(...xs), y = Math.min(...ys)
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y }
+}
+
+// Zoom-to-point conversion factor for scalar magnitudes (line thickness,
+// border width) that don't need corner/point remapping - rotation swaps
+// which raw axis a screen axis maps to, but the ratio itself is the same
+// either way (pageWpx/pageHpx keep the page's aspect ratio under rotation).
+function screenScaleFactor(pageWpx, rawW, rawH, rotation) {
+  const rot  = ((rotation || 0) % 360 + 360) % 360
+  const rotW = (rot === 90 || rot === 270) ? rawH : rawW
+  return rotW / pageWpx
+}
+
 // ── Flatten all UI annotations + form field values + newly-created form fields into PDF bytes via pdf-lib ──
 // newFields: [{ page, type: 'text'|'checkbox', name, x, y, w, h, pageW, pageH }]
 // in the same CSS-pixel space as `annotations` (name is expected to already
@@ -31,10 +79,11 @@ function rotatePointAroundPivot(x, y, cx, cy, rotation) {
 // module sits on the core, non-lazy save path (PDFViewer.jsx) - a static
 // import would pull fontkit + the bundled font asset into the main chunk for
 // every save, not just the ones that actually draw a note/text annotation.
-export async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35, newFields = [], embedFont = null) {
-  const hasFormValues = Object.keys(formValues).length > 0
-  const hasNewFields  = newFields.length > 0
-  if (!annotations.length && !hasFormValues && !hasNewFields) return pdfBytes
+export async function flattenAnnotations(pdfBytes, annotations, formValues = {}, highlightOpacity = 0.35, newFields = [], embedFont = null, pageRotations = {}) {
+  const hasFormValues   = Object.keys(formValues).length > 0
+  const hasNewFields    = newFields.length > 0
+  const hasPageRotation = Object.keys(pageRotations).length > 0
+  if (!annotations.length && !hasFormValues && !hasNewFields && !hasPageRotation) return pdfBytes
   const doc  = await PDFDocument.load(pdfBytes)
   let font = null, boldFont = null
   // Separate cache for the bold weight - a single shared variable would either
@@ -71,32 +120,43 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
     if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
     const page = doc.getPage(pageIndex)
     const { width: pw, height: ph } = page.getSize()
+    // The rotation the annotation was actually drawn under (PDFViewer.jsx
+    // records a.pageW/a.pageH from a viewport built with this same value) -
+    // not necessarily today's pageRotations value if the user un-rotated
+    // since, but that's the same "matches what was true at draw time"
+    // assumption the rest of this function already makes for pageW/pageH.
+    const rotation = pageRotations[pgStr] || 0
 
     for (const a of anns) {
-      const sx    = pw / (a.pageW || pw)
-      const sy    = ph / (a.pageH || ph)
+      const pageWpx = a.pageW || pw
+      const pageHpx = a.pageH || ph
+      const toRawRect  = (rx, ry, rw, rh) => screenRectToRawRect(rx, ry, rw, rh, pageWpx, pageHpx, pw, ph, rotation)
+      const toRawPoint = (px, py) => screenPointToRawPoint(px, py, pageWpx, pageHpx, pw, ph, rotation)
+      const sx    = screenScaleFactor(pageWpx, pw, ph, rotation)
       const color = hexRgb(a.color)
 
       if (a.rects?.length) {
         for (const rect of a.rects) {
-          const x = rect.x * sx,  w = rect.w * sx,  h = rect.h * sy
-          const y = ph - (rect.y + rect.h) * sy
+          const { x, y, width: w, height: h } = toRawRect(rect.x, rect.y, rect.w, rect.h)
           if (a.type === 'highlight') {
             page.drawRectangle({ x, y, width: w, height: h, color, opacity: highlightOpacity, borderWidth: 0 })
           } else if (a.type === 'underline') {
             page.drawLine({ start: { x, y: y + 1 }, end: { x: x + w, y: y + 1 }, thickness: 1.2, color })
           } else if (a.type === 'strikethrough') {
-            const ly = ph - (rect.y + rect.h * 0.55) * sy
+            const ly = y + h * 0.45
             page.drawLine({ start: { x, y: ly }, end: { x: x + w, y: ly }, thickness: 1.2, color })
           }
         }
       } else if (a.path?.length >= 2) {
         const lw = Math.max((a.width || 3) * sx, 0.5)
-        for (let i = 1; i < a.path.length; i++)
-          page.drawLine({ start: { x: a.path[i-1].x*sx, y: ph-a.path[i-1].y*sy }, end: { x: a.path[i].x*sx, y: ph-a.path[i].y*sy }, thickness: lw, color })
+        for (let i = 1; i < a.path.length; i++) {
+          const p0 = toRawPoint(a.path[i-1].x, a.path[i-1].y)
+          const p1 = toRawPoint(a.path[i].x,   a.path[i].y)
+          page.drawLine({ start: p0, end: p1, thickness: lw, color })
+        }
       } else if ((a.type === 'note' || a.type === 'text') && a.text) {
         const f   = await getFont(a.type === 'text' && a.bold)
-        const tx  = (a.x || 0) * sx,  ty = ph - (a.y || 0) * sy
+        const { x: tx, y: ty } = toRawPoint(a.x || 0, a.y || 0)
         const fSz = 9
         if (a.type === 'note') {
           page.drawRectangle({ x: tx, y: ty - 14, width: 14, height: 14, color: rgb(1,0.8,0), borderWidth: 0 })
@@ -111,8 +171,7 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
           lines.forEach((line, i) => page.drawText(line.slice(0,35), { x: tx+4, y: ty - textFSz*1.4*(i+1)+2, size: textFSz, font: f, color: textColor }))
         }
       } else if (a.type === 'rectangle' || a.type === 'circle') {
-        const x  = a.x * sx,  w = a.w * sx,  h = a.h * sy
-        const y  = ph - (a.y + a.h) * sy
+        const { x, y, width: w, height: h } = toRawRect(a.x, a.y, a.w, a.h)
         const bw = Math.max((a.width || 2) * sx, 0.75)
         if (a.type === 'rectangle') {
           page.drawRectangle({ x, y, width: w, height: h, borderColor: color, borderWidth: bw })
@@ -120,8 +179,8 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
           page.drawEllipse({ x: x + w / 2, y: y + h / 2, xScale: Math.abs(w) / 2, yScale: Math.abs(h) / 2, borderColor: color, borderWidth: bw })
         }
       } else if (a.type === 'arrow') {
-        const x1 = a.x1 * sx,  y1 = ph - a.y1 * sy
-        const x2 = a.x2 * sx,  y2 = ph - a.y2 * sy
+        const { x: x1, y: y1 } = toRawPoint(a.x1, a.y1)
+        const { x: x2, y: y2 } = toRawPoint(a.x2, a.y2)
         const lw = Math.max((a.width || 2) * sx, 0.75)
         page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: lw, color })
         // Arrowhead: two short lines back from the tip, angled off the shaft's direction.
@@ -131,26 +190,30 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
         page.drawLine({ start: { x: x2, y: y2 }, end: { x: x2 - headLen * Math.cos(angle - headAngle), y: y2 - headLen * Math.sin(angle - headAngle) }, thickness: lw, color })
         page.drawLine({ start: { x: x2, y: y2 }, end: { x: x2 - headLen * Math.cos(angle + headAngle), y: y2 - headLen * Math.sin(angle + headAngle) }, thickness: lw, color })
       } else if (a.type === 'stamp') {
-        const x = a.x * sx, w = a.w * sx, h = a.h * sy
-        const y = ph - (a.y + a.h) * sy
-        const rotation = a.rotation || 0
+        // The stamp's own `rotation` (user-set spin, independent of page
+        // rotation) stays a plain content-stream `rotate` - it composes
+        // correctly with the page's /Rotate automatically, since a PDF
+        // viewer applies /Rotate to the whole already-rendered page as one
+        // rigid unit; only the stamp's raw-space POSITION needs remapping.
+        const { x, y, width: w, height: h } = toRawRect(a.x, a.y, a.w, a.h)
+        const stampRotation = a.rotation || 0
         const cx = x + w / 2, cy = y + h / 2
-        const rotate = rotation ? degrees(rotation) : undefined
+        const rotate = stampRotation ? degrees(stampRotation) : undefined
         if (a.kind === 'custom' && a.imageBytes) {
           const isJpg = a.imageExt === 'jpg' || a.imageExt === 'jpeg'
           const image = isJpg ? await doc.embedJpg(a.imageBytes) : await doc.embedPng(a.imageBytes)
-          const origin = rotatePointAroundPivot(x, y, cx, cy, rotation)
+          const origin = rotatePointAroundPivot(x, y, cx, cy, stampRotation)
           page.drawImage(image, { x: origin.x, y: origin.y, width: w, height: h, rotate })
         } else {
           const f = await getFont()
           const bw = Math.max(3 * sx, 1)
-          const rectOrigin = rotatePointAroundPivot(x, y, cx, cy, rotation)
+          const rectOrigin = rotatePointAroundPivot(x, y, cx, cy, stampRotation)
           page.drawRectangle({ x: rectOrigin.x, y: rectOrigin.y, width: w, height: h, borderColor: color, borderWidth: bw, rotate })
           const text = a.text || ''
           const fSz = Math.min(h * 0.4, 24)
           const textW = f.widthOfTextAtSize(text, fSz)
           const textX = x + (w - textW) / 2, textY = y + h / 2 - fSz * 0.35
-          const textOrigin = rotatePointAroundPivot(textX, textY, cx, cy, rotation)
+          const textOrigin = rotatePointAroundPivot(textX, textY, cx, cy, stampRotation)
           page.drawText(text, { x: textOrigin.x, y: textOrigin.y, size: fSz, font: f, color, rotate })
         }
       }
@@ -185,10 +248,8 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
               try {
                 const page = doc.getPage(pageIndex)
                 const { width: pw, height: ph } = page.getSize()
-                const sx = pw / (nf.pageW || pw)
-                const sy = ph / (nf.pageH || ph)
-                const x = nf.x * sx, w = nf.w * sx, h = nf.h * sy
-                const y = ph - (nf.y + nf.h) * sy
+                const rotation = pageRotations[String(nf.page)] || 0
+                const { x, y, width: w, height: h } = screenRectToRawRect(nf.x, nf.y, nf.w, nf.h, nf.pageW || pw, nf.pageH || ph, pw, ph, rotation)
                 rg.addOptionToPage(nf.optionValue, page, { x, y, width: w, height: h })
               } catch (_) { /* out-of-range page or duplicate option value — skip this widget */ }
             }
@@ -202,12 +263,8 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
           try {
             const page = doc.getPage(pageIndex)
             const { width: pw, height: ph } = page.getSize()
-            const sx = pw / (nf.pageW || pw)
-            const sy = ph / (nf.pageH || ph)
-            const x = nf.x * sx
-            const w = nf.w * sx
-            const h = nf.h * sy
-            const y = ph - (nf.y + nf.h) * sy
+            const rotation = pageRotations[String(nf.page)] || 0
+            const { x, y, width: w, height: h } = screenRectToRawRect(nf.x, nf.y, nf.w, nf.h, nf.pageW || pw, nf.pageH || ph, pw, ph, rotation)
             let field
             switch (nf.type) {
               case 'checkbox': field = form.createCheckBox(nf.name); break
@@ -220,6 +277,20 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
         }
       }
     } catch (_) { /* unexpected AcroForm error */ }
+  }
+
+  // Persist the user's own page rotations (rotatePageLeft/rotatePageRight in
+  // the store) into the saved PDF itself - previously these only ever lived
+  // in the in-memory pageRotations map and were silently discarded on save,
+  // even though the UI marked the document as having unsaved changes.
+  // pageRotations values are absolute (matching how the rest of the app
+  // already treats them, e.g. page.getViewport({ rotation }) in
+  // PDFViewer.jsx), so this is a direct set, not additive to whatever
+  // rotation the page already had.
+  for (const [pgStr, deg] of Object.entries(pageRotations)) {
+    const pageIndex = Number(pgStr) - 1
+    if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
+    doc.getPage(pageIndex).setRotation(degrees(((deg % 360) + 360) % 360))
   }
 
   return doc.save()

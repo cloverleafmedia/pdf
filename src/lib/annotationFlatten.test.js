@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { PDFDocument, PDFName, PDFDict, PDFNumber, StandardFonts } from 'pdf-lib'
-import { flattenAnnotations } from './annotationFlatten.js'
+import { flattenAnnotations, screenPointToRawPoint, screenRectToRawRect } from './annotationFlatten.js'
 
 // Stands in for the real embedAppFont() (which fetches the bundled Liberation
 // Sans asset - a browser-only operation) so text-drawing tests can run
@@ -386,5 +386,94 @@ describe('flattenAnnotations', () => {
     const result = await flattenAnnotations(bytes, [], { wahl: 'Nein' })
     const reloaded = await PDFDocument.load(result)
     expect(reloaded.getForm().getRadioGroup('wahl').getSelected()).toBe('Nein')
+  })
+})
+
+describe('screenPointToRawPoint / screenRectToRawRect (page-rotation coordinate remap)', () => {
+  // 300x200 raw (unrotated) page. At 90°/270° the on-screen viewport swaps
+  // to 200x300 - PDFViewer.jsx records that swapped size as a.pageW/a.pageH.
+  const rawW = 300, rawH = 200
+
+  it('is the identity transform at rotation 0 (no page rotation)', () => {
+    expect(screenPointToRawPoint(10, 20, rawW, rawH, rawW, rawH, 0)).toEqual({ x: 10, y: rawH - 20 })
+  })
+
+  it('maps a screen point through a 90° page rotation', () => {
+    // Rotated viewport is 200x300 (pageWpx=200, pageHpx=300).
+    const p = screenPointToRawPoint(10, 20, 200, 300, rawW, rawH, 90)
+    // Hand-derived: u=10, v=300-20=280 -> raw x = rawW-v = 20, raw y = u = 10.
+    expect(p).toEqual({ x: 20, y: 10 })
+  })
+
+  it('maps a screen point through a 180° page rotation', () => {
+    const p = screenPointToRawPoint(10, 20, rawW, rawH, rawW, rawH, 180)
+    // u=10, v=200-20=180 -> raw x = rawW-u = 290, raw y = rawH-v = 20.
+    expect(p).toEqual({ x: 290, y: 20 })
+  })
+
+  it('maps a screen point through a 270° page rotation', () => {
+    const p = screenPointToRawPoint(10, 20, 200, 300, rawW, rawH, 270)
+    // u=10, v=300-20=280 -> raw x = v = 280, raw y = rawH-u = 190.
+    expect(p).toEqual({ x: 280, y: 190 })
+  })
+
+  it('normalizes a negative/out-of-range rotation the same as its 0-360 equivalent', () => {
+    const a = screenPointToRawPoint(10, 20, 200, 300, rawW, rawH, 90)
+    const b = screenPointToRawPoint(10, 20, 200, 300, rawW, rawH, -270)
+    expect(a).toEqual(b)
+  })
+
+  it('transforms a rect through a 90° rotation into the correctly swapped bounding box', () => {
+    // Screen rect (CSS px, y-down) at the rotated 200x300 viewport.
+    const box = screenRectToRawRect(10, 20, 50, 30, 200, 300, rawW, rawH, 90)
+    // Hand-derived (see module comment / PR description): swaps to a 30x50 box.
+    expect(box).toEqual({ x: 20, y: 10, width: 30, height: 50 })
+  })
+
+  it('a rotated highlight ends up geometrically distinct from the same rect drawn unrotated', async () => {
+    const doc = await PDFDocument.create()
+    doc.addPage([rawW, rawH])
+    const bytes = await doc.save()
+    const annotation = { type: 'highlight', page: 1, color: '#f59e0b', rects: [{ x: 10, y: 20, w: 50, h: 30 }] }
+
+    const flat = (pageRotations) => flattenAnnotations(bytes, [{ ...annotation, pageW: 200, pageH: 300 }], {}, 0.35, [], null, pageRotations)
+    const unrotated = await flattenAnnotations(bytes, [{ ...annotation, pageW: rawW, pageH: rawH }], {}, 0.35, [], null, {})
+    const rotated90  = await flat({ 1: 90 })
+
+    expect(Buffer.from(rotated90).equals(Buffer.from(unrotated))).toBe(false)
+  })
+})
+
+describe('flattenAnnotations - page rotation persistence', () => {
+  it('sets the page rotation given in pageRotations even with no annotations/form values', async () => {
+    const bytes = await makePdfBytes()
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, { 1: 90 })
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPage(0).getRotation().angle).toBe(90)
+  })
+
+  it('does not touch rotation for a page with no pageRotations entry', async () => {
+    const doc = await PDFDocument.create()
+    doc.addPage([200, 200])
+    doc.addPage([200, 200])
+    const bytes = await doc.save()
+
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, { 1: 90 })
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPage(0).getRotation().angle).toBe(90)
+    expect(reloaded.getPage(1).getRotation().angle).toBe(0)
+  })
+
+  it('normalizes an out-of-range rotation value into 0-360', async () => {
+    const bytes = await makePdfBytes()
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, { 1: -90 })
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPage(0).getRotation().angle).toBe(270)
+  })
+
+  it('returns the original bytes unchanged when pageRotations is empty (no regression)', async () => {
+    const bytes = await makePdfBytes()
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, {})
+    expect(result).toBe(bytes)
   })
 })
