@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, FolderOpen, X } from 'lucide-react'
 import { PDFDocument, rgb } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -7,6 +7,7 @@ import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { embedAppFont } from '../../lib/embeddedFont'
+import { bytesToBase64, base64ToBytes } from '../../lib/base64'
 
 const ALIGN_OPTS = [
   { id: 'left',   icon: <AlignLeft size={13}/> },
@@ -42,6 +43,35 @@ export default function HeaderFooterModal() {
   const [batesPrefix, setBatesPrefix] = useState('')
   const [batesStart,  setBatesStart]  = useState(1)
   const [batesDigits, setBatesDigits] = useState(6)
+  const [logoImage,    setLogoImage]    = useState(null) // { bytes, ext, aspect, previewUrl }
+  const [logoPosition, setLogoPosition] = useState('header') // 'header' | 'footer'
+  const [logoAlign,    setLogoAlign]    = useState('right')
+  const [logoScale,    setLogoScale]    = useState(10) // % of page width
+  const [logoError,    setLogoError]    = useState('')
+
+  const pickLogoImage = async () => {
+    setLogoError('')
+    const r = await window.api?.openImages()
+    if (r?.canceled || !r?.filePaths?.length) return
+    const filePath = r.filePaths[0]
+    const buf = await window.api?.readFile(filePath)
+    const bytes = new Uint8Array(buf)
+    const ext = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    const previewUrl = URL.createObjectURL(new Blob([bytes], { type: ext === 'jpg' ? 'image/jpeg' : 'image/png' }))
+
+    const aspect = await new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve(img.naturalHeight / img.naturalWidth || 1)
+      img.onerror = () => resolve(1)
+      img.src = previewUrl
+    })
+
+    setLogoImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return { bytes, ext, aspect, previewUrl } })
+  }
+
+  const clearLogoImage = () => {
+    setLogoImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return null })
+  }
 
   const apply = async () => {
     if (!pdfBytes) return
@@ -54,6 +84,12 @@ export default function HeaderFooterModal() {
       const b = parseInt(colorHex.slice(5, 7), 16) / 255
       const color = rgb(r, g, b)
       const pages = doc.getPages()
+
+      let logo = null
+      if (logoImage) {
+        const isJpg = logoImage.ext === 'jpg' || logoImage.ext === 'jpeg'
+        logo = isJpg ? await doc.embedJpg(logoImage.bytes) : await doc.embedPng(logoImage.bytes)
+      }
 
       for (let i = 0; i < pages.length; i++) {
         const page  = pages[i]
@@ -79,6 +115,17 @@ export default function HeaderFooterModal() {
 
         drawText(headerText, ph - margin - fontSize)
         drawText(footerText, margin)
+
+        if (logo) {
+          const w = pw * (logoScale / 100)
+          const h = w * logoImage.aspect
+          let x
+          if (logoAlign === 'left')   x = margin
+          else if (logoAlign === 'right') x = pw - w - margin
+          else x = (pw - w) / 2
+          const y = logoPosition === 'header' ? ph - margin - h : margin
+          page.drawImage(logo, { x, y, width: w, height: h })
+        }
       }
 
       const newBytes = await doc.save()
@@ -106,6 +153,16 @@ export default function HeaderFooterModal() {
     setBatesPrefix(config.batesPrefix ?? '')
     setBatesStart(config.batesStart ?? 1)
     setBatesDigits(config.batesDigits ?? 6)
+    setLogoPosition(config.logoPosition ?? 'header')
+    setLogoAlign(config.logoAlign ?? 'right')
+    setLogoScale(config.logoScale ?? 10)
+    if (config.logoBase64) {
+      const bytes = base64ToBytes(config.logoBase64)
+      const previewUrl = URL.createObjectURL(new Blob([bytes], { type: config.logoExt === 'jpg' ? 'image/jpeg' : 'image/png' }))
+      setLogoImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return { bytes, ext: config.logoExt, aspect: config.logoAspect ?? 1, previewUrl } })
+    } else {
+      clearLogoImage()
+    }
   }
 
   return (
@@ -117,7 +174,11 @@ export default function HeaderFooterModal() {
           isDark={isDark}
           templates={headerFooterTemplates}
           onLoad={loadTemplate}
-          onSave={(name) => saveHeaderFooterTemplate(name, { headerText, footerText, fontSize, align, startNum, colorHex, batesPrefix, batesStart, batesDigits })}
+          onSave={(name) => saveHeaderFooterTemplate(name, {
+            headerText, footerText, fontSize, align, startNum, colorHex, batesPrefix, batesStart, batesDigits,
+            logoPosition, logoAlign, logoScale,
+            logoBase64: logoImage ? bytesToBase64(logoImage.bytes) : undefined, logoExt: logoImage?.ext, logoAspect: logoImage?.aspect,
+          })}
           onDelete={deleteHeaderFooterTemplate}
         />
 
@@ -152,6 +213,58 @@ export default function HeaderFooterModal() {
           <div className={`text-[11px] mt-1 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
             Beispiel: {batesPrefix}{String(batesStart).padStart(batesDigits, '0')}
           </div>
+        </div>
+
+        {/* Logo (optional) */}
+        <div>
+          <label className={lbl}>Logo (optional)</label>
+          {logoImage ? (
+            <div className={`flex items-center gap-3 p-2 rounded-lg border ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}>
+              <img src={logoImage.previewUrl} alt="Logo-Vorschau" className="h-10 w-auto rounded border border-black/10 bg-white/50 object-contain"/>
+              <span className={`flex-1 text-xs ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Bild geladen</span>
+              <button onClick={clearLogoImage} className="text-red-400 hover:text-red-300">
+                <X size={14}/>
+              </button>
+            </div>
+          ) : (
+            <button onClick={pickLogoImage}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors
+                ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+              <FolderOpen size={14}/> Bild wählen (PNG/JPG) …
+            </button>
+          )}
+          {logoError && <div className="text-xs text-red-400 mt-1">{logoError}</div>}
+
+          {logoImage && (
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? '#3f3f46' : '#e5e7eb' }}>
+                {[{ id: 'header', l: 'Kopfzeile' }, { id: 'footer', l: 'Fußzeile' }].map(opt => (
+                  <button key={opt.id} onClick={() => setLogoPosition(opt.id)}
+                    className={`flex-1 py-1.5 text-xs transition-colors
+                      ${logoPosition === opt.id ? 'bg-clover-600 text-white' : isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                {ALIGN_OPTS.map(opt => (
+                  <button key={opt.id} onClick={() => setLogoAlign(opt.id)}
+                    className={`flex-1 py-1.5 flex items-center justify-center rounded-lg border transition-colors
+                      ${logoAlign === opt.id
+                        ? 'bg-clover-600 text-white border-clover-600'
+                        : isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    {opt.icon}
+                  </button>
+                ))}
+              </div>
+              <div className="col-span-2">
+                <label className={`${lbl} mt-1`}>Größe: {logoScale}%</label>
+                <input type="range" min={5} max={30} step={1} value={logoScale}
+                  onChange={e => setLogoScale(Number(e.target.value))}
+                  className="w-full accent-clover-500" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Font size + Start number */}
@@ -206,17 +319,23 @@ export default function HeaderFooterModal() {
         {/* Preview */}
         <div className={`rounded-lg border px-4 py-3 relative ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-gray-50 border-gray-200'}`}>
           <div className={`text-[10px] uppercase tracking-widest mb-1 ${isDark ? 'text-zinc-600' : 'text-gray-300'}`}>Vorschau (Seite 1 / {totalPages})</div>
-          {headerText && (
-            <div className={`text-xs border-b pb-1.5 mb-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
-              style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
-              {headerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
+          {(headerText || (logoImage && logoPosition === 'header')) && (
+            <div className={`flex items-center gap-2 text-xs border-b pb-1.5 mb-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
+              style={{ justifyContent: logoAlign === 'left' ? 'flex-start' : logoAlign === 'right' ? 'flex-end' : 'center' }}>
+              {logoImage && logoPosition === 'header' && <img src={logoImage.previewUrl} alt="" className="h-4 w-auto object-contain"/>}
+              <span style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
+                {headerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
+              </span>
             </div>
           )}
           <div className={`text-xs text-center ${isDark ? 'text-zinc-600' : 'text-gray-300'}`}>… Seiteninhalt …</div>
-          {footerText && (
-            <div className={`text-xs border-t pt-1.5 mt-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
-              style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
-              {footerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
+          {(footerText || (logoImage && logoPosition === 'footer')) && (
+            <div className={`flex items-center gap-2 text-xs border-t pt-1.5 mt-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
+              style={{ justifyContent: logoAlign === 'left' ? 'flex-start' : logoAlign === 'right' ? 'flex-end' : 'center' }}>
+              {logoImage && logoPosition === 'footer' && <img src={logoImage.previewUrl} alt="" className="h-4 w-auto object-contain"/>}
+              <span style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
+                {footerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
+              </span>
             </div>
           )}
         </div>
@@ -227,7 +346,7 @@ export default function HeaderFooterModal() {
           className={`px-4 py-1.5 rounded-lg text-sm ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-600 hover:bg-gray-100'}`}>
           Abbrechen
         </button>
-        <button onClick={apply} disabled={running || (!headerText.trim() && !footerText.trim())}
+        <button onClick={apply} disabled={running || (!headerText.trim() && !footerText.trim() && !logoImage)}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
           {running ? 'Wird eingebettet …' : `Alle ${totalPages} Seiten einbetten`}
         </button>
