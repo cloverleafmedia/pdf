@@ -8,6 +8,7 @@ import { navigateToPage } from '../lib/navigate'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 import { writeOutline } from '../lib/pdfOutline'
 import { ANNOTATION_ICONS } from '../lib/annotationIcons'
+import { effectiveRotation } from '../lib/pageRotation'
 
 // Fixed thumbnail render width — also used to pre-compute placeholder height
 // (see ThumbPage) so the reserved space matches what renderThumb() ends up
@@ -367,14 +368,17 @@ function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, baseSize, isD
   )
 }
 
-async function renderThumb(pageNum, canvas, pdfDoc, rotation, renderRef) {
+async function renderThumb(pageNum, canvas, pdfDoc, rotationDelta, renderRef) {
   if (!canvas || !pdfDoc) return
   try {
     const page = await pdfDoc.getPage(pageNum)
     const dpr   = Math.min(window.devicePixelRatio || 1, 2)
     const scale = (THUMB_W / page.getViewport({ scale: 1 }).width) * dpr
 
-    const vp = page.getViewport({ scale, rotation })
+    // Must combine the page's own native /Rotate with the in-session delta -
+    // passing the delta alone (as this used to) discards native rotation
+    // entirely once explicitly passed to getViewport(). See effectiveRotation().
+    const vp = page.getViewport({ scale, rotation: effectiveRotation(page.rotate, rotationDelta) })
     canvas.width  = vp.width
     canvas.height = vp.height
     canvas.style.width  = (vp.width  / dpr) + 'px'

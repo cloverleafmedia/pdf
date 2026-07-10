@@ -482,6 +482,28 @@ describe('checkFormFieldLabels', () => {
     expect(result.total).toBe(2)
     expect(result.withLabel).toBe(1)
   })
+
+  // Regression: pdf-lib's createTextField()+addToPage() creates the field
+  // dict and its widget annotation dict as two SEPARATE objects (linked via
+  // the widget's /Parent) even for the ordinary single-widget case - a /TU
+  // set only on the widget (which is what real-world tools, and this app's
+  // own newfield marker/fill-mode placeholder, actually read via pdf.js's
+  // non-inheriting `dict.get("TU")`) must still count as "has a label", not
+  // just one set on field.acroField.dict.
+  it('counts a field as labeled when /TU is set only on its widget dict, not the field dict', async () => {
+    const doc = await makeDoc()
+    const form = doc.getForm()
+    const field = form.createTextField('widgetLabeled')
+    field.addToPage(doc.getPage(0))
+    for (const widget of field.acroField.getWidgets()) {
+      widget.dict.set(PDFName.of('TU'), PDFString.of('Widget-level label'))
+    }
+    // Deliberately NOT set on field.acroField.dict - proves the checker
+    // doesn't only look there.
+    expect(field.acroField.dict.lookup(PDFName.of('TU'))).toBeUndefined()
+
+    expect(checkFormFieldLabels(doc)).toEqual({ total: 1, withLabel: 1 })
+  })
 })
 
 describe('setDocumentLang', () => {
@@ -531,5 +553,37 @@ describe('setFormFieldLabelsFallback', () => {
     expect(result.withLabel).toBe(2)
     expect(labeled.acroField.dict.lookup(PDFName.of('TU')).decodeText()).toBe('Enter your name')
     expect(unlabeled.acroField.dict.lookup(PDFName.of('TU')).decodeText()).toBe('unlabeled')
+  })
+
+  // Regression: the fallback used to write /TU only to field.acroField.dict,
+  // which pdf.js's own (non-inheriting) annotation parsing never sees - the
+  // autofix looked successful (checkFormFieldLabels agreed, since it made
+  // the same mistake) while producing a label invisible to real readers,
+  // including this app's own fill-mode placeholder. Must land on the
+  // widget's own dict too.
+  it('writes the label to the widget dict as well, not just the field dict', async () => {
+    const doc = await makeDoc()
+    const form = doc.getForm()
+    const field = form.createTextField('unlabeled')
+    field.addToPage(doc.getPage(0))
+
+    setFormFieldLabelsFallback(doc)
+
+    const widgetTU = field.acroField.getWidgets()[0].dict.lookup(PDFName.of('TU'))
+    expect(widgetTU?.decodeText()).toBe('unlabeled')
+  })
+
+  it('does not touch a field whose label already exists only on the widget dict', async () => {
+    const doc = await makeDoc()
+    const form = doc.getForm()
+    const field = form.createTextField('field')
+    field.addToPage(doc.getPage(0))
+    for (const widget of field.acroField.getWidgets()) {
+      widget.dict.set(PDFName.of('TU'), PDFString.of('Already labeled'))
+    }
+
+    setFormFieldLabelsFallback(doc)
+
+    expect(field.acroField.getWidgets()[0].dict.lookup(PDFName.of('TU')).decodeText()).toBe('Already labeled')
   })
 })

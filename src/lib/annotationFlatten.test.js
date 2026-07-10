@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PDFDocument, PDFName, PDFDict, PDFNumber, StandardFonts, TextAlignment } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFDict, PDFNumber, StandardFonts, TextAlignment, degrees } from 'pdf-lib'
 import { flattenAnnotations, screenPointToRawPoint, screenRectToRawRect } from './annotationFlatten.js'
 import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from './formFieldMarkers.js'
 
@@ -537,6 +537,43 @@ describe('screenPointToRawPoint / screenRectToRawRect (page-rotation coordinate 
 
     expect(Buffer.from(rotated90).equals(Buffer.from(unrotated))).toBe(false)
   })
+
+  // Regression: an annotation's screen->raw coordinate remap must key off the
+  // page's ACTUAL rendered rotation (native + in-session delta), not the
+  // delta alone - otherwise an annotation drawn on a page that already had a
+  // native rotation lands in the wrong spot once the fixed renderer (which
+  // now correctly shows that native rotation) is what the user actually drew
+  // on. A page whose native rotation is 90° with no further delta must draw
+  // the exact same content-stream geometry as an unrotated page rotated 90°
+  // via the delta - both render at the same effective 90°.
+  it('an annotation on a natively-90°-rotated page draws identical geometry to the same delta on an unrotated page', async () => {
+    const contentStreamBytes = (doc) => {
+      const contents = doc.getPage(0).node.Contents()
+      return doc.context.lookup(contents.get(0)).getContents()
+    }
+
+    const nativeDoc = await PDFDocument.create()
+    const nativePage = nativeDoc.addPage([rawW, rawH])
+    nativePage.setRotation(degrees(90))
+    const nativeBytes = await nativeDoc.save()
+
+    const plainDoc = await PDFDocument.create()
+    plainDoc.addPage([rawW, rawH])
+    const plainBytes = await plainDoc.save()
+
+    const annotation = { type: 'highlight', page: 1, color: '#f59e0b', rects: [{ x: 10, y: 20, w: 50, h: 30 }], pageW: 200, pageH: 300 }
+
+    const viaNativeRotation = await flattenAnnotations(nativeBytes, [annotation], {}, 0.35, [], null, {})
+    const viaSessionDelta   = await flattenAnnotations(plainBytes,  [annotation], {}, 0.35, [], null, { 1: 90 })
+
+    const docA = await PDFDocument.load(viaNativeRotation)
+    const docB = await PDFDocument.load(viaSessionDelta)
+    // Both end up with /Rotate 90 (native-only vs. delta-only path)...
+    expect(docA.getPage(0).getRotation().angle).toBe(90)
+    expect(docB.getPage(0).getRotation().angle).toBe(90)
+    // ...and drew the highlight rectangle at the exact same raw coordinates.
+    expect(Buffer.from(contentStreamBytes(docA))).toEqual(Buffer.from(contentStreamBytes(docB)))
+  })
 })
 
 describe('flattenAnnotations - page rotation persistence', () => {
@@ -570,5 +607,33 @@ describe('flattenAnnotations - page rotation persistence', () => {
     const bytes = await makePdfBytes()
     const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, {})
     expect(result).toBe(bytes)
+  })
+
+  // Regression: pageRotations is a DELTA from the page's own native rotation
+  // (rotatePageLeft/Right in useStore.js accumulate ±90 starting from 0), not
+  // the absolute final rotation - a page that already had a native /Rotate
+  // (common for scanned documents) used to have that silently discarded and
+  // replaced outright by the delta, the same bug effectiveRotation() exists
+  // to fix everywhere else in this file.
+  it('combines the delta with the page\'s own pre-existing native rotation, not overwrite it', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([200, 200])
+    page.setRotation(degrees(90)) // page already has a native rotation before the user ever touches it
+    const bytes = await doc.save()
+
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, { 1: 90 }) // one "rotate right" click
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPage(0).getRotation().angle).toBe(180) // 90 (native) + 90 (delta), not just 90
+  })
+
+  it('preserves a page\'s native rotation when the recorded delta is 0 (rotated back to start)', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([200, 200])
+    page.setRotation(degrees(180))
+    const bytes = await doc.save()
+
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, [], null, { 1: 0 })
+    const reloaded = await PDFDocument.load(result)
+    expect(reloaded.getPage(0).getRotation().angle).toBe(180)
   })
 })

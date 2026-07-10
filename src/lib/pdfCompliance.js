@@ -405,12 +405,31 @@ export function removeJavaScript(doc) {
   return locations.length > 0
 }
 
+// /TU lives on whichever dict a reader actually looks at - which, for a
+// terminal field with its own separate widget annotation (pdf-lib's
+// createTextField()+addToPage() always creates these as two distinct dicts,
+// linked via the widget's /Parent, even for the common single-widget case),
+// is NOT necessarily field.acroField.dict. pdf.js's own annotation parsing
+// (which this app's fill-mode placeholder and date/signature field markers
+// both rely on - see formFieldMarkers.js/annotationFlatten.js) reads /TU
+// directly off the widget it's parsing, with no /Parent inheritance walk.
+// Checking only the field dict here used to make this checker (and its
+// autofix) blind to that mismatch - and since the fallback writer had the
+// same bug, its own output passed the checker's read-back while still being
+// invisible to pdf.js, a "test the implementation, not the requirement" trap.
+function fieldHasLabel(field) {
+  try {
+    if (field.acroField.dict.lookup(PDFName.of('TU'))) return true
+    return field.acroField.getWidgets().some(w => !!w.dict.lookup(PDFName.of('TU')))
+  } catch {
+    return false
+  }
+}
+
 export function checkFormFieldLabels(doc) {
   try {
     const fields = doc.getForm().getFields()
-    const withLabel = fields.filter(f => {
-      try { return !!f.acroField.dict.lookup(PDFName.of('TU')) } catch { return false }
-    }).length
+    const withLabel = fields.filter(fieldHasLabel).length
     return { total: fields.length, withLabel }
   } catch {
     return { total: 0, withLabel: 0 }
@@ -434,8 +453,16 @@ export function setDocumentLang(doc, lang = 'de') {
 export function setFormFieldLabelsFallback(doc) {
   for (const field of doc.getForm().getFields()) {
     try {
-      if (!field.acroField.dict.lookup(PDFName.of('TU')))
-        field.acroField.dict.set(PDFName.of('TU'), PDFString.of(field.getName()))
+      if (fieldHasLabel(field)) continue
+      const value = PDFString.of(field.getName())
+      // Set on both the field dict (spec-inheritable, some readers resolve
+      // /TU via /Parent) AND every widget's own dict (what pdf.js - and this
+      // app's own fill-mode/newfield-marker reads - actually looks at) so
+      // the label is visible regardless of which one a given reader checks.
+      field.acroField.dict.set(PDFName.of('TU'), value)
+      for (const widget of field.acroField.getWidgets()) {
+        widget.dict.set(PDFName.of('TU'), value)
+      }
     } catch {
       // Malformed field dict - skip rather than abort the whole autofix.
     }

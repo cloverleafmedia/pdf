@@ -1,3 +1,5 @@
+import { effectiveRotation } from './pageRotation.js'
+
 // ── Scan every page's text for IBAN / E-Mail / Telefonnummer patterns ──────
 // Matching is per text-item (pdf.js groups contiguous same-line runs into one
 // item in most machine-generated PDFs) — patterns split across separate items
@@ -23,7 +25,11 @@ export async function findTextMatches(pdfDoc, pageRotations, patterns) {
   const found = []
   for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
     const page = await pdfDoc.getPage(pageNum)
-    const vp = page.getViewport({ scale: 1, rotation: pageRotations[pageNum] || 0 })
+    // rotation must be the page's native /Rotate combined with this app's
+    // in-session delta, not the delta alone - see effectiveRotation()'s own
+    // doc comment. A mismatch here would place redaction boxes at the wrong
+    // spot on any page with a non-zero native rotation.
+    const vp = page.getViewport({ scale: 1, rotation: effectiveRotation(page.rotate, pageRotations[pageNum]) })
     const textContent = await page.getTextContent()
 
     for (const item of textContent.items) {

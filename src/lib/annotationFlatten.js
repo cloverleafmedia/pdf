@@ -2,6 +2,7 @@ import { PDFDocument, PDFName, PDFHexString, TextAlignment, rgb, degrees } from 
 import { setFormFieldValue } from './formFieldValue.js'
 import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from './formFieldMarkers.js'
 import { dataUrlToBytes } from './dataUrl.js'
+import { effectiveRotation } from './pageRotation.js'
 
 // pdf-lib's drawImage/drawRectangle/drawText rotate around the given {x,y}
 // origin, not the shape's own center - fine for a page-spanning diagonal
@@ -127,7 +128,11 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
     // not necessarily today's pageRotations value if the user un-rotated
     // since, but that's the same "matches what was true at draw time"
     // assumption the rest of this function already makes for pageW/pageH.
-    const rotation = pageRotations[pgStr] || 0
+    // Must combine the page's own native rotation (read now, before the
+    // page-rotation bake-in loop at the end of this function touches it)
+    // with the in-session delta - PDFViewer.jsx renders at that combined
+    // value, not the delta alone (see effectiveRotation()).
+    const rotation = effectiveRotation(page.getRotation().angle, pageRotations[pgStr])
 
     for (const a of anns) {
       const pageWpx = a.pageW || pw
@@ -259,7 +264,7 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
               try {
                 const page = doc.getPage(pageIndex)
                 const { width: pw, height: ph } = page.getSize()
-                const rotation = pageRotations[String(nf.page)] || 0
+                const rotation = effectiveRotation(page.getRotation().angle, pageRotations[String(nf.page)])
                 const { x, y, width: w, height: h } = screenRectToRawRect(nf.x, nf.y, nf.w, nf.h, nf.pageW || pw, nf.pageH || ph, pw, ph, rotation)
                 rg.addOptionToPage(nf.optionValue, page, { x, y, width: w, height: h })
               } catch (_) { /* out-of-range page or duplicate option value — skip this widget */ }
@@ -274,7 +279,7 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
           try {
             const page = doc.getPage(pageIndex)
             const { width: pw, height: ph } = page.getSize()
-            const rotation = pageRotations[String(nf.page)] || 0
+            const rotation = effectiveRotation(page.getRotation().angle, pageRotations[String(nf.page)])
             const { x, y, width: w, height: h } = screenRectToRawRect(nf.x, nf.y, nf.w, nf.h, nf.pageW || pw, nf.pageH || ph, pw, ph, rotation)
             let field
             switch (nf.type) {
@@ -344,14 +349,18 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
   // the store) into the saved PDF itself - previously these only ever lived
   // in the in-memory pageRotations map and were silently discarded on save,
   // even though the UI marked the document as having unsaved changes.
-  // pageRotations values are absolute (matching how the rest of the app
-  // already treats them, e.g. page.getViewport({ rotation }) in
-  // PDFViewer.jsx), so this is a direct set, not additive to whatever
-  // rotation the page already had.
+  // pageRotations values are a DELTA from the page's own native rotation
+  // (rotatePageLeft/Right accumulate ±90 starting from 0 = "no change yet"),
+  // not the absolute final rotation - must read each page's current/native
+  // rotation before overwriting it, then combine via effectiveRotation(), the
+  // same combination PDFViewer.jsx's own rendering uses. A plain `setRotation
+  // (deg)` here would silently discard whatever native rotation the page
+  // already had, exactly the bug effectiveRotation() exists to avoid.
   for (const [pgStr, deg] of Object.entries(pageRotations)) {
     const pageIndex = Number(pgStr) - 1
     if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
-    doc.getPage(pageIndex).setRotation(degrees(((deg % 360) + 360) % 360))
+    const page = doc.getPage(pageIndex)
+    page.setRotation(degrees(effectiveRotation(page.getRotation().angle, deg)))
   }
 
   return doc.save()

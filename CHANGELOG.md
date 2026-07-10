@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.14.0] – 2026-07-10
+
+Systematischer Stabilitäts-Audit (gezielte Code-Durchsicht + automatisierte
+Electron-Funktionstests) über Batch-Verarbeitung, digitale Signatur/Zertifikat,
+OCR, PDF/A-Export, Barrierefreiheits-Check, Komprimieren, Vergleichen und
+Beschneiden — kein neues Feature, ausschließlich Fehlerbehebungen.
+
+### Behoben
+- Seiten mit eigener, bereits im PDF gespeicherter Rotation (z. B. viele Scans oder vom Handy fotografierte Dokumente) wurden beim Öffnen komplett unrotiert angezeigt — sowohl in der Hauptansicht als auch in den Miniaturansichten, der Zoom-Anpassung, der automatischen PII-Erkennung und der Koordinaten-Rückrechnung beim Speichern. Ursache: die eigene, per Werkzeugleiste gesetzte Drehung wurde als absoluter Wert an pdf.js übergeben statt mit der bereits vorhandenen Seiten-Rotation kombiniert zu werden, wodurch diese beim expliziten Übergeben stillschweigend überschrieben wurde. Zusätzlicher Effekt: "Links/Rechts drehen" auf einer bereits gedrehten Seite drehte ab dem ersten Klick in die falsche Richtung bzw. sprang auf einen falschen Winkel, statt korrekt von der sichtbaren Ausrichtung aus weiterzudrehen.
+- Barrierefreiheits-Check → "Automatisch beheben" für fehlende Formularfeld-Beschriftungen schrieb die Beschriftung an eine Stelle im PDF, die von pdf.js (und damit auch von CloverleafPDFs eigenem Ausfüll-Modus) gar nicht gelesen wird — der Autofix meldete Erfolg, ohne dass die Beschriftung tatsächlich irgendwo sichtbar ankam. Betraf auch die eigene Prüfung selbst, die stellenweise "keine Beschriftung" meldete, obwohl eine an der (aus Lesersicht) richtigen Stelle vorhanden war.
+
 ## [1.13.0] – 2026-07-10
 
 ### Hinzugefügt

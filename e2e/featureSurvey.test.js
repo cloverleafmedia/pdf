@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { PDFDocument, StandardFonts, PDFName, PDFDict } from 'pdf-lib'
+import { PDFDocument, StandardFonts, PDFName, PDFDict, degrees } from 'pdf-lib'
 import { launchApp, openPdf } from './helpers.js'
 
 let ctx
@@ -240,6 +240,89 @@ describe('Page rotation persistence', () => {
       const savedBytes = fs.readFileSync(p)
       const doc = await PDFDocument.load(savedBytes)
       expect(doc.getPage(0).getRotation().angle).toBe(90)
+    } finally { fs.unlinkSync(p) }
+  })
+})
+
+describe('Native page rotation is honored (not silently discarded)', () => {
+  async function makeNativelyRotatedPdf(deg) {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([300, 500]) // portrait
+    page.setRotation(degrees(deg))
+    const p = tmpPdfPath('native-rotated')
+    fs.writeFileSync(p, await doc.save())
+    return p
+  }
+
+  it('renders a page with a native 90° /Rotate with swapped width/height', async () => {
+    const p = await makeNativelyRotatedPdf(90)
+    try {
+      await openPdf(ctx.window, p)
+      await ctx.window.waitForTimeout(500)
+      const size = await ctx.window.evaluate(() => {
+        const c = document.querySelector('#page-1 canvas')
+        return { w: parseFloat(c.style.width), h: parseFloat(c.style.height) }
+      })
+      // Unrotated the page is 300x500 (portrait) - a native 90° rotation
+      // must swap it to landscape on screen, not render it as if unrotated.
+      expect(size.w).toBeGreaterThan(size.h)
+    } finally { fs.unlinkSync(p) }
+  })
+
+  it('rotating a natively-rotated page one more click steps from its current visual orientation, not from 0', async () => {
+    const p = await makeNativelyRotatedPdf(90)
+    try {
+      await openPdf(ctx.window, p)
+      await ctx.window.waitForTimeout(500)
+
+      // Page already renders landscape (native 90°). One more "rotate right"
+      // must move it to upside-down portrait (180+90=270 combined), not jump
+      // back to the plain 90° a naive "0+90" delta-as-absolute would produce
+      // (which would look identical to doing nothing at all).
+      await ctx.window.locator('button[title="Rechts drehen"]').click()
+      await ctx.window.waitForTimeout(300)
+      const size = await ctx.window.evaluate(() => {
+        const c = document.querySelector('#page-1 canvas')
+        return { w: parseFloat(c.style.width), h: parseFloat(c.style.height) }
+      })
+      expect(size.h).toBeGreaterThan(size.w)
+
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      expect(saved.getPage(0).getRotation().angle).toBe(180)
+    } finally { fs.unlinkSync(p) }
+  })
+})
+
+describe('Accessibility autofix: form-field label lands on the widget, not just the field dict', () => {
+  it('the auto-added label shows up as a real placeholder in fill-mode after saving+reopening', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([300, 200])
+    const form = doc.getForm()
+    const field = form.createTextField('vorname')
+    field.addToPage(page, { x: 20, y: 150, width: 200, height: 20 })
+    const p = tmpPdfPath('a11y-labels')
+    fs.writeFileSync(p, await doc.save())
+
+    try {
+      await openPdf(ctx.window, p)
+      await ctx.window.locator('button[title="Dokument"]').click()
+      await ctx.window.getByText('Barrierefreiheits-Check', { exact: true }).click()
+      await ctx.window.waitForTimeout(500)
+      await ctx.window.getByText(/Problem\(e\) automatisch beheben/).click()
+      await ctx.window.waitForTimeout(500)
+      // Modal re-closes-on-close only; dismiss it to get back to the page.
+      await ctx.window.keyboard.press('Escape')
+
+      await ctx.window.evaluate(() => window._savePDF())
+      await openPdf(ctx.window, p) // reopen so pdf.js re-parses the saved widget dict fresh
+
+      await activateTool(ctx.window, 'Hand')
+      await activateTool(ctx.window, 'Formular ausfüllen')
+      await ctx.window.waitForTimeout(500)
+
+      const placeholder = await ctx.window.locator('input[class*="outline-blue-400"], input[class*="outline-red-500"]').first().getAttribute('placeholder')
+      expect(placeholder).toBe('vorname')
     } finally { fs.unlinkSync(p) }
   })
 })

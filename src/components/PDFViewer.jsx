@@ -14,6 +14,7 @@ import { renderPageToCanvas } from '../lib/renderPage'
 import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 import { unrotateDelta } from '../lib/rotateVector'
+import { effectiveRotation } from '../lib/pageRotation'
 import { saveAsNewFile } from '../lib/saveAsNewFile'
 import { useEraserTool } from './pdf-tools/useEraserTool'
 import { useRedactTool } from './pdf-tools/useRedactTool'
@@ -81,7 +82,7 @@ export default function PDFViewer() {
     if (!pdfDoc || !containerRef.current) return
     const s = useStore.getState()
     const page = await pdfDoc.getPage(s.currentPage)
-    const vp = page.getViewport({ scale: 1, rotation: s.pageRotations[s.currentPage] || 0 })
+    const vp = page.getViewport({ scale: 1, rotation: effectiveRotation(page.rotate, s.pageRotations[s.currentPage]) })
     setZoom(Math.round(((containerRef.current.clientWidth - 64) / vp.width) * 100))
   }, [pdfDoc])
 
@@ -89,7 +90,7 @@ export default function PDFViewer() {
     if (!pdfDoc || !containerRef.current) return
     const s = useStore.getState()
     const page = await pdfDoc.getPage(s.currentPage)
-    const vp = page.getViewport({ scale: 1, rotation: s.pageRotations[s.currentPage] || 0 })
+    const vp = page.getViewport({ scale: 1, rotation: effectiveRotation(page.rotate, s.pageRotations[s.currentPage]) })
     const w = containerRef.current.clientWidth  - 64
     const h = containerRef.current.clientHeight - 64
     setZoom(Math.round(Math.min(w / vp.width, h / vp.height) * 100))
@@ -521,8 +522,12 @@ function PDFPage({ pageNum }) {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [fieldResize, updateFormFieldDraft])
 
-  const isDark   = theme === 'dark'
-  const rotation = pageRotations[pageNum] || 0
+  const isDark        = theme === 'dark'
+  // This is a DELTA from the page's own native /Rotate (accumulated ±90 per
+  // click - see rotatePageLeft/rotatePageRight in useStore.js), not the
+  // absolute rotation to render at - see effectiveRotation() for why that
+  // distinction matters.
+  const rotationDelta = pageRotations[pageNum] || 0
 
   // ── Render PDF canvas + text layer ───────────────────────────────────────
   useEffect(() => {
@@ -531,6 +536,7 @@ function PDFPage({ pageNum }) {
       if (!pdfDoc || !canvasRef.current) return
       try {
         const page         = await pdfDoc.getPage(pageNum)
+        const rotation     = effectiveRotation(page.rotate, rotationDelta)
         const dpr          = window.devicePixelRatio || 1
         const displayScale = zoom / 100
         const renderScale  = displayScale * dpr
@@ -583,7 +589,7 @@ function PDFPage({ pageNum }) {
       renderTaskRef.current?.cancel()
       textLayerInst.current?.cancel()
     }
-  }, [pdfDoc, pageNum, zoom, rotation])
+  }, [pdfDoc, pageNum, zoom, rotationDelta])
 
   // ── Night mode filter on PDF canvas ──────────────────────────────────────
   useEffect(() => {
