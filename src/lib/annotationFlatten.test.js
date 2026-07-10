@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { PDFDocument, PDFName, PDFDict, PDFNumber, StandardFonts } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFDict, PDFNumber, StandardFonts, TextAlignment } from 'pdf-lib'
 import { flattenAnnotations, screenPointToRawPoint, screenRectToRawRect } from './annotationFlatten.js'
+import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from './formFieldMarkers.js'
+
+// A tiny, valid 1x1 red PNG, base64-encoded - real image bytes so
+// doc.embedPng() in the signature-embedding path has something genuine to
+// decode, not just an arbitrary byte string.
+const ONE_PX_PNG_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 // Stands in for the real embedAppFont() (which fetches the bundled Liberation
 // Sans asset - a browser-only operation) so text-drawing tests can run
@@ -330,6 +336,95 @@ describe('flattenAnnotations', () => {
     const bytes = await makePdfBytes()
     const newFields = [{ page: 1, type: 'dropdown', name: 'Leer', x: 10, y: 10, w: 80, h: 20, pageW: 200, pageH: 200 }]
     await expect(flattenAnnotations(bytes, [], {}, 0.35, newFields)).resolves.toBeTruthy()
+  })
+
+  it('creates a date newField as a plain text field, tagged with the date marker in the WIDGET dict\'s /TU', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'date', name: 'Geburtsdatum', x: 10, y: 10, w: 80, h: 20, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const field = reloaded.getForm().getTextField('Geburtsdatum')
+    expect(field).toBeTruthy()
+    // Must be on the widget's own dict, not field.acroField.dict - pdf-lib
+    // creates those as two separate dicts, and pdf.js (which the fill-mode
+    // overlay relies on to detect this marker) only ever reads /TU directly
+    // off the widget annotation it's parsing, with no /Parent inheritance.
+    const tu = field.acroField.getWidgets()[0].dict.get(PDFName.of('TU'))
+    expect(tu?.decodeText()).toBe(DATE_FIELD_MARKER)
+  })
+
+  it('creates a signature newField as a plain text field, tagged with the signature marker in the WIDGET dict\'s /TU', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'signature', name: 'Unterschrift', x: 10, y: 10, w: 80, h: 30, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const field = reloaded.getForm().getTextField('Unterschrift')
+    expect(field).toBeTruthy()
+    const tu = field.acroField.getWidgets()[0].dict.get(PDFName.of('TU'))
+    expect(tu?.decodeText()).toBe(SIGNATURE_FIELD_MARKER)
+  })
+
+  it('applies fontSize/alignment/multiline/defaultValue from the newfield properties panel to a text field', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{
+      page: 1, type: 'text', name: 'Notiz', x: 10, y: 10, w: 150, h: 60, pageW: 200, pageH: 200,
+      fontSize: 18, alignment: 'center', multiline: true, defaultValue: 'Vorbelegt',
+    }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const field = reloaded.getForm().getTextField('Notiz')
+    // pdf-lib's TextField has no getFontSize() getter - the applied size is
+    // only readable back via the field's own /DA (default appearance) string.
+    const da = field.acroField.dict.get(PDFName.of('DA'))?.decodeText()
+    expect(da).toContain('18 Tf')
+    expect(field.getAlignment()).toBe(TextAlignment.Center)
+    expect(field.isMultiline()).toBe(true)
+    expect(field.getText()).toBe('Vorbelegt')
+  })
+
+  it('leaves fontSize/alignment/multiline/defaultValue at pdf-lib defaults when the draft never set them', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'text', name: 'Schlicht', x: 10, y: 10, w: 80, h: 20, pageW: 200, pageH: 200 }]
+    const result = await flattenAnnotations(bytes, [], {}, 0.35, newFields)
+    const reloaded = await PDFDocument.load(result)
+    const field = reloaded.getForm().getTextField('Schlicht')
+    expect(field.isMultiline()).toBe(false)
+    expect(field.getAlignment()).toBe(TextAlignment.Left)
+    expect(field.getText() || '').toBe('')
+  })
+
+  it('does not apply text-only appearance properties to a checkbox newField', async () => {
+    const bytes = await makePdfBytes()
+    const newFields = [{ page: 1, type: 'checkbox', name: 'Kasten', x: 10, y: 10, w: 14, h: 14, pageW: 200, pageH: 200, fontSize: 18, alignment: 'center', multiline: true, defaultValue: 'x' }]
+    await expect(flattenAnnotations(bytes, [], {}, 0.35, newFields)).resolves.toBeTruthy()
+  })
+
+  it('embeds a signature formValue as an image on the page instead of setting it as field text', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([200, 200])
+    const form = doc.getForm()
+    const sig = form.createTextField('unterschrift')
+    sig.addToPage(page, { x: 20, y: 20, width: 80, height: 30 })
+    const bytes = await doc.save()
+
+    const formValues = { unterschrift: { __signatureDataUrl: ONE_PX_PNG_DATA_URL, page: 1, rect: [20, 20, 100, 50] } }
+    const result = await flattenAnnotations(bytes, [], formValues)
+    const reloaded = await PDFDocument.load(result)
+
+    // Never stringified into the AcroForm /V - that would silently corrupt
+    // the field with a garbage "[object Object]" text value.
+    expect(reloaded.getForm().getTextField('unterschrift').getText() || '').toBe('')
+
+    // An image XObject actually landed in the page's resources.
+    const xobjects = reloaded.getPage(0).node.Resources()?.lookup(PDFName.of('XObject'))
+    expect(xobjects).toBeInstanceOf(PDFDict)
+    expect(xobjects.entries().length).toBeGreaterThan(0)
+  })
+
+  it('silently skips a malformed signature formValue rather than throwing', async () => {
+    const bytes = await makePdfBytes()
+    const formValues = { unterschrift: { __signatureDataUrl: 'not-a-real-data-url', page: 1, rect: [0, 0, 10, 10] } }
+    await expect(flattenAnnotations(bytes, [], formValues)).resolves.toBeTruthy()
   })
 
   it('fills a dropdown and a listbox via formValues, dispatched by field type not value type', async () => {

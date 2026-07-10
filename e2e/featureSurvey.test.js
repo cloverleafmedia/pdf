@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { PDFDocument, StandardFonts, PDFName, PDFDict } from 'pdf-lib'
 import { launchApp, openPdf } from './helpers.js'
 
 let ctx
@@ -269,12 +269,65 @@ describe('Form field pre-fill across all field types', () => {
   })
 })
 
+describe('Form-fill: required-field validation UX', () => {
+  async function makeRequiredFieldsPdf() {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([400, 300])
+    const form = doc.getForm()
+
+    const filled = form.createTextField('vorname')
+    filled.setText('Max')
+    filled.addToPage(page, { x: 20, y: 240, width: 150, height: 20 })
+    filled.enableRequired()
+
+    const empty = form.createTextField('nachname')
+    empty.addToPage(page, { x: 20, y: 200, width: 150, height: 20 })
+    empty.enableRequired()
+
+    const optional = form.createTextField('notiz')
+    optional.addToPage(page, { x: 20, y: 160, width: 150, height: 20 })
+
+    const tmpPath = tmpPdfPath('required')
+    fs.writeFileSync(tmpPath, await doc.save())
+    return tmpPath
+  }
+
+  it('outlines only the empty required field red, and jumps to it via the status-bar button', async () => {
+    const p = await makeRequiredFieldsPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateTool(ctx.window, 'Hand')
+      await activateTool(ctx.window, 'Formular ausfüllen')
+      await ctx.window.waitForTimeout(500)
+
+      const missingCount = await ctx.window.locator('[data-missing-required="true"]').count()
+      expect(missingCount).toBe(1)
+
+      await ctx.window.getByText('Nächstes Pflichtfeld', { exact: true }).click()
+      const focusedName = await ctx.window.evaluate(() => document.activeElement?.getAttribute('data-missing-required'))
+      expect(focusedName).toBe('true')
+      expect(await isVisibleByText(ctx.window, /Pflichtfeld 1 von 1/)).toBe(true)
+    } finally { fs.unlinkSync(p) }
+  })
+})
+
+// "Formularfeld erstellen" toggles activeTool between 'newfield' and 'hand'
+// (Toolbar.jsx) rather than opening a real flyout - activeTool isn't reset
+// per-document, so it carries over from whatever the previous test in this
+// same Electron session left it as. Clicking "Hand" first guarantees a known,
+// non-newfield baseline before toggling into newfield mode (same fix pattern
+// formFields.test.js already uses for the "form" tool).
+async function activateNewFieldTool(window) {
+  await window.locator('button[title="Hand"]').click()
+  await activateTool(window, 'Formularfeld erstellen')
+}
+
 describe('New form-field creation', () => {
   it('drag-creates a checkbox draft with an editable default name', async () => {
     const p = await makeBlankPdf()
     try {
       await openPdf(ctx.window, p)
-      await activateTool(ctx.window, 'Formularfeld erstellen')
+      await activateNewFieldTool(ctx.window)
       await ctx.window.getByText('Kontrollkästchen', { exact: true }).click()
       await dragOnPage(ctx.window, 1, 0.3, 0.3, 0.4, 0.35)
 
@@ -282,6 +335,167 @@ describe('New form-field creation', () => {
       expect(await nameInputs.count()).toBe(1)
       const value = await nameInputs.first().inputValue()
       expect(value.length).toBeGreaterThan(0)
+    } finally { fs.unlinkSync(p) }
+  })
+
+  // Regression: PDFViewer.jsx's window._savePDF used to build its `newFields`
+  // array without groupId/optionValue/options, so annotationFlatten.js's
+  // radio-group and dropdown/listbox branches always ran with those undefined
+  // - radio widgets silently never got added to the saved PDF at all, and
+  // dropdowns/listboxes saved with zero options despite the UI showing them
+  // configured. Both are exercised here against a real save-to-disk.
+  it('saves a dropdown draft with its configured options', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateNewFieldTool(ctx.window)
+      await ctx.window.getByText('Dropdown', { exact: true }).click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.1, 0.4, 0.2)
+
+      await ctx.window.getByText('+ Option').click()
+      await ctx.window.getByText('+ Option').click()
+
+      const fieldName = await ctx.window.locator('div.border-dashed input').first().inputValue()
+
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      const dropdown = saved.getForm().getDropdown(fieldName)
+      expect(dropdown.getOptions()).toEqual(['Option 1', 'Option 2'])
+    } finally { fs.unlinkSync(p) }
+  })
+
+  it('saves a radio group with both buttons under one field, and honors the required toggle', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateNewFieldTool(ctx.window)
+      await ctx.window.getByText('Radio-Gruppe', { exact: true }).click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.1, 0.16, 0.16)
+
+      const fieldName = await ctx.window.locator('div.border-dashed input').first().inputValue()
+      await ctx.window.locator('button[title="Als Pflichtfeld markieren"]').click()
+
+      // Second button of the same group - "+ Option" inside the radio panel
+      // re-arms the newfield tool for one more drag rather than immediately
+      // creating a widget (see onAddRadioOption in PDFViewer.jsx).
+      await ctx.window.getByText('+ Option').click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.3, 0.16, 0.36)
+
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      const radioGroup = saved.getForm().getRadioGroup(fieldName)
+      expect(radioGroup.getOptions().sort()).toEqual(['Option 1', 'Option 2'])
+      expect(radioGroup.isRequired()).toBe(true)
+    } finally { fs.unlinkSync(p) }
+  })
+
+  it('warns (without blocking the save) when a required field is left empty', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateNewFieldTool(ctx.window)
+      await ctx.window.getByText('Textfeld', { exact: true }).click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.1, 0.4, 0.2)
+      await ctx.window.locator('button[title="Als Pflichtfeld markieren"]').click()
+
+      await ctx.window.evaluate(() => window._savePDF())
+      expect(await isVisibleByText(ctx.window, /Pflichtfeld\(er\) noch leer/)).toBe(true)
+
+      // Still actually saved despite the warning - not a hard block.
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      expect(saved.getForm().getFields().length).toBe(1)
+    } finally { fs.unlinkSync(p) }
+  })
+
+  it('creates a date field that fill-mode renders as a native date picker', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateNewFieldTool(ctx.window)
+      await ctx.window.getByText('Datum', { exact: true }).click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.1, 0.4, 0.2)
+      const fieldName = await ctx.window.locator('div.border-dashed input').first().inputValue()
+
+      // Materialize the field as a real widget - fill-mode only shows
+      // already-saved AcroForm widgets, not still-pending newfield drafts.
+      // _savePDF() writes to disk but deliberately doesn't refresh the live
+      // in-app document (pendingFormFields stay visible/editable so a repeat
+      // save stays idempotent) - a real user re-opens the file to fill it
+      // in, so the test does the same via openPdf() again.
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      expect(saved.getForm().getTextField(fieldName)).toBeTruthy()
+      await openPdf(ctx.window, p)
+
+      await activateTool(ctx.window, 'Hand')
+      await activateTool(ctx.window, 'Formular ausfüllen')
+      await ctx.window.waitForTimeout(500)
+      expect(await ctx.window.locator('input[type="date"]').count()).toBe(1)
+    } finally { fs.unlinkSync(p) }
+  })
+
+  it('signature field: draws a signature, saves it as an embedded image rather than raw field text', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateNewFieldTool(ctx.window)
+      await ctx.window.getByText('Unterschrift', { exact: true }).click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.1, 0.4, 0.25)
+      const fieldName = await ctx.window.locator('div.border-dashed input').first().inputValue()
+
+      // Materialize the field as a real widget first, then reopen the file
+      // (same reason as the date test above).
+      await ctx.window.evaluate(() => window._savePDF())
+      await openPdf(ctx.window, p)
+
+      await activateTool(ctx.window, 'Hand')
+      await activateTool(ctx.window, 'Formular ausfüllen')
+      await ctx.window.waitForTimeout(500)
+
+      await ctx.window.getByText('✎ Unterschreiben', { exact: true }).click()
+      const canvas = ctx.window.locator('canvas[width="240"][height="100"]')
+      const box = await canvas.boundingBox()
+      await ctx.window.mouse.move(box.x + 10, box.y + 10)
+      await ctx.window.mouse.down()
+      await ctx.window.mouse.move(box.x + 100, box.y + 60)
+      await ctx.window.mouse.up()
+      await ctx.window.getByText('Übernehmen', { exact: true }).click()
+
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      // Never stringified into the AcroForm /V - would corrupt the field
+      // with a garbage "[object Object]" text value.
+      expect(saved.getForm().getTextField(fieldName).getText() || '').toBe('')
+      const xobjects = saved.getPage(0).node.Resources()?.lookup(PDFName.of('XObject'))
+      expect(xobjects).toBeInstanceOf(PDFDict)
+      expect(xobjects.entries().length).toBeGreaterThan(0)
+    } finally { fs.unlinkSync(p) }
+  })
+
+  it('text field properties panel: applies font size, center alignment, default value and multiline', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateNewFieldTool(ctx.window)
+      await ctx.window.getByText('Textfeld', { exact: true }).click()
+      await dragOnPage(ctx.window, 1, 0.1, 0.1, 0.5, 0.3)
+      const fieldName = await ctx.window.locator('div.border-dashed input').first().inputValue()
+
+      await ctx.window.locator('div.border-dashed button', { hasText: '⚙' }).click()
+      await ctx.window.locator('input[type="number"]').fill('20')
+      await ctx.window.getByText('↔', { exact: true }).click()
+      await ctx.window.getByText('Mehrzeilig', { exact: true }).locator('xpath=preceding-sibling::input').check()
+      // Default-value input is the remaining plain text input inside the panel.
+      const panel = ctx.window.locator('div.border-dashed >> div.absolute.z-30').last()
+      await panel.locator('input:not([type])').fill('Vorbelegter Text')
+
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      const field = saved.getForm().getTextField(fieldName)
+      expect(field.isMultiline()).toBe(true)
+      expect(field.getText()).toBe('Vorbelegter Text')
+      const da = field.acroField.dict.get(PDFName.of('DA'))?.decodeText()
+      expect(da).toContain('20 Tf')
     } finally { fs.unlinkSync(p) }
   })
 })

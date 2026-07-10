@@ -44,6 +44,31 @@ export async function duplicatePage(pdfBytes, order, pageNum) {
   return { bytes, newOrder: newOrder.map((_, i) => i + 1) }
 }
 
+// Inserts every page of `srcBytes` (a second PDF's raw bytes) into the
+// current document right after `insertAfterPageNum` (0 = insert at the very
+// top, before page 1). Same rebuild pattern as the other ops here — used by
+// the Sidebar's drag-and-drop-a-PDF-into-a-specific-spot feature, as the
+// position-aware counterpart to the dialog-based `window._mergePDF` (which
+// only ever appends at the end).
+export async function insertPagesAt(pdfBytes, order, insertAfterPageNum, srcBytes) {
+  const src = await PDFDocument.load(pdfBytes)
+  const out = await PDFDocument.create()
+  const insertAt = insertAfterPageNum <= 0 ? 0 : order.indexOf(insertAfterPageNum) + 1
+  const allCopied = await out.copyPages(src, order.map(n => n - 1))
+  const newDoc = await PDFDocument.load(srcBytes)
+  const newCopied = await out.copyPages(newDoc, newDoc.getPageIndices())
+  for (let i = 0; i <= allCopied.length; i++) {
+    if (i === insertAt) newCopied.forEach(p => out.addPage(p))
+    if (i < allCopied.length) out.addPage(allCopied[i])
+  }
+  const bytes = await out.save()
+  return {
+    bytes,
+    insertedCount: newCopied.length,
+    newOrder: Array.from({ length: allCopied.length + newCopied.length }, (_, i) => i + 1),
+  }
+}
+
 export async function insertBlankPageAfter(pdfBytes, order, pageNum) {
   const src = await PDFDocument.load(pdfBytes)
   const out = await PDFDocument.create()

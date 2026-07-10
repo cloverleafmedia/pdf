@@ -43,7 +43,12 @@ export function useFormFieldTool({ pageNum, size, getPos, overlayRef, redraw, ne
         if (activeRadioGroupId && groupMembers.length) {
           // Joining the group this session already started - reuse its name.
           const optionValue = nextRadioOptionValue(groupMembers.map(f => f.optionValue))
-          addFormFieldDraft({ pageNum, type: 'radio', name: groupMembers[0].name, groupId: activeRadioGroupId, optionValue, x, y, w, h, logicalW: size.w, logicalH: size.h })
+          // Required is a property of the group's one pdf-lib field, not each
+          // individual widget - a later button joining the group inherits
+          // whatever the group's first member already has, so the toggle
+          // (which only ever shows on that first member, see DraggableFieldBox)
+          // doesn't silently stop applying once a second option is added.
+          addFormFieldDraft({ pageNum, type: 'radio', name: groupMembers[0].name, groupId: activeRadioGroupId, optionValue, required: groupMembers[0].required, x, y, w, h, logicalW: size.w, logicalH: size.h })
         } else {
           // First button of a fresh group - mint both a new name and a new groupId.
           const existingNames = pendingFormFields.map(f => f.name)
@@ -51,7 +56,7 @@ export function useFormFieldTool({ pageNum, size, getPos, overlayRef, redraw, ne
           const name = dedupeFieldName(defaultFieldName('radio', groupCount + 1), existingNames)
           const groupId = `radio-${Date.now()}-${Math.random()}`
           const optionValue = nextRadioOptionValue([])
-          addFormFieldDraft({ pageNum, type: 'radio', name, groupId, optionValue, x, y, w, h, logicalW: size.w, logicalH: size.h })
+          addFormFieldDraft({ pageNum, type: 'radio', name, groupId, optionValue, required: false, x, y, w, h, logicalW: size.w, logicalH: size.h })
           setActiveRadioGroupId(groupId)
         }
       } else {
@@ -59,7 +64,10 @@ export function useFormFieldTool({ pageNum, size, getPos, overlayRef, redraw, ne
         const n = pendingFormFields.filter(f => f.type === newFieldType).length + 1
         const name = dedupeFieldName(defaultFieldName(newFieldType, n), existingNames)
         const options = ['dropdown', 'listbox'].includes(newFieldType) ? [] : undefined
-        addFormFieldDraft({ pageNum, type: newFieldType, name, x, y, w, h, logicalW: size.w, logicalH: size.h, options })
+        // Appearance defaults - only ever read/edited for type 'text' (see
+        // the properties panel in DraggableFieldBox), but harmless to carry
+        // on every type since annotationFlatten.js only applies them there.
+        addFormFieldDraft({ pageNum, type: newFieldType, name, x, y, w, h, logicalW: size.w, logicalH: size.h, options, required: false, alignment: 'left', multiline: false, defaultValue: '', fontSize: undefined })
       }
     }
     rectStartRef.current = null

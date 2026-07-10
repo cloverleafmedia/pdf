@@ -8,6 +8,8 @@ import { flattenAnnotations } from '../lib/annotationFlatten'
 import { findPIIRedactions, findTextRedactions } from '../lib/piiDetection'
 import { chunk } from '../lib/chunk'
 import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
+import { findEmptyRequiredFieldNames } from '../lib/formFieldValidation'
+import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from '../lib/formFieldMarkers'
 import { renderPageToCanvas } from '../lib/renderPage'
 import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
@@ -113,7 +115,7 @@ export default function PDFViewer() {
   // ── Save (with annotation flattening) ────────────────────────────────────
   useEffect(() => {
     window._savePDF = async (forceDialog = false) => {
-      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, pendingFormFields, pageRotations } = useStore.getState()
+      const { pdfBytes: b, filePath: fp, fileName: fn, annotations, formValues, pendingFormFields, pageRotations, pdfDoc: doc } = useStore.getState()
       if (!b) return
       try {
         setStatus('Speichern …')
@@ -125,8 +127,30 @@ export default function PDFViewer() {
         const newFields = pendingFormFields.map(f => ({
           page: f.pageNum, type: f.type, name: f.name,
           x: f.x, y: f.y, w: f.w, h: f.h, pageW: f.logicalW, pageH: f.logicalH,
+          groupId: f.groupId, optionValue: f.optionValue, options: f.options, required: f.required,
+          fontSize: f.fontSize, alignment: f.alignment, multiline: f.multiline, defaultValue: f.defaultValue,
         }))
         const bytes = await flattenAnnotations(b, annotations, formValues, ANNOTATION_OPACITY, newFields, null, pageRotations)
+
+        // Non-blocking "Pflichtfelder noch leer" check - scans the live pdf.js
+        // document's own AcroForm widgets (whatever the source PDF already
+        // had) plus this session's still-pending newfield drafts, the same two
+        // `required`-flag sources annotationFlatten.js/DraggableFieldBox feed
+        // off. Best-effort only: a failure here must never stop the actual
+        // save, which is why it's wrapped separately from the flatten/write
+        // steps above/below.
+        let missingRequired = []
+        if (doc) {
+          try {
+            const widgets = []
+            for (let p = 1; p <= doc.numPages; p++) {
+              const anns = await (await doc.getPage(p)).getAnnotations()
+              for (const a of anns) if (a.subtype === 'Widget' && a.fieldType) widgets.push(a)
+            }
+            missingRequired = findEmptyRequiredFieldNames(widgets, pendingFormFields, formValues)
+          } catch (_) { /* warning is best-effort only */ }
+        }
+
         let target = fp
         if (!target || forceDialog) {
           const r = await window.api?.savePDF(fn)
@@ -137,8 +161,30 @@ export default function PDFViewer() {
         }
         await window.api?.writeFile(target, bytes)
         useStore.getState().setDirty(false)
-        setStatus('Gespeichert')
+        setStatus(missingRequired.length
+          ? `Gespeichert — Achtung: ${missingRequired.length} Pflichtfeld(er) noch leer (${missingRequired.slice(0, 3).join(', ')}${missingRequired.length > 3 ? ' …' : ''})`
+          : 'Gespeichert', missingRequired.length ? 6000 : undefined)
       } catch (e) { setStatus('Fehler: ' + e.message) }
+    }
+  }, [])
+
+  // ── Jump to next empty required field (form-fill mode) ───────────────────
+  // All pages mount simultaneously (not virtualized - see the tabIndex
+  // comment in the form-fields overlay below), so every page's fields are
+  // already in the DOM regardless of scroll position - a plain document-wide
+  // query + tabIndex sort is enough to jump across page boundaries, no
+  // per-page state wiring needed.
+  useEffect(() => {
+    window._jumpToNextRequiredField = () => {
+      const inputs = Array.from(document.querySelectorAll('[data-missing-required="true"]'))
+        .sort((a, b) => a.tabIndex - b.tabIndex)
+      if (!inputs.length) { setStatus('Keine leeren Pflichtfelder mehr'); return }
+      const activeIdx = inputs.indexOf(document.activeElement)
+      const nextIdx = activeIdx >= 0 ? (activeIdx + 1) % inputs.length : 0
+      const next = inputs[nextIdx]
+      next.focus()
+      next.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setStatus(`Pflichtfeld ${nextIdx + 1} von ${inputs.length}`)
     }
   }, [])
 
@@ -895,27 +941,75 @@ function PDFPage({ pageNum }) {
         // mount in DOM order 1..N). 1000 is safe headroom per page for any
         // realistic form field count.
         const tabIndex = pageNum * 1000 + i
+        // Date/signature fields are plain Tx widgets underneath with a
+        // sentinel in their /TU (see formFieldMarkers.js + annotationFlatten.js)
+        // - this is how they're told apart from an ordinary text field after
+        // a save+reload round-trip.
+        const isDateField = field.fieldType === 'Tx' && field.alternativeText === DATE_FIELD_MARKER
+        const isSignatureField = field.fieldType === 'Tx' && field.alternativeText === SIGNATURE_FIELD_MARKER
+        // field.required comes straight from the PDF's own /Ff Required bit
+        // (pdf.js exposes it as `required` on the annotation) - covers both
+        // fields that were already required in the source PDF and ones this
+        // app's own "newfield" tool marked required before saving. Radio
+        // groups are intentionally left out: highlighting every individual
+        // un-selected button red (rather than "no option chosen yet") would
+        // misread as "all of these are wrong".
+        const missingRequired = !!field.required && (
+          (field.fieldType === 'Tx' && !isSignatureField && !String(formValues[key] || '').trim()) ||
+          (isSignatureField && !formValues[key]?.__signatureDataUrl) ||
+          (isCheckbox && !formValues[key]) ||
+          (field.fieldType === 'Ch' && (Array.isArray(formValues[key]) ? formValues[key].length === 0 : !formValues[key]))
+        )
         return (
           // Radio-button widgets share `key` (their common fieldName) across
           // multiple widgets - the React list key needs the map index too so
           // sibling radio buttons don't collide.
           <div key={`${key}-${i}`} className="absolute z-20" style={{ left, top, width, height }}>
-            {field.fieldType === 'Tx' && (field.multiLine ? (
+            {field.fieldType === 'Tx' && isSignatureField && (
+              <SignatureFieldWidget
+                value={formValues[key]}
+                missingRequired={missingRequired}
+                tabIndex={tabIndex}
+                pageNum={pageNum}
+                rect={field.rect}
+                isDark={isDark}
+                onChange={(v) => setFormValue(key, v)}
+              />
+            )}
+            {field.fieldType === 'Tx' && !isSignatureField && isDateField && (
+              <input type="date"
+                value={formValues[key] || ''}
+                onChange={e => setFormValue(key, e.target.value)}
+                tabIndex={tabIndex}
+                data-missing-required={missingRequired || undefined}
+                className={`w-full h-full px-1 outline outline-2 bg-blue-50/80 text-gray-900
+                  focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 focus:z-10 relative
+                  ${missingRequired ? 'outline-red-500' : 'outline-blue-400/70'}`}
+                style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}
+              />
+            )}
+            {field.fieldType === 'Tx' && !isSignatureField && !isDateField && (field.multiLine ? (
               <textarea
                 value={formValues[key] || ''}
                 onChange={e => setFormValue(key, e.target.value)}
-                placeholder={field.alternativeText || ''}
+                placeholder={(field.alternativeText || '') + (field.required ? ' *' : '')}
                 tabIndex={tabIndex}
-                className="w-full h-full px-1 py-0.5 resize-none outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
+                data-missing-required={missingRequired || undefined}
+                className={`w-full h-full px-1 py-0.5 resize-none outline outline-2 bg-blue-50/80 text-gray-900
+                  focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 focus:z-10 relative
+                  ${missingRequired ? 'outline-red-500' : 'outline-blue-400/70'}`}
                 style={{ fontSize: Math.max(8, Math.min(height * 0.3, 14)) }}
               />
             ) : (
               <input
                 value={formValues[key] || ''}
                 onChange={e => setFormValue(key, e.target.value)}
-                placeholder={field.alternativeText || ''}
+                placeholder={(field.alternativeText || '') + (field.required ? ' *' : '')}
                 tabIndex={tabIndex}
-                className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
+                data-missing-required={missingRequired || undefined}
+                className={`w-full h-full px-1 outline outline-2 bg-blue-50/80 text-gray-900
+                  focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 focus:z-10 relative
+                  ${missingRequired ? 'outline-red-500' : 'outline-blue-400/70'}`}
                 style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}
               />
             ))}
@@ -924,7 +1018,9 @@ function PDFPage({ pageNum }) {
                 checked={!!formValues[key]}
                 onChange={e => setFormValue(key, e.target.checked)}
                 tabIndex={tabIndex}
-                className="w-full h-full accent-clover-500 cursor-pointer"
+                data-missing-required={missingRequired || undefined}
+                className={`w-full h-full accent-clover-500 cursor-pointer focus:ring-2 focus:ring-amber-400 focus:ring-offset-1
+                  ${missingRequired ? 'outline outline-2 outline-red-500 rounded-sm' : ''}`}
               />
             )}
             {field.fieldType === 'Btn' && field.radioButton && (
@@ -933,7 +1029,7 @@ function PDFPage({ pageNum }) {
                 checked={(formValues[key] ?? field.fieldValue) === field.buttonValue}
                 onChange={() => setFormValue(key, field.buttonValue)}
                 tabIndex={tabIndex}
-                className="w-full h-full accent-clover-500 cursor-pointer"
+                className="w-full h-full accent-clover-500 cursor-pointer focus:ring-2 focus:ring-amber-400 focus:ring-offset-1"
               />
             )}
             {field.fieldType === 'Ch' && (() => {
@@ -955,8 +1051,11 @@ function PDFPage({ pageNum }) {
                     ? Array.from(e.target.selectedOptions).map(o => o.value)
                     : e.target.value)}
                   tabIndex={tabIndex}
+                  data-missing-required={missingRequired || undefined}
                   size={!field.combo ? Math.min(field.options?.length || 1, 4) : undefined}
-                  className="w-full h-full px-1 outline outline-2 outline-blue-400/70 bg-blue-50/80 text-gray-900"
+                  className={`w-full h-full px-1 outline outline-2 bg-blue-50/80 text-gray-900
+                    focus:ring-2 focus:ring-amber-400 focus:ring-offset-1 focus:z-10 relative
+                    ${missingRequired ? 'outline-red-500' : 'outline-blue-400/70'}`}
                   style={{ fontSize: Math.max(8, Math.min(height * 0.6, 14)) }}>
                   {field.combo && <option value="">—</option>}
                   {(field.options || []).map((opt, oi) => (
@@ -988,6 +1087,8 @@ function PDFPage({ pageNum }) {
             onRemove={() => removeFormFieldDraft(f.id)}
             onUpdateOptions={(options) => updateFormFieldDraft(f.id, { options })}
             onUpdateOptionValue={(optionValue) => updateFormFieldDraft(f.id, { optionValue })}
+            onToggleRequired={(required) => updateFormFieldDraft(f.id, { required })}
+            onUpdateProps={(props) => updateFormFieldDraft(f.id, props)}
             onAddRadioOption={() => { setActiveRadioGroupId(f.groupId); setNewFieldType('radio'); setActiveTool('newfield') }}
           />
         )
@@ -1021,11 +1122,13 @@ function DraggableAnnotationMarker({ activeTool, className, style, title, onDrag
 // (not canvas-painted like the redaction preview, since it must stay editable
 // until the document is saved). Visible whenever pending, draggable/resizable
 // only with the hand tool active - same convention as sticky notes/text boxes.
-function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeStart, onRename, onRemove, onUpdateOptions, onUpdateOptionValue, onAddRadioOption, isFirstInGroup = true, optionIndex = 0 }) {
+function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeStart, onRename, onRemove, onUpdateOptions, onUpdateOptionValue, onAddRadioOption, onToggleRequired, onUpdateProps, isFirstInGroup = true, optionIndex = 0 }) {
   const isHand = activeTool === 'hand'
   const hasOptions = field.type === 'dropdown' || field.type === 'listbox'
   const isRadio = field.type === 'radio'
+  const isText = field.type === 'text'
   const options = field.options || []
+  const [showProps, setShowProps] = useState(false)
 
   const updateOption = (i, value) => onUpdateOptions?.(options.map((o, oi) => oi === i ? value : o))
   const removeOption = (i) => onUpdateOptions?.(options.filter((_, oi) => oi !== i))
@@ -1044,16 +1147,82 @@ function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeSta
           Teil von: {field.name}
         </div>
       ) : (
-        <input
-          value={field.name}
-          onChange={(e) => onRename(e.target.value)}
-          onMouseDown={(e) => e.stopPropagation()}
-          className={`absolute -top-6 left-0 w-full text-[11px] px-1 py-0.5 rounded outline-none border
-            ${isDark ? 'bg-zinc-800 text-zinc-100 border-zinc-600' : 'bg-white text-gray-900 border-gray-300'}`}
-        />
+        <div className="absolute -top-6 left-0 w-full flex items-stretch gap-1" onMouseDown={(e) => e.stopPropagation()}>
+          <input
+            value={field.name}
+            onChange={(e) => onRename(e.target.value)}
+            className={`flex-1 min-w-0 text-[11px] px-1 py-0.5 rounded outline-none border
+              ${isDark ? 'bg-zinc-800 text-zinc-100 border-zinc-600' : 'bg-white text-gray-900 border-gray-300'}`}
+          />
+          <button type="button" onClick={() => onToggleRequired?.(!field.required)}
+            title={field.required ? 'Pflichtfeld (klicken zum Entfernen)' : 'Als Pflichtfeld markieren'}
+            className={`flex-shrink-0 w-5 rounded text-xs font-bold border transition-colors
+              ${field.required
+                ? 'bg-red-600 text-white border-red-600'
+                : isDark ? 'bg-zinc-800 text-zinc-500 border-zinc-600 hover:text-zinc-300' : 'bg-white text-gray-400 border-gray-300 hover:text-gray-600'}`}>
+            *
+          </button>
+          {isText && (
+            <button type="button" onClick={() => setShowProps(s => !s)}
+              title="Eigenschaften (Schriftgröße, Ausrichtung, Vorgabewert, mehrzeilig)"
+              className={`flex-shrink-0 w-5 rounded text-xs border transition-colors
+                ${showProps
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : isDark ? 'bg-zinc-800 text-zinc-500 border-zinc-600 hover:text-zinc-300' : 'bg-white text-gray-400 border-gray-300 hover:text-gray-600'}`}>
+              ⚙
+            </button>
+          )}
+        </div>
+      )}
+      {isText && showProps && (
+        <div onMouseDown={(e) => e.stopPropagation()}
+          className={`absolute left-0 z-30 w-56 rounded-lg border shadow-lg text-[11px] p-1.5 space-y-1.5
+            ${isDark ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-gray-300'}`}
+          style={{ top: field.h + 6 }}>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-16 flex-shrink-0 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Schriftgr.</span>
+            <input type="number" min={6} max={72} placeholder="auto"
+              value={field.fontSize || ''}
+              onChange={(e) => onUpdateProps?.({ fontSize: e.target.value ? Number(e.target.value) : undefined })}
+              className={`w-16 px-1 py-0.5 rounded border outline-none
+                ${isDark ? 'bg-zinc-900 text-zinc-100 border-zinc-700' : 'bg-gray-50 text-gray-900 border-gray-200'}`}/>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-16 flex-shrink-0 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Ausrichtung</span>
+            <div className="flex gap-1">
+              {[['left', '⇤'], ['center', '↔'], ['right', '⇥']].map(([a, icon]) => (
+                <button key={a} type="button" onClick={() => onUpdateProps?.({ alignment: a })}
+                  className={`w-6 py-0.5 rounded border transition-colors
+                    ${(field.alignment || 'left') === a
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-zinc-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-gray-700'}`}>
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-16 flex-shrink-0 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Vorgabe</span>
+            <input value={field.defaultValue || ''}
+              onChange={(e) => onUpdateProps?.({ defaultValue: e.target.value })}
+              className={`flex-1 min-w-0 px-1 py-0.5 rounded border outline-none
+                ${isDark ? 'bg-zinc-900 text-zinc-100 border-zinc-700' : 'bg-gray-50 text-gray-900 border-gray-200'}`}/>
+          </div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" checked={!!field.multiline}
+              onChange={(e) => onUpdateProps?.({ multiline: e.target.checked })}
+              className="accent-clover-500"/>
+            <span className={isDark ? 'text-zinc-400' : 'text-gray-500'}>Mehrzeilig</span>
+          </label>
+        </div>
       )}
       {field.type === 'checkbox' && (
         <div className="absolute inset-1 border border-blue-400 rounded-sm"/>
+      )}
+      {(field.type === 'date' || field.type === 'signature') && (
+        <div className="absolute inset-0 flex items-center justify-center text-blue-500 text-xs pointer-events-none select-none">
+          {field.type === 'date' ? '📅' : '✎'}
+        </div>
       )}
       {isRadio && (
         <>
@@ -1109,6 +1278,105 @@ function DraggableFieldBox({ field, activeTool, isDark, onDragStart, onResizeSta
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onResizeStart(e) }}
           className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-blue-500 cursor-nwse-resize"
         />
+      )}
+    </div>
+  )
+}
+
+// ── Signature-field fill widget ─────────────────────────────────────────────
+// A "signature field" is a plain AcroForm text field underneath (see
+// formFieldMarkers.js) - it just can't hold its value as a /V string like
+// every other field type, since a signature is an image. So instead of
+// wiring into setFormFieldValue/formValues as text, `onChange` here stores a
+// {__signatureDataUrl, page, rect} object that annotationFlatten.js
+// recognizes and draws directly onto the page at save time (see the
+// signature-embedding block there) - deliberately not reusing SignatureModal,
+// which is built around a very different terminal "sign the whole document
+// straight to a new file" flow with page/position pickers that don't apply
+// to "fill in this one specific field".
+function SignatureFieldWidget({ value, missingRequired, tabIndex, pageNum, rect, isDark, onChange }) {
+  const [open, setOpen] = useState(false)
+  const canvasRef = useRef(null)
+  const ctxRef    = useRef(null)
+  const drawing   = useRef(false)
+  const lastPos   = useRef(null)
+  const [hasDrawing, setHasDrawing] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const ctx = canvasRef.current.getContext('2d')
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#1e293b'
+    ctxRef.current = ctx
+    setHasDrawing(false)
+  }, [open])
+
+  const getPos = (e) => {
+    const canvas = canvasRef.current
+    const r = canvas.getBoundingClientRect()
+    const cx = e.touches ? e.touches[0].clientX : e.clientX
+    const cy = e.touches ? e.touches[0].clientY : e.clientY
+    return { x: (cx - r.left) * (canvas.width / r.width), y: (cy - r.top) * (canvas.height / r.height) }
+  }
+  const onStart = (e) => { e.preventDefault(); drawing.current = true; lastPos.current = getPos(e) }
+  const onMove  = (e) => {
+    if (!drawing.current) return
+    e.preventDefault()
+    const pos = getPos(e), ctx = ctxRef.current
+    ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
+    lastPos.current = pos
+    if (!hasDrawing) setHasDrawing(true)
+  }
+  const onEnd   = () => { drawing.current = false }
+  const clear   = () => { ctxRef.current?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height); setHasDrawing(false) }
+  const confirm = () => {
+    if (!hasDrawing) return
+    onChange({ __signatureDataUrl: canvasRef.current.toDataURL('image/png'), page: pageNum, rect })
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative w-full h-full" onMouseDown={(e) => e.stopPropagation()}>
+      <button type="button" tabIndex={tabIndex} onClick={() => setOpen(o => !o)}
+        data-missing-required={missingRequired || undefined}
+        className={`w-full h-full flex items-center justify-center gap-1 rounded border-2 border-dashed text-[11px] transition-colors
+          ${missingRequired ? 'border-red-500' : 'border-blue-400/70'}
+          ${isDark ? 'bg-blue-950/30 text-blue-300 hover:bg-blue-950/50' : 'bg-blue-50/80 text-blue-700 hover:bg-blue-100'}`}>
+        {value?.__signatureDataUrl
+          ? <img src={value.__signatureDataUrl} alt="Unterschrift" className="max-w-full max-h-full object-contain pointer-events-none"/>
+          : <>✎ Unterschreiben</>}
+      </button>
+      {value?.__signatureDataUrl && (
+        <button type="button" title="Unterschrift entfernen" onClick={() => onChange(undefined)}
+          className="absolute -top-2 -right-2 z-10 w-4 h-4 rounded-full bg-red-600 hover:bg-red-500 text-white text-[10px] leading-4 text-center">
+          ×
+        </button>
+      )}
+      {open && (
+        <div className={`absolute left-0 z-30 rounded-lg border shadow-lg p-1.5 space-y-1.5
+            ${isDark ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-gray-300'}`}
+          style={{ top: '100%', marginTop: 6 }}>
+          <canvas ref={canvasRef} width={240} height={100}
+            onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
+            onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
+            className={`rounded border cursor-crosshair touch-none ${isDark ? 'bg-white border-zinc-600' : 'bg-white border-gray-300'}`}
+            style={{ width: 240, height: 100 }} />
+          <div className="flex items-center justify-between gap-1">
+            <button type="button" onClick={clear}
+              className={`px-2 py-0.5 rounded text-[11px] ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-500 hover:bg-gray-100'}`}>
+              Löschen
+            </button>
+            <div className="flex gap-1">
+              <button type="button" onClick={() => setOpen(false)}
+                className={`px-2 py-0.5 rounded text-[11px] ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-500 hover:bg-gray-100'}`}>
+                Abbrechen
+              </button>
+              <button type="button" onClick={confirm} disabled={!hasDrawing}
+                className="px-2 py-0.5 rounded text-[11px] bg-clover-600 hover:bg-clover-700 disabled:opacity-40 text-white">
+                Übernehmen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

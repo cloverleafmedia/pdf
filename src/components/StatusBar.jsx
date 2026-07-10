@@ -43,6 +43,14 @@ export default function StatusBar() {
           {fileSize > 0 && <span>{formatBytes(fileSize)}</span>}
           <span>|</span>
           <span>{toolLabels[activeTool] || activeTool}</span>
+          {activeTool === 'form' && (
+            <button onClick={() => window._jumpToNextRequiredField?.()}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors
+                ${isDark ? 'text-amber-400 hover:bg-zinc-800' : 'text-amber-600 hover:bg-gray-100'}`}
+              title="Zum nächsten leeren Pflichtfeld springen">
+              Nächstes Pflichtfeld
+            </button>
+          )}
           {hasSignatures && (
             <>
               <span>|</span>

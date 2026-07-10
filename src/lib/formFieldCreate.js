@@ -3,7 +3,7 @@
 // and against sibling drafts placed in the same session, so every new field
 // needs a name that's actually unique before it reaches pdf-lib.
 
-const TYPE_LABELS = { text: 'Textfeld', checkbox: 'Kontrollkästchen', dropdown: 'Dropdown-Liste', listbox: 'Listenfeld', radio: 'Radio-Button-Gruppe' }
+const TYPE_LABELS = { text: 'Textfeld', checkbox: 'Kontrollkästchen', dropdown: 'Dropdown-Liste', listbox: 'Listenfeld', radio: 'Radio-Button-Gruppe', date: 'Datumsfeld', signature: 'Unterschriftsfeld' }
 
 export function defaultFieldName(type, index) {
   return `${TYPE_LABELS[type] || 'Feld'} ${index}`

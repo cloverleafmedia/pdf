@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Search, BookOpen, FileText, MessageSquare, ChevronRight, ChevronDown, X, GripVertical, Trash2, Copy, FilePlus, Plus, BookmarkCheck, Square, Pencil, AlertTriangle } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
-import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter } from '../lib/pdfPageOps'
+import { reorderPages, deletePage as deletePageOp, duplicatePage as duplicatePageOp, insertBlankPageAfter, insertPagesAt } from '../lib/pdfPageOps'
 import { navigateToPage } from '../lib/navigate'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 import { writeOutline } from '../lib/pdfOutline'
@@ -13,6 +13,19 @@ import { ANNOTATION_ICONS } from '../lib/annotationIcons'
 // (see ThumbPage) so the reserved space matches what renderThumb() ends up
 // producing exactly, instead of a `w-full` guess that's usually wider.
 const THUMB_W = 200
+
+// Which edge (if any) of a given thumbnail should show the "PDF lands here"
+// insert-line while an external file is being dragged over the sidebar.
+// `prevPageNum` is the page immediately before `pageNum` in display order (or
+// 0 for the first thumbnail) — both this page's top edge and the previous
+// page's bottom edge can end up pointing at the same gap, which is exactly
+// the intended visual (a seam highlighted from both sides at once).
+function fileDropEdgeFor(fileDropAfter, pageNum, prevPageNum) {
+  if (fileDropAfter === null) return null
+  if (fileDropAfter === pageNum) return 'bottom'
+  if (fileDropAfter === prevPageNum) return 'top'
+  return null
+}
 
 export default function Sidebar() {
   const { t } = useTranslation()
@@ -70,6 +83,11 @@ function Thumbnails({ isDark }) {
   const [order, setOrder] = useState([])
   const [dragFrom, setDragFrom] = useState(null)
   const [dragOver, setDragOver] = useState(null)
+  // Page number after which an externally-dragged PDF (from Windows Explorer,
+  // not our own internal thumbnail drag) would land if dropped right now — 0
+  // means "before the first page". Separate from dragOver/dragFrom above,
+  // which only ever track our own internal reorder drag.
+  const [fileDropAfter, setFileDropAfter] = useState(null)
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -147,11 +165,74 @@ function Thumbnails({ isDark }) {
     } catch (e) { setStatus('Fehler: ' + e.message) }
   }, [order, pdfBytes, filePath, fileName])
 
+  // Insert a dropped PDF's pages (possibly several files, in drop order) right
+  // after `afterPageNum` — the drag-and-drop counterpart to the dialog-based
+  // window._mergePDF (Toolbar "Zusammenführen"), but position-aware instead
+  // of always appending at the end.
+  const handleExternalFiles = useCallback(async (fileList, afterPageNum) => {
+    const files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.pdf') && f.path)
+    if (!files.length) return
+    try {
+      setStatus(files.length > 1 ? 'PDFs werden eingefügt …' : 'PDF wird eingefügt …')
+      let bytes = pdfBytes
+      let ord = order
+      let insertAfter = afterPageNum
+      for (const f of files) {
+        const buf = await window.api?.readFile(f.path)
+        const result = await insertPagesAt(bytes, ord, insertAfter, new Uint8Array(buf))
+        bytes = result.bytes
+        ord = result.newOrder
+        insertAfter += result.insertedCount // next file lands right after this one's pages
+      }
+      await reloadDocument(bytes)
+      setOrder(ord)
+      setStatus(files.length > 1 ? `${files.length} PDFs eingefügt` : 'PDF eingefügt')
+    } catch (e) { setStatus('Fehler: ' + e.message) }
+  }, [order, pdfBytes, filePath, fileName])
+
   if (!pdfDoc) return <Empty isDark={isDark} />
 
+  const isFileDrag = (e) => Array.from(e.dataTransfer.types || []).includes('Files')
+
+  // Computed fresh from the drop event's own coordinates rather than trusting
+  // `fileDropAfter` state — that state is only ever set from a prior
+  // onDragOver and is purely a visual aid; reading it back inside onDrop can
+  // race a still-pending React re-render if dragover and drop fire in the
+  // same tick (observed in e2e: a script-dispatched dragover immediately
+  // followed by drop landed on the stale `null` value and silently fell back
+  // to "append at end" every time). Geometry-based lookup can't go stale.
+  const resolveDropTarget = (e) => {
+    const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[id^="thumb-"]')
+    if (!el) return order[order.length - 1] ?? 0
+    const pageNum = Number(el.id.slice('thumb-'.length))
+    const rect = el.getBoundingClientRect()
+    if ((e.clientY - rect.top) >= rect.height / 2) return pageNum
+    const idx = order.indexOf(pageNum)
+    return order[idx - 1] ?? 0
+  }
+
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto p-2 space-y-1.5">
-      {order.map(n => (
+    <div ref={containerRef} className="h-full overflow-y-auto p-2 space-y-1.5"
+      onDragOver={e => {
+        if (!isFileDrag(e)) return
+        // Stop this from bubbling to the App-level window dragover listener,
+        // which would otherwise show the full-screen "PDF hier ablegen"
+        // overlay (misleading here — that one means "open as new document").
+        e.preventDefault(); e.stopPropagation()
+        e.dataTransfer.dropEffect = 'copy'
+        if (fileDropAfter === null) setFileDropAfter(order[order.length - 1] ?? 0)
+      }}
+      onDragLeave={e => {
+        if (containerRef.current && !containerRef.current.contains(e.relatedTarget)) setFileDropAfter(null)
+      }}
+      onDrop={e => {
+        if (!isFileDrag(e)) return
+        e.preventDefault(); e.stopPropagation()
+        const after = resolveDropTarget(e)
+        setFileDropAfter(null)
+        handleExternalFiles(e.dataTransfer.files, after)
+      }}>
+      {order.map((n, idx) => (
         <ThumbPage
           key={`${n}-${pageRotations[n] || 0}`}
           pageNum={n}
@@ -167,13 +248,15 @@ function Thumbnails({ isDark }) {
           onDelete={() => deletePage(n)}
           onDuplicate={() => duplicatePage(n)}
           onInsertBlank={() => insertBlankAfter(n)}
+          fileDropEdge={fileDropEdgeFor(fileDropAfter, n, order[idx - 1] ?? 0)}
+          onFileDragOver={before => setFileDropAfter(before ? (order[idx - 1] ?? 0) : n)}
         />
       ))}
     </div>
   )
 }
 
-function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, baseSize, isDragOver, onDragStart, onDragOver, onDragEnd, onDelete, onDuplicate, onInsertBlank }) {
+function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, baseSize, isDragOver, onDragStart, onDragOver, onDragEnd, onDelete, onDuplicate, onInsertBlank, fileDropEdge, onFileDragOver }) {
   const {
     pdfDoc,
   } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc })))
@@ -223,13 +306,28 @@ function ThumbPage({ pageNum, isActive, isDark, onClick, rotation, baseSize, isD
       id={`thumb-${pageNum}`}
       draggable
       onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
-      onDragOver={e => { e.preventDefault(); onDragOver(pageNum) }}
+      onDragOver={e => {
+        e.preventDefault()
+        if (Array.from(e.dataTransfer.types || []).includes('Files')) {
+          e.stopPropagation()
+          const rect = e.currentTarget.getBoundingClientRect()
+          onFileDragOver((e.clientY - rect.top) < rect.height / 2)
+        } else {
+          onDragOver(pageNum)
+        }
+      }}
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={`group relative cursor-pointer rounded-md overflow-hidden transition-all duration-150
         ${isActive  ? 'ring-2 ring-clover-500 shadow-clover-900/30 shadow-lg' : ''}
         ${isDragOver ? 'ring-2 ring-blue-400 scale-[1.02]' : ''}
         ${!isActive && !isDragOver ? isDark ? 'ring-1 ring-zinc-700 hover:ring-zinc-500' : 'ring-1 ring-gray-200 hover:ring-gray-400' : ''}`}>
+
+      {/* External-PDF drop-position indicator */}
+      {fileDropEdge && (
+        <div className={`absolute left-0.5 right-0.5 h-[3px] rounded-full bg-clover-500 z-20 pointer-events-none
+          ${fileDropEdge === 'top' ? 'top-0' : 'bottom-0'}`} />
+      )}
 
       {/* Drag handle */}
       <div className={`absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-60 transition-opacity

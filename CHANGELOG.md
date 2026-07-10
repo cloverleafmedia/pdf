@@ -3,6 +3,18 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.13.0] – 2026-07-10
+
+### Hinzugefügt
+- Seitenleiste: PDF-Dateien können jetzt per Drag & Drop aus dem Explorer direkt zwischen zwei Miniaturansichten fallen gelassen werden — alle Seiten der eingezogenen Datei(en) werden genau an dieser Position ins offene Dokument eingefügt (nicht nur ans Ende wie bisher bei "Zusammenführen"). Ein blauer Balken zeigt die exakte Einfügeposition während des Ziehens an.
+- Neue Formularfelder ("Formularfeld erstellen") können jetzt als Pflichtfeld markiert werden (roter "*"-Schalter neben dem Feldnamen). Beim Ausfüllen werden leere Pflichtfelder rot umrandet; beim Speichern erscheint ein Hinweis, falls noch Pflichtfelder offen sind (nicht blockierend — die Datei wird trotzdem gespeichert).
+- Formular ausfüllen: deutlicherer gelber Fokus-Ring auf dem aktuell aktiven Feld, plus neuer Button "Nächstes Pflichtfeld" in der Statusleiste, der über alle Seiten hinweg zum nächsten noch leeren Pflichtfeld springt und es fokussiert.
+- Zwei neue Feldtypen bei "Formularfeld erstellen": **Datum** (beim Ausfüllen ein natives Datumsauswahlfeld) und **Unterschrift** (beim Ausfüllen ein "✎ Unterschreiben"-Button, öffnet ein kleines Zeichenfeld direkt an der Feldposition und bettet die gezeichnete Unterschrift beim Speichern als Bild ein). Technisch weiterhin normale Textfelder mit einer versteckten Markierung — kein eigener PDF-Feldtyp nötig.
+- Textfelder bei "Formularfeld erstellen" haben jetzt ein Eigenschaften-Panel (⚙-Schalter neben dem Feldnamen): Schriftgröße, Ausrichtung (links/zentriert/rechts), Vorgabewert und "Mehrzeilig" direkt beim Anlegen einstellbar, statt fixer Standardwerte.
+
+### Behoben
+- Radio-Button-Gruppen und Dropdown-/Listenfeld-Optionen, die über "Formularfeld erstellen" angelegt wurden, gingen beim Speichern komplett verloren bzw. wurden ohne die konfigurierten Optionen gespeichert — das Speichern übergab die entsprechenden Felddaten (Gruppen-ID, Optionswert, Optionsliste) nie an die eigentliche PDF-Erzeugung.
+
 ## [1.12.0] – 2026-07-07
 
 Diese Version behebt 14 Bugs, die bei einem systematischen Funktionsaudit

@@ -1,5 +1,7 @@
-import { PDFDocument, rgb, degrees } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFHexString, TextAlignment, rgb, degrees } from 'pdf-lib'
 import { setFormFieldValue } from './formFieldValue.js'
+import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from './formFieldMarkers.js'
+import { dataUrlToBytes } from './dataUrl.js'
 
 // pdf-lib's drawImage/drawRectangle/drawText rotate around the given {x,y}
 // origin, not the shape's own center - fine for a page-spanning diagonal
@@ -226,6 +228,10 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
 
       if (hasFormValues) {
         for (const [key, value] of Object.entries(formValues)) {
+          // Signature-field values are handled separately below (an embedded
+          // PNG drawn onto the page, not an AcroForm /V string) - see the
+          // signature-embedding block further down.
+          if (value && typeof value === 'object' && value.__signatureDataUrl) continue
           try { setFormFieldValue(form, key, value) } catch (_) { /* field not found on this document, or wrong widget type — skip */ }
         }
       }
@@ -242,6 +248,11 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
         for (const group of Object.values(radioGroups)) {
           try {
             const rg = form.createRadioGroup(group[0].name)
+            // Required is one flag on the group's single pdf-lib field, not
+            // per-widget - any member being marked required is enough (the UI
+            // only ever surfaces the toggle on the group's first member, but
+            // this stays robust even if that ever changes).
+            if (group.some(nf => nf.required)) rg.enableRequired()
             for (const nf of group) {
               const pageIndex = nf.page - 1
               if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
@@ -273,10 +284,60 @@ export async function flattenAnnotations(pdfBytes, annotations, formValues = {},
               default:         field = form.createTextField(nf.name)
             }
             field.addToPage(page, { x, y, width: w, height: h })
+            if (nf.required) field.enableRequired()
+            // Date/signature fields are plain AcroForm text fields underneath
+            // (the PDF spec has no dedicated widget type for either) - this
+            // marker in /TU is how the fill-mode overlay recognizes them
+            // again after a save+reload and renders a date picker / signature
+            // button instead of a plain text input (see formFieldMarkers.js).
+            // Must be set on the WIDGET annotation's own dict, not the
+            // terminal field dict (field.acroField.dict) - pdf-lib creates
+            // those as two separate dict objects even for a single-widget
+            // field (linked via the widget's /Parent), and pdf.js reads /TU
+            // with a direct `dict.get("TU")` on the annotation it's actually
+            // parsing (the widget), not via inheritance from /Parent - a
+            // marker set on the field dict alone is invisible to it.
+            if (nf.type === 'date' || nf.type === 'signature') {
+              const marker = nf.type === 'date' ? DATE_FIELD_MARKER : SIGNATURE_FIELD_MARKER
+              for (const widget of field.acroField.getWidgets()) {
+                widget.dict.set(PDFName.of('TU'), PDFHexString.fromText(marker))
+              }
+            }
+            // Appearance properties from the "newfield" draft's own
+            // properties panel (DraggableFieldBox) - text fields only, same
+            // scope the panel itself is restricted to.
+            if (nf.type === 'text') {
+              if (nf.fontSize) field.setFontSize(nf.fontSize)
+              if (nf.alignment === 'center') field.setAlignment(TextAlignment.Center)
+              else if (nf.alignment === 'right') field.setAlignment(TextAlignment.Right)
+              if (nf.multiline) field.enableMultiline()
+              if (nf.defaultValue) field.setText(nf.defaultValue)
+            }
           } catch (_) { /* name collision, out-of-range page, or other pdf-lib error — skip */ }
         }
       }
     } catch (_) { /* unexpected AcroForm error */ }
+  }
+
+  // Embed drawn signature-field values as an image on the page, at the exact
+  // rect the field occupies - unlike every other field type, a signature
+  // isn't representable as an AcroForm /V string, so it never goes through
+  // setFormFieldValue above. `rect` here is already in raw PDF-unit space
+  // (carried straight from pdf.js's own annotation.rect by the signature
+  // widget when the user signed it - see PDFViewer.jsx), so no screen-to-raw
+  // conversion is needed, unlike the newFields path above.
+  if (hasFormValues) {
+    for (const value of Object.values(formValues)) {
+      if (!value || typeof value !== 'object' || !value.__signatureDataUrl) continue
+      try {
+        const pageIndex = value.page - 1
+        if (pageIndex < 0 || pageIndex >= doc.getPageCount()) continue
+        const page = doc.getPage(pageIndex)
+        const pngImage = await doc.embedPng(dataUrlToBytes(value.__signatureDataUrl))
+        const [x1, y1, x2, y2] = value.rect
+        page.drawImage(pngImage, { x: x1, y: y1, width: x2 - x1, height: y2 - y1 })
+      } catch (_) { /* malformed signature value or embed failure — skip */ }
+    }
   }
 
   // Persist the user's own page rotations (rotatePageLeft/rotatePageRight in
