@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AlignCenter, AlignLeft, AlignRight, FolderOpen, X } from 'lucide-react'
-import { PDFDocument, rgb } from 'pdf-lib'
+import { PDFDocument, rgb, degrees } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
@@ -8,6 +8,8 @@ import TemplateBar from './TemplateBar'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { embedAppFont } from '../../lib/embeddedFont'
 import { bytesToBase64, base64ToBytes } from '../../lib/base64'
+import { visualPageSize, visualPointToRawPoint } from '../../lib/pageRotation'
+import { normalizeImageOrientation } from '../../lib/normalizeImageOrientation'
 
 const ALIGN_OPTS = [
   { id: 'left',   icon: <AlignLeft size={13}/> },
@@ -55,8 +57,10 @@ export default function HeaderFooterModal() {
     if (r?.canceled || !r?.filePaths?.length) return
     const filePath = r.filePaths[0]
     const buf = await window.api?.readFile(filePath)
-    const bytes = new Uint8Array(buf)
-    const ext = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    const rawBytes = new Uint8Array(buf)
+    const rawExt = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    // See normalizeImageOrientation.js - pdf-lib ignores EXIF orientation.
+    const { bytes, ext } = await normalizeImageOrientation(rawBytes, rawExt)
     const previewUrl = URL.createObjectURL(new Blob([bytes], { type: ext === 'jpg' ? 'image/jpeg' : 'image/png' }))
 
     const aspect = await new Promise((resolve) => {
@@ -94,6 +98,18 @@ export default function HeaderFooterModal() {
       for (let i = 0; i < pages.length; i++) {
         const page  = pages[i]
         const { width: pw, height: ph } = page.getSize()
+        // pdf-lib always draws in raw (pre-/Rotate) page space, but "header"
+        // and "footer" are inherently visual concepts (top/bottom edge as
+        // the reader actually sees the page) - a page with a native /Rotate
+        // baked in (routine for scanned documents/exhibits, the exact case
+        // Bates numbering below is meant for) needs its raw draw position
+        // AND the text/logo's own orientation counter-rotated, or content
+        // meant for the visual top ends up on the visual bottom (180°) or
+        // on a side edge, sideways (90°/270°). Verified by pixel-sampling
+        // the actual render, not just by checking that the feature "ran".
+        const nativeRotation = page.getRotation().angle
+        const { width: vw, height: vh } = visualPageSize(pw, ph, nativeRotation)
+        const counterRotate = nativeRotation ? degrees(-nativeRotation) : undefined
         const n     = i + startNum
         const total = pages.length + startNum - 1
         const margin = 18
@@ -102,29 +118,31 @@ export default function HeaderFooterModal() {
         const resolve = (tmpl) =>
           tmpl.replace(/\{n\}/gi, String(n)).replace(/\{total\}/gi, String(total)).replace(/\{bates\}/gi, bates)
 
-        const drawText = (text, yPos) => {
+        const drawText = (text, visualY) => {
           if (!text.trim()) return
           const resolved = resolve(text)
           const tw = font.widthOfTextAtSize(resolved, fontSize)
-          let x
-          if (align === 'left')   x = margin
-          else if (align === 'right') x = pw - tw - margin
-          else x = (pw - tw) / 2
-          page.drawText(resolved, { x, y: yPos, size: fontSize, font, color })
+          let visualX
+          if (align === 'left')   visualX = margin
+          else if (align === 'right') visualX = vw - tw - margin
+          else visualX = (vw - tw) / 2
+          const { x, y } = visualPointToRawPoint(visualX, visualY, pw, ph, nativeRotation)
+          page.drawText(resolved, { x, y, size: fontSize, font, color, rotate: counterRotate })
         }
 
-        drawText(headerText, ph - margin - fontSize)
+        drawText(headerText, vh - margin - fontSize)
         drawText(footerText, margin)
 
         if (logo) {
-          const w = pw * (logoScale / 100)
+          const w = vw * (logoScale / 100)
           const h = w * logoImage.aspect
-          let x
-          if (logoAlign === 'left')   x = margin
-          else if (logoAlign === 'right') x = pw - w - margin
-          else x = (pw - w) / 2
-          const y = logoPosition === 'header' ? ph - margin - h : margin
-          page.drawImage(logo, { x, y, width: w, height: h })
+          let visualX
+          if (logoAlign === 'left')   visualX = margin
+          else if (logoAlign === 'right') visualX = vw - w - margin
+          else visualX = (vw - w) / 2
+          const visualY = logoPosition === 'header' ? vh - margin - h : margin
+          const { x, y } = visualPointToRawPoint(visualX, visualY, pw, ph, nativeRotation)
+          page.drawImage(logo, { x, y, width: w, height: h, rotate: counterRotate })
         }
       }
 
@@ -323,8 +341,12 @@ export default function HeaderFooterModal() {
             <div className={`flex items-center gap-2 text-xs border-b pb-1.5 mb-2 ${isDark ? 'border-zinc-700' : 'border-gray-200'}`}
               style={{ justifyContent: logoAlign === 'left' ? 'flex-start' : logoAlign === 'right' ? 'flex-end' : 'center' }}>
               {logoImage && logoPosition === 'header' && <img src={logoImage.previewUrl} alt="" className="h-4 w-auto object-contain"/>}
+              {/* {n}/{total} must mirror apply()'s actual formula (n = pageIndex +
+                  startNum, total = pageCount + startNum - 1) - showing plain
+                  page-1/totalPages here would make the preview lie the moment
+                  startNum isn't 1. */}
               <span style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
-                {headerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
+                {headerText.replace(/\{n\}/gi, String(startNum)).replace(/\{total\}/gi, String(totalPages + startNum - 1)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
               </span>
             </div>
           )}
@@ -334,7 +356,7 @@ export default function HeaderFooterModal() {
               style={{ justifyContent: logoAlign === 'left' ? 'flex-start' : logoAlign === 'right' ? 'flex-end' : 'center' }}>
               {logoImage && logoPosition === 'footer' && <img src={logoImage.previewUrl} alt="" className="h-4 w-auto object-contain"/>}
               <span style={{ textAlign: align, color: colorHex, fontSize: fontSize + 2 }}>
-                {footerText.replace(/\{n\}/gi, '1').replace(/\{total\}/gi, String(totalPages)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
+                {footerText.replace(/\{n\}/gi, String(startNum)).replace(/\{total\}/gi, String(totalPages + startNum - 1)).replace(/\{bates\}/gi, batesPrefix + String(batesStart).padStart(batesDigits, '0'))}
               </span>
             </div>
           )}

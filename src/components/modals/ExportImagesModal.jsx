@@ -2,13 +2,14 @@ import React, { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
+import { effectiveRotation } from '../../lib/pageRotation'
 
 const DPI_OPTIONS = [72, 96, 150, 300]
 
 export default function ExportImagesModal() {
   const {
-    pdfDoc, totalPages, currentPage, theme, closeExportImages, setStatus,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, totalPages: state.totalPages, currentPage: state.currentPage, theme: state.theme, closeExportImages: state.closeExportImages, setStatus: state.setStatus })))
+    pdfDoc, totalPages, currentPage, pageRotations, theme, closeExportImages, setStatus,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, totalPages: state.totalPages, currentPage: state.currentPage, pageRotations: state.pageRotations, theme: state.theme, closeExportImages: state.closeExportImages, setStatus: state.setStatus })))
   const isDark  = theme === 'dark'
   const [format,   setFormat]  = useState('png')
   const [dpi,      setDpi]     = useState(150)
@@ -41,7 +42,14 @@ export default function ExportImagesModal() {
       for (const n of pages) {
         setStatus(`Exportiere Seite ${n} …`)
         const page    = await pdfDoc.getPage(n)
-        const vp      = page.getViewport({ scale })
+        // Omitting `rotation` here would make pdf.js fall back to the
+        // page's NATIVE /Rotate only - silently ignoring any in-session
+        // rotate-left/right the user applied via the toolbar, so the
+        // exported image would come out at a different orientation than
+        // what's actually on screen right now. Same class of bug already
+        // fixed elsewhere via effectiveRotation() - see pageRotation.js.
+        const rotation = effectiveRotation(page.rotate, pageRotations[n])
+        const vp      = page.getViewport({ scale, rotation })
         const canvas  = document.createElement('canvas')
         canvas.width  = vp.width
         canvas.height = vp.height

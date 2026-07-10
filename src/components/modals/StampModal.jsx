@@ -6,6 +6,7 @@ import { Modal } from './SettingsModal'
 import TemplateBar from './TemplateBar'
 import RotationPresetButtons from './RotationPresetButtons'
 import { bytesToBase64, base64ToBytes } from '../../lib/base64'
+import { normalizeImageOrientation } from '../../lib/normalizeImageOrientation'
 
 const PRESETS = [
   { id: 'approved',     label: 'Genehmigt',   text: 'GENEHMIGT',    color: '#10b981' },
@@ -31,8 +32,10 @@ export default function StampModal() {
     if (r?.canceled || !r?.filePaths?.length) return
     const filePath = r.filePaths[0]
     const buf = await window.api?.readFile(filePath)
-    const bytes = new Uint8Array(buf)
-    const ext = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    const rawBytes = new Uint8Array(buf)
+    const rawExt = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    // See normalizeImageOrientation.js - pdf-lib ignores EXIF orientation.
+    const { bytes, ext } = await normalizeImageOrientation(rawBytes, rawExt)
     const previewUrl = URL.createObjectURL(new Blob([bytes], { type: ext === 'jpg' ? 'image/jpeg' : 'image/png' }))
 
     const aspect = await new Promise((resolve) => {

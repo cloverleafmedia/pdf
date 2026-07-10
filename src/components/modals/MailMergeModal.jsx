@@ -1,65 +1,11 @@
 import React, { useState } from 'react'
 import { FileSpreadsheet, FolderOpen, Table2, PlayCircle } from 'lucide-react'
-import { PDFDocument, PDFTextField, PDFCheckBox, PDFDropdown, PDFOptionList, PDFRadioGroup } from 'pdf-lib'
+import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { dedupeFilename } from '../../lib/dedupeFilename'
-
-// Minimal RFC4180-ish CSV parser: handles quoted fields (with embedded commas,
-// quotes doubled as "", and newlines inside quotes). Good enough for the
-// spreadsheet exports (Excel/Numbers/Google Sheets) this feature targets —
-// not a full CSV-dialect parser, so no dependency needed for such a small job.
-function parseCSV(text) {
-  const rows = []
-  let row = [], field = '', inQuotes = false
-  const pushField = () => { row.push(field); field = '' }
-  const pushRow = () => { pushField(); rows.push(row); row = [] }
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++ }
-        else inQuotes = false
-      } else field += c
-    } else {
-      if (c === '"') inQuotes = true
-      else if (c === ',') pushField()
-      else if (c === '\n') pushRow()
-      else if (c === '\r') { /* skip, \n handles the row break */ }
-      else field += c
-    }
-  }
-  if (field.length || row.length) pushRow()
-  const filtered = rows.filter(r => r.length > 1 || (r.length === 1 && r[0] !== ''))
-  if (!filtered.length) return { headers: [], rows: [] }
-  const headers = filtered[0]
-  const dataRows = filtered.slice(1).map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])))
-  return { headers, rows: dataRows }
-}
-
-function setFieldValue(form, name, value) {
-  let field
-  try { field = form.getField(name) } catch { return false }
-  if (!field) return false
-  try {
-    if (field instanceof PDFTextField) field.setText(String(value ?? ''))
-    else if (field instanceof PDFCheckBox) {
-      const truthy = ['true', '1', 'x', 'ja', 'yes'].includes(String(value).trim().toLowerCase())
-      truthy ? field.check() : field.uncheck()
-    }
-    else if (field instanceof PDFDropdown || field instanceof PDFOptionList) field.select(String(value))
-    else if (field instanceof PDFRadioGroup) field.select(String(value))
-    else return false
-    return true
-  } catch { return false }
-}
-
-function resolveFilename(tmpl, row, index) {
-  const resolved = tmpl.replace(/\{index\}/gi, String(index + 1))
-    .replace(/\{([^}]+)\}/g, (_, key) => row[key] ?? '')
-  return (resolved.trim() || `Datensatz_${index + 1}`).replace(/[<>:"/\\|?*]/g, '_')
-}
+import { parseCSV, resolveFilename, fillMailMergeRow } from '../../lib/mailMerge'
 
 export default function MailMergeModal() {
   const {
@@ -129,20 +75,28 @@ export default function MailMergeModal() {
       // as a success. A numeric suffix keeps every row's output on disk.
       const usedNames = new Map()
       let duplicates = 0
+      // A CSV value that doesn't match any dropdown/radio option, or a
+      // column header that doesn't match any field name (typo on either
+      // side is common), makes setFieldValue silently no-op for that one
+      // field - collected here so a whole batch can't finish reporting
+      // "N PDF(s) erzeugt" while some of them are quietly missing a value.
+      const failuresByHeader = new Map()
       for (let i = 0; i < rows.length; i++) {
         setProgress(`Erzeuge ${i + 1} / ${rows.length} …`)
-        const doc = await PDFDocument.load(templateBytes)
-        const form = doc.getForm()
-        for (const header of headers) setFieldValue(form, header, rows[i][header])
-        if (flatten) form.flatten()
-        const bytes = await doc.save()
+        const { bytes, failedHeaders } = await fillMailMergeRow(templateBytes, headers, rows[i], flatten)
+        for (const h of failedHeaders) failuresByHeader.set(h, (failuresByHeader.get(h) || 0) + 1)
         const baseName = resolveFilename(filenameTmpl, rows[i], i)
         const { name, wasDuplicate } = dedupeFilename(usedNames, baseName)
         if (wasDuplicate) duplicates++
         await window.api?.writeFile(dir + '/' + name + '.pdf', bytes)
       }
       setProgress('')
-      setStatus(`${rows.length} PDF(s) erzeugt${duplicates ? ` (davon ${duplicates} mit angepasstem Dateinamen wegen Duplikat)` : ''} → ${dir}`)
+      let msg = `${rows.length} PDF(s) erzeugt${duplicates ? ` (davon ${duplicates} mit angepasstem Dateinamen wegen Duplikat)` : ''} → ${dir}`
+      if (failuresByHeader.size) {
+        const summary = [...failuresByHeader].map(([h, n]) => `${h} (${n}×)`).join(', ')
+        msg += ` — Achtung: Spalte(n) konnten nicht in jedem PDF gesetzt werden (unbekanntes Feld oder ungültiger Wert): ${summary}`
+      }
+      setStatus(msg)
       closeMailMerge()
     } catch (e) {
       console.error(e)

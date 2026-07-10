@@ -644,6 +644,170 @@ describe('New form-field creation', () => {
   })
 })
 
+describe('Watermark stays centered on the page once rotated', () => {
+  // drawText/drawImage rotate around their {x,y} origin, not the shape's own
+  // center - centering the math for the UNROTATED box and then rotating
+  // around that corner swings the visible watermark noticeably off the true
+  // page center (confirmed by pixel-sampling: at the feature's own default
+  // settings - 45deg, fontSize 52 - about a third of the text rendered
+  // outside the page entirely). Verified here the same way, not just by
+  // checking that the feature "ran successfully".
+  it('a default text watermark (45deg) renders with its visual bounding-box center near the page center', async () => {
+    const p = await makeBlankPdf()
+    try {
+      await openPdf(ctx.window, p)
+      await activateTool(ctx.window, 'Dokument')
+      await ctx.window.waitForTimeout(200)
+      await ctx.window.getByText('Wasserzeichen', { exact: true }).click()
+      await ctx.window.waitForTimeout(600)
+      // Defaults already exercise the bug: text 'VERTRAULICH', fontSize 52,
+      // rotation 45deg - apply as-is.
+      await ctx.window.getByRole('button', { name: /Anwenden/ }).click()
+      await ctx.window.waitForTimeout(1000)
+
+      const bbox = await ctx.window.evaluate(() => {
+        const c = document.querySelector('#page-1 canvas')
+        const cctx = c.getContext('2d')
+        const { data, width, height } = cctx.getImageData(0, 0, c.width, c.height)
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4
+            if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) {
+              if (x < minX) minX = x
+              if (x > maxX) maxX = x
+              if (y < minY) minY = y
+              if (y > maxY) maxY = y
+            }
+          }
+        }
+        return { minX, maxX, minY, maxY, canvasW: width, canvasH: height }
+      })
+
+      // Before the fix this offset was ~14% (x) / ~23% (y) of the canvas,
+      // with the bounding box touching the canvas edge (clipped). A few
+      // percent of slack is left for font ascent/descent asymmetry around
+      // the baseline, which is not what this test is checking for.
+      const offsetX = Math.abs((bbox.minX + bbox.maxX) / 2 - bbox.canvasW / 2) / bbox.canvasW
+      const offsetY = Math.abs((bbox.minY + bbox.maxY) / 2 - bbox.canvasH / 2) / bbox.canvasH
+      expect(offsetX).toBeLessThan(0.05)
+      expect(offsetY).toBeLessThan(0.05)
+      // and it must not be clipped against any canvas edge
+      expect(bbox.minX).toBeGreaterThan(0)
+      expect(bbox.minY).toBeGreaterThan(0)
+      expect(bbox.maxX).toBeLessThan(bbox.canvasW - 1)
+      expect(bbox.maxY).toBeLessThan(bbox.canvasH - 1)
+    } finally { fs.unlinkSync(p) }
+  })
+})
+
+describe('Header/footer lands on the correct visual edge on a natively-rotated page', () => {
+  // pdf-lib always draws in raw (pre-/Rotate) page space, but "footer" is a
+  // visual concept (the edge the reader actually sees at the bottom). Drawing
+  // it at the raw-bottom margin without accounting for the page's own native
+  // /Rotate put it at the visual TOP on a 180deg page (and sideways on
+  // 90/270deg pages) - exactly the kind of page (scanned exhibits) Bates
+  // numbering is meant for. Verified by pixel-sampling where the text
+  // actually renders and its bounding-box aspect ratio (wide = upright,
+  // tall = sideways), not just that the feature "ran".
+  async function applyFooterOnRotatedPage(rotation) {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([400, 600])
+    page.setRotation(degrees(rotation))
+    const p = tmpPdfPath(`hf-rot-${rotation}`)
+    fs.writeFileSync(p, await doc.save())
+    try {
+      await openPdf(ctx.window, p)
+      await activateTool(ctx.window, 'Dokument')
+      await ctx.window.waitForTimeout(200)
+      await ctx.window.getByText('Kopf- & Fußzeile', { exact: true }).click()
+      await ctx.window.waitForTimeout(600)
+      const inputs = ctx.window.locator('input[placeholder*="Firmenname"]')
+      await inputs.nth(0).fill('') // clear the default header text
+      await inputs.nth(1).fill('FOOTERMARK')
+      await ctx.window.getByRole('button', { name: /Seiten einbetten/ }).click()
+      await ctx.window.waitForTimeout(1000)
+
+      return await ctx.window.evaluate(() => {
+        const c = document.querySelector('#page-1 canvas')
+        const cctx = c.getContext('2d')
+        const { data, width, height } = cctx.getImageData(0, 0, c.width, c.height)
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4
+            if (data[i] < 200 && data[i + 1] < 200 && data[i + 2] < 200) {
+              if (x < minX) minX = x
+              if (x > maxX) maxX = x
+              if (y < minY) minY = y
+              if (y > maxY) maxY = y
+            }
+          }
+        }
+        return { minX, maxX, minY, maxY, width, height }
+      })
+    } finally { fs.unlinkSync(p) }
+  }
+
+  it('180deg native rotation: footer text still renders near the visual bottom, upright', async () => {
+    const bbox = await applyFooterOnRotatedPage(180)
+    const centerYFraction = (bbox.minY + bbox.maxY) / 2 / bbox.height
+    expect(centerYFraction).toBeGreaterThan(0.85) // near the bottom, not the top
+    expect((bbox.maxX - bbox.minX) / (bbox.maxY - bbox.minY)).toBeGreaterThan(3) // wide box = upright text, not sideways
+  })
+
+  it('90deg native rotation: footer text still renders near the visual bottom, upright', async () => {
+    const bbox = await applyFooterOnRotatedPage(90)
+    const centerYFraction = (bbox.minY + bbox.maxY) / 2 / bbox.height
+    expect(centerYFraction).toBeGreaterThan(0.85)
+    expect((bbox.maxX - bbox.minX) / (bbox.maxY - bbox.minY)).toBeGreaterThan(3)
+  })
+})
+
+describe('QR code lands on the correct visual corner on a natively-rotated page', () => {
+  // Same visual-vs-raw-space bug class as header/footer: "bottom-right" is a
+  // visual concept, computed here purely in raw page space with no regard
+  // for the page's own native /Rotate.
+  it('180deg native rotation: default "unten rechts" QR code still renders near the visual bottom-right', async () => {
+    const doc = await PDFDocument.create()
+    const page = doc.addPage([400, 600])
+    page.setRotation(degrees(180))
+    const p = tmpPdfPath('qr-rot-180')
+    fs.writeFileSync(p, await doc.save())
+    try {
+      await openPdf(ctx.window, p)
+      await activateTool(ctx.window, 'Dokument')
+      await ctx.window.waitForTimeout(200)
+      await ctx.window.getByText('QR-Code einfügen', { exact: true }).click()
+      await ctx.window.waitForTimeout(600)
+      await ctx.window.locator('input[placeholder="https://beispiel.de"]').fill('https://example.com')
+      await ctx.window.getByRole('button', { name: /QR-Code einfügen/ }).click()
+      await ctx.window.waitForTimeout(1000)
+
+      const bbox = await ctx.window.evaluate(() => {
+        const c = document.querySelector('#page-1 canvas')
+        const cctx = c.getContext('2d')
+        const { data, width, height } = cctx.getImageData(0, 0, c.width, c.height)
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4
+            if (data[i] < 200 && data[i + 1] < 200 && data[i + 2] < 200) {
+              if (x < minX) minX = x
+              if (x > maxX) maxX = x
+              if (y < minY) minY = y
+              if (y > maxY) maxY = y
+            }
+          }
+        }
+        return { minX, maxX, minY, maxY, width, height }
+      })
+      expect(bbox.minX / bbox.width).toBeGreaterThan(0.6) // right half
+      expect(bbox.minY / bbox.height).toBeGreaterThan(0.6) // bottom half
+    } finally { fs.unlinkSync(p) }
+  })
+})
+
 describe('No unexpected console errors during this survey', () => {
   it('did not log any renderer console errors', () => {
     expect(consoleErrors, consoleErrors.join('\n---\n')).toEqual([])

@@ -10,6 +10,8 @@ import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
 import { embedAppFont } from '../../lib/embeddedFont'
 import { bytesToBase64, base64ToBytes } from '../../lib/base64'
 import { parsePageRanges } from '../../lib/parsePageRanges'
+import { rotatePointAroundPivot } from '../../lib/rotateVector'
+import { normalizeImageOrientation } from '../../lib/normalizeImageOrientation'
 
 const COLORS = [
   { hex: '#888888', label: 'Grau' },
@@ -43,8 +45,13 @@ export default function WatermarkModal() {
     if (r?.canceled || !r?.filePaths?.length) return
     const filePath = r.filePaths[0]
     const buf = await window.api?.readFile(filePath)
-    const bytes = new Uint8Array(buf)
-    const ext = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    const rawBytes = new Uint8Array(buf)
+    const rawExt = /\.jpe?g$/i.test(filePath) ? 'jpg' : 'png'
+    // pdf-lib's embedJpg ignores EXIF Orientation entirely (unlike the <img>
+    // preview below, or any normal viewer) - a portrait phone photo stored
+    // with orientation 6/8 would embed sideways. Re-render through a canvas
+    // once, up front, so nothing downstream needs to know this ever happened.
+    const { bytes, ext } = await normalizeImageOrientation(rawBytes, rawExt)
     const previewUrl = URL.createObjectURL(new Blob([bytes], { type: ext === 'jpg' ? 'image/jpeg' : 'image/png' }))
 
     const aspect = await new Promise((resolve) => {
@@ -81,9 +88,17 @@ export default function WatermarkModal() {
           const { width: pw, height: ph } = page.getSize()
           const w = pw * (imageScale / 100)
           const h = w * customImage.aspect
+          // drawImage rotates around its {x,y} origin, not the image's own
+          // center - centering the UNROTATED box via (pw-w)/2, (ph-h)/2 and
+          // then rotating around that corner swings the visible image well
+          // off the page center (confirmed by pixel-sampling the render:
+          // the default settings put a third of the watermark off-canvas).
+          // rotatePointAroundPivot finds the origin that keeps the image's
+          // true center pinned to the page center after rotation.
+          const origin = rotatePointAroundPivot((pw - w) / 2, (ph - h) / 2, pw / 2, ph / 2, rotation)
           page.drawImage(image, {
-            x: (pw - w) / 2,
-            y: (ph - h) / 2,
+            x: origin.x,
+            y: origin.y,
             width: w,
             height: h,
             opacity: opacity / 100,
@@ -100,9 +115,11 @@ export default function WatermarkModal() {
           const page = doc.getPage(idx)
           const { width: pw, height: ph } = page.getSize()
           const tw = font.widthOfTextAtSize(text, fontSize)
+          // Same rotate-around-origin issue as the image branch above.
+          const origin = rotatePointAroundPivot((pw - tw) / 2, (ph - fontSize) / 2, pw / 2, ph / 2, rotation)
           page.drawText(text, {
-            x: (pw - tw) / 2,
-            y: (ph - fontSize) / 2,
+            x: origin.x,
+            y: origin.y,
             size: fontSize,
             font,
             color: rgb(r, g, b),

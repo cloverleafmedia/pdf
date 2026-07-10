@@ -3,25 +3,7 @@ import { setFormFieldValue } from './formFieldValue.js'
 import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from './formFieldMarkers.js'
 import { dataUrlToBytes } from './dataUrl.js'
 import { effectiveRotation } from './pageRotation.js'
-
-// pdf-lib's drawImage/drawRectangle/drawText rotate around the given {x,y}
-// origin, not the shape's own center - fine for a page-spanning diagonal
-// watermark, but a small rotated stamp box would visibly swing out of its
-// bounding box otherwise (and no longer match the CSS preview, which rotates
-// around the element's center by default). Standard rotation-around-a-pivot
-// formula: given a shape's own drawing origin, compute where that origin
-// ends up if the whole stamp is rotated by `rotation` degrees around a
-// shared pivot (the stamp box's center) - so a text-preset stamp's border
-// rectangle and its centered text rotate together as one rigid unit rather
-// than each spinning around its own, different center.
-function rotatePointAroundPivot(x, y, cx, cy, rotation) {
-  if (!rotation) return { x, y }
-  const rad = (rotation * Math.PI) / 180
-  const dx = x - cx, dy = y - cy
-  const rx = dx * Math.cos(rad) - dy * Math.sin(rad)
-  const ry = dx * Math.sin(rad) + dy * Math.cos(rad)
-  return { x: cx + rx, y: cy + ry }
-}
+import { rotatePointAroundPivot } from './rotateVector.js'
 
 // Maps a point from on-screen "rotated" pixel space (y-down, origin top-left,
 // size pageWpx x pageHpx - the CSS-pixel viewport the annotation was actually

@@ -3,6 +3,22 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.17.0] – 2026-07-10
+
+Stabilitäts-Audit, Fortsetzung: die verbleibenden, nicht sicherheitskritischen
+Werkzeuge (Wasserzeichen, Kopf-/Fußzeile, Stempel, QR-Code, Bilder zu PDF,
+Anhänge, Serienbrief, PDF teilen, Bilder-/Tabellen-Export).
+
+### Behoben
+- Wasserzeichen (Text und eigenes Bild) wurde bei jedem von 0° abweichenden Winkel sichtbar aus der Seitenmitte verschoben dargestellt — bei der Standardeinstellung (45°) landete rechnerisch ein gutes Stück des Textes sogar außerhalb der Seite. Ursache: pdf-lib dreht Text/Bilder um ihren Ankerpunkt (die untere linke Ecke), nicht um die eigene Mitte — die Zentrierung wurde aber für die *ungedrehte* Box berechnet und erst danach um diese Ecke gedreht. Mit Pixel-Stichprobe der tatsächlichen Darstellung verifiziert.
+- Kopf-/Fußzeile (inkl. Logo) wurde immer im rohen, ungedrehten Seitenkoordinatensystem platziert, ohne die eigene native Seitenrotation der Zielseite zu berücksichtigen — bei Seiten mit gespeicherter 180°-Rotation landete die Fußzeile dadurch sichtbar oben statt unten (und umgekehrt), bei 90°/270° zusätzlich seitlich verdreht statt aufrecht lesbar. Betrifft typischerweise gescannte Aktenstücke — genau die Zielgruppe der Bates-Nummerierung dieser Funktion. Mit Pixel-Stichprobe (Position und Textausrichtung) verifiziert.
+- Kopf-/Fußzeile: die Live-Vorschau zeigte für die Platzhalter <code>{n}</code>/<code>{total}</code> immer die schlichte Seitenzahl bzw. Gesamtseitenzahl, während die tatsächlich eingebettete Nummerierung bei einer von 1 abweichenden Startnummer eine andere Formel verwendete — die Vorschau stimmte in diesem Fall nicht mit dem tatsächlichen Ergebnis überein.
+- Eigene Bilder bei Wasserzeichen, Stempel und Kopf-/Fußzeile-Logo wurden ohne Berücksichtigung des EXIF-Rotations-Tags eingebettet — ein mit dem Smartphone hochkant aufgenommenes JPEG-Foto (z. B. eine fotografierte Unterschrift oder ein Firmenlogo) erschien dadurch seitenverkehrt bzw. verzerrt im PDF, obwohl die eigene Vorschau (die den Browser-Bilddecoder nutzt) es korrekt aufrecht anzeigte. Wird jetzt beim Auswählen einmalig über Canvas neu ausgerichtet — betrifft nur die Bild-Byte-Daten, keine der bestehenden Platzierungs-/Rotationslogik dieser drei Werkzeuge.
+- QR-Code einfügen platzierte die gewählte Ecke (z. B. "Unten rechts") immer im rohen, ungedrehten Seitenkoordinatensystem — bei Seiten mit eigener nativer Rotation landete der QR-Code dadurch auf der falschen Ecke der sichtbaren Seite. Gleiche Ursache wie beim Kopf-/Fußzeile-Fund oben.
+- **Serienbrief-Formularausfüllung:** Ein CSV-Wert, der bei einem Dropdown-/Auswahllisten- oder Options-Feld zu keiner der vorgegebenen Optionen passte (z. B. Tippfehler oder ein veraltetes Formular), oder eine CSV-Spalte, die zu keinem Formularfeld-Namen passte, wurde bisher stillschweigend übersprungen — die App meldete "N PDF(s) erzeugt", obwohl einzelne erzeugte PDFs ein Feld ohne den erwarteten Wert enthielten. Wird jetzt nach dem Lauf als Warnung mit betroffenen Spalten gemeldet. Zusätzlich: bei einem Dropdown-Feld akzeptierte pdf-lib einen nicht in der Optionsliste enthaltenen Wert bisher klaglos, indem es das Feld dabei selbst stillschweigend auf "frei editierbar" umschaltete — wird jetzt als Fehlversuch gewertet statt das Feld im Ergebnis-PDF unbemerkt zu verändern.
+- **PDF teilen** ("Jede Seite einzeln" und "Nach Lesezeichen"): bisher wurde für *jede einzelne* Ausgabedatei ein nativer "Speichern unter"-Dialog geöffnet — bei einem 100-seitigen Dokument oder einem Dokument mit vielen Lesezeichen musste man sich durch entsprechend viele Dialoge klicken. Fragt jetzt wie "Serienbrief" und "Tabellen als CSV exportieren" nur noch einmalig nach einem Zielordner.
+- Als Bilder exportieren: berücksichtigte die im Editor per Werkzeugleiste gesetzte (aber noch nicht gespeicherte) Seitenrotation nicht — eine im Programm bereits gedrehte Seite wurde beim Bildexport wieder in ihrer ursprünglichen, nicht gedrehten Ausrichtung exportiert. Gleiche Ursache wie der schon in v1.14.0 behobene Grundlagen-Fund (fehlende Kombination aus nativer und Sitzungs-Rotation).
+
 ## [1.16.0] – 2026-07-10
 
 Fortsetzung des Stabilitäts-Audits: "Dokument bereinigen" — der letzte

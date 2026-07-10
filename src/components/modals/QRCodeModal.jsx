@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
 import QRCode from 'qrcode'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, degrees } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
+import { visualPageSize, visualPointToRawPoint } from '../../lib/pageRotation'
 
 const POSITIONS = [
   { id: 'top-left',     label: 'Oben links' },
@@ -50,15 +51,23 @@ export default function QRCodeModal() {
       for (const pi of pages) {
         const page = doc.getPage(pi)
         const { width: pw, height: ph } = page.getSize()
-        let x, y
+        // "top-left" etc. are visual corners - a page with a native /Rotate
+        // baked in (common for scanned documents) needs the corner mapped
+        // through that rotation, or the code ends up on the wrong corner
+        // (and, since it's never counter-rotated below, rotated itself) -
+        // same class of bug already fixed for Kopf-/Fußzeile.
+        const nativeRotation = page.getRotation().angle
+        const { width: vw, height: vh } = visualPageSize(pw, ph, nativeRotation)
+        let visualX, visualY
         switch (position) {
-          case 'top-left':     x = margin;           y = ph - size - margin; break
-          case 'top-right':    x = pw - size - margin; y = ph - size - margin; break
-          case 'bottom-left':  x = margin;             y = margin;             break
-          case 'bottom-right': x = pw - size - margin; y = margin;             break
-          default:             x = pw - size - margin; y = margin
+          case 'top-left':     visualX = margin;              visualY = vh - size - margin; break
+          case 'top-right':    visualX = vw - size - margin;  visualY = vh - size - margin; break
+          case 'bottom-left':  visualX = margin;              visualY = margin;              break
+          case 'bottom-right': visualX = vw - size - margin;  visualY = margin;               break
+          default:              visualX = vw - size - margin; visualY = margin
         }
-        page.drawImage(img, { x, y, width: size, height: size })
+        const { x, y } = visualPointToRawPoint(visualX, visualY, pw, ph, nativeRotation)
+        page.drawImage(img, { x, y, width: size, height: size, rotate: nativeRotation ? degrees(-nativeRotation) : undefined })
       }
 
       const newBytes = await doc.save()

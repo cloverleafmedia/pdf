@@ -8,6 +8,7 @@ import { Modal } from './SettingsModal'
 import { saveAsNewFile } from '../../lib/saveAsNewFile'
 import { resolveOutlineBookmarks, bookmarksToRanges } from '../../lib/resolveOutlineDest'
 import { parsePageRanges } from '../../lib/parsePageRanges'
+import { dedupeFilename } from '../../lib/dedupeFilename'
 
 // Windows-invalid filename characters + control chars, collapsed to '_'.
 function sanitizeFilename(name) {
@@ -47,17 +48,28 @@ export default function SplitModal() {
       setLoading(true)
 
       if (mode === 'each') {
-        // Save each page as a separate file
+        // One save-location dialog for the WHOLE batch, not one per page -
+        // saveAsNewFile's native "Save As" dialog per file would otherwise
+        // make a 100-page document require clicking through 100 dialogs.
+        const res = await window.api?.saveDirectory()
+        if (res?.canceled || !res?.filePaths?.[0]) { setLoading(false); return }
+        const dir = res.filePaths[0]
+        const base = fileName?.replace(/\.pdf$/i, '') || 'dokument'
         for (let p = 1; p <= totalPages; p++) {
           const src = await PDFDocument.load(pdfBytes)
           const out = await PDFDocument.create()
           const [copied] = await out.copyPages(src, [p - 1])
           out.addPage(copied)
           const bytes = await out.save()
-          await saveAsNewFile(`${fileName?.replace(/\.pdf$/i, '')||'dokument'}_Seite${p}.pdf`, bytes)
+          await window.api?.writeFile(`${dir}/${base}_Seite${p}.pdf`, bytes)
         }
+        setStatus(`${totalPages} Datei(en) erstellt → ${dir}`)
       } else if (mode === 'bookmarks') {
         if (!bookmarkRanges?.length) { setLoading(false); return }
+        const res = await window.api?.saveDirectory()
+        if (res?.canceled || !res?.filePaths?.[0]) { setLoading(false); return }
+        const dir = res.filePaths[0]
+        const usedNames = new Map()
         for (const range of bookmarkRanges) {
           const src = await PDFDocument.load(pdfBytes)
           const out = await PDFDocument.create()
@@ -66,9 +78,10 @@ export default function SplitModal() {
           const copied = await out.copyPages(src, pageIndices)
           copied.forEach(pg => out.addPage(pg))
           const bytes = await out.save()
-          await saveAsNewFile(`${sanitizeFilename(range.title)}.pdf`, bytes)
+          const { name } = dedupeFilename(usedNames, sanitizeFilename(range.title))
+          await window.api?.writeFile(`${dir}/${name}.pdf`, bytes)
         }
-        setStatus(`${bookmarkRanges.length} Datei(en) nach Lesezeichen erstellt`)
+        setStatus(`${bookmarkRanges.length} Datei(en) nach Lesezeichen erstellt → ${dir}`)
       } else {
         const pages = parsePageRanges(rangeInput, totalPages)
         if (!pages.length) { setLoading(false); return }
@@ -135,7 +148,7 @@ export default function SplitModal() {
         {mode === 'each' && (
           <div className={`text-xs p-3 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-50 text-gray-500'}`}>
             Es werden <span className="font-medium text-clover-400">{totalPages}</span> separate PDF-Dateien erstellt.
-            Du wirst für jede Datei nach einem Speicherort gefragt.
+            Du wirst einmalig nach einem Zielordner gefragt.
           </div>
         )}
 
@@ -143,7 +156,7 @@ export default function SplitModal() {
           <div className="space-y-2">
             <div className={`text-xs p-2 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-50 text-gray-500'}`}>
               Es werden <span className="font-medium text-clover-400">{bookmarkRanges?.length || 0}</span> Datei(en) erstellt,
-              eine je Top-Level-Lesezeichen. Du wirst für jede Datei nach einem Speicherort gefragt.
+              eine je Top-Level-Lesezeichen. Du wirst einmalig nach einem Zielordner gefragt.
             </div>
             <div className={`text-xs rounded border divide-y max-h-40 overflow-y-auto ${isDark ? 'border-zinc-700 divide-zinc-700' : 'border-gray-200 divide-gray-200'}`}>
               {(bookmarkRanges || []).map((r, i) => (
