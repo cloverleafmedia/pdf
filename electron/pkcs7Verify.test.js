@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import forge from 'node-forge'
-import { verifyDetachedSignature } from './pkcs7Verify.js'
+import { verifyDetachedSignature, verifyTrustChain, buildOrderedChain } from './pkcs7Verify.js'
 
 // Round-trips against forge's own SignedData signer (the same forge API
 // @signpdf/signer-p12 uses under the hood, see node_modules/@signpdf/signer-p12/dist/P12Signer.js)
@@ -18,6 +18,34 @@ function makeSelfSignedCert() {
   cert.setIssuer(attrs)
   cert.sign(keys.privateKey, forge.md.sha256.create())
   return { cert, privateKey: keys.privateKey }
+}
+
+function makeCert({ subjectCN, issuerCN, issuerKey, notBefore, notAfter, serialNumber, isCA }) {
+  const keys = forge.pki.rsa.generateKeyPair(1024)
+  const cert = forge.pki.createCertificate()
+  cert.publicKey = keys.publicKey
+  cert.serialNumber = serialNumber
+  cert.validity.notBefore = notBefore || new Date('2024-01-01')
+  cert.validity.notAfter = notAfter || new Date('2030-01-01')
+  cert.setSubject([{ name: 'commonName', value: subjectCN }])
+  cert.setIssuer([{ name: 'commonName', value: issuerCN }])
+  if (isCA) {
+    cert.setExtensions([
+      { name: 'basicConstraints', cA: true },
+      { name: 'keyUsage', keyCertSign: true, digitalSignature: true, cRLSign: true },
+    ])
+  }
+  cert.sign(issuerKey || keys.privateKey, forge.md.sha256.create())
+  return { cert, privateKey: keys.privateKey }
+}
+
+// root (self-signed CA) -> intermediate (CA) -> leaf (end-entity signer) -
+// a realistic 3-tier chain, the shape a real signing certificate usually has.
+function makeCertChain(overrides = {}) {
+  const root = makeCert({ subjectCN: 'Test Root CA', issuerCN: 'Test Root CA', serialNumber: '01', isCA: true })
+  const intermediate = makeCert({ subjectCN: 'Test Intermediate CA', issuerCN: 'Test Root CA', issuerKey: root.privateKey, serialNumber: '02', isCA: true })
+  const leaf = makeCert({ subjectCN: 'Leaf Signer', issuerCN: 'Test Intermediate CA', issuerKey: intermediate.privateKey, serialNumber: '03', ...overrides })
+  return { root, intermediate, leaf }
 }
 
 function signDetached(contentBytes, cert, privateKey) {
@@ -49,6 +77,32 @@ describe('verifyDetachedSignature', () => {
     expect(result.valid).toBe(true)
     expect(result.certificate.subjectCN).toBe('Test Signer')
     expect(result.algorithm).toBe('SHA256 + RSA')
+    // Cryptographically valid, but a self-signed test cert obviously isn't
+    // one of the ~150 real trusted roots - the crypto check passing must
+    // not be conflated with the certificate's identity being trustworthy.
+    expect(result.chainTrust.trusted).toBe(false)
+    expect(result.chainTrust.selfSigned).toBe(true)
+  })
+
+  // Regression: a real PDF's /Contents is a FIXED-SIZE hex string reserved
+  // before signing (@signpdf and every other real-world signer does this,
+  // including this app's own "Signatur erstellen"), so the actual CMS/DER
+  // bytes are followed by trailing zero-padding out to that reserved size.
+  // forge's DER parser rejects trailing bytes by default - without
+  // `parseAllBytes: false`, this made verifyDetachedSignature fail to parse
+  // (and therefore never reach crypto/chain verification for) essentially
+  // every real-world signed PDF, while every test here kept passing because
+  // signDetached() above hands it exact, unpadded bytes.
+  it('verifies a signature whose CMS bytes are followed by trailing zero-padding, matching a real /Contents placeholder', () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('hello world, this is the signed PDF byte-range content')
+    const cms = signDetached(content, cert, privateKey)
+    const padded = Buffer.concat([cms, Buffer.alloc(8192 - cms.length, 0)])
+
+    const result = verifyDetachedSignature(padded, content)
+    expect(result.supported).toBe(true)
+    expect(result.valid).toBe(true)
+    expect(result.certificate.subjectCN).toBe('Test Signer')
   })
 
   it('detects tampering: verification fails if the signed content changes after signing', () => {
@@ -77,5 +131,69 @@ describe('verifyDetachedSignature', () => {
     expect(result.valid).toBe(false)
     expect(result.supported).toBe(false)
     expect(result.reason).toBeTruthy()
+  })
+})
+
+describe('buildOrderedChain', () => {
+  it('orders leaf -> intermediate -> root regardless of the input array order', () => {
+    const { root, intermediate, leaf } = makeCertChain()
+    const scrambled = [root.cert, intermediate.cert] // leaf passed separately, as the real caller does
+    const chain = buildOrderedChain(leaf.cert, scrambled)
+    expect(chain).toEqual([leaf.cert, intermediate.cert, root.cert])
+  })
+
+  it('stops at whatever issuer is missing from the embedded set, without throwing', () => {
+    const { intermediate, leaf } = makeCertChain()
+    // root deliberately omitted - simulates a signer that only embedded the intermediate
+    const chain = buildOrderedChain(leaf.cert, [intermediate.cert])
+    expect(chain).toEqual([leaf.cert, intermediate.cert])
+  })
+
+  it('returns just the leaf for a self-signed certificate', () => {
+    const { cert } = makeSelfSignedCert()
+    expect(buildOrderedChain(cert, [cert])).toEqual([cert])
+  })
+})
+
+describe('verifyTrustChain', () => {
+  it('trusts a leaf whose chain resolves to a root present in the CA store', () => {
+    const { root, intermediate, leaf } = makeCertChain()
+    const caStore = forge.pki.createCaStore([root.cert])
+    const result = verifyTrustChain(leaf.cert, [intermediate.cert, root.cert], caStore)
+    expect(result.trusted).toBe(true)
+    expect(result.selfSigned).toBe(false)
+  })
+
+  it('does not trust the same chain when its root is not in the CA store', () => {
+    const { intermediate, leaf } = makeCertChain()
+    const unrelatedRoot = makeCert({ subjectCN: 'Unrelated CA', issuerCN: 'Unrelated CA', serialNumber: '99', isCA: true })
+    const caStore = forge.pki.createCaStore([unrelatedRoot.cert])
+    const result = verifyTrustChain(leaf.cert, [intermediate.cert], caStore)
+    expect(result.trusted).toBe(false)
+    expect(result.reason).toBeTruthy()
+  })
+
+  it('does not trust a self-signed certificate even against an empty CA store', () => {
+    const { cert } = makeSelfSignedCert()
+    const caStore = forge.pki.createCaStore([])
+    const result = verifyTrustChain(cert, [cert], caStore)
+    expect(result.trusted).toBe(false)
+    expect(result.selfSigned).toBe(true)
+  })
+
+  it('does not trust a chain whose leaf certificate has expired', () => {
+    const { root, intermediate, leaf } = makeCertChain({
+      notBefore: new Date('2020-01-01'),
+      notAfter: new Date('2021-01-01'), // expired long before "now"
+    })
+    const caStore = forge.pki.createCaStore([root.cert])
+    const result = verifyTrustChain(leaf.cert, [intermediate.cert, root.cert], caStore)
+    expect(result.trusted).toBe(false)
+  })
+
+  it('uses the real bundled trusted-root store by default (no caStore argument)', () => {
+    const { cert } = makeSelfSignedCert()
+    const result = verifyTrustChain(cert, [cert])
+    expect(result.trusted).toBe(false) // a freshly generated test cert is never one of the real ~150 roots
   })
 })

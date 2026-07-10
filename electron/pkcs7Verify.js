@@ -19,9 +19,84 @@
 // round-trips against forge's own signer (sign with forge, verify with this
 // file), rather than by trusting any of the above dead code as a reference.
 const forge = require('node-forge')
+const tls = require('tls')
 const { parseEmbeddedTimestamp } = require('./rfc3161')
 
 const { asn1, pki } = forge
+
+// Verifying the crypto (does the signature math check out, was the file
+// altered afterwards) says nothing about whether the certificate's claimed
+// identity can be trusted - anyone can mint a self-signed certificate that
+// says "Deutsche Bank AG" and sign with it, and the math alone would still
+// check out. Chain validation answers the actual question a user cares
+// about: does this certificate trace back to a recognized root CA. Built
+// from Node's own bundled Mozilla root CA list (tls.rootCertificates) -
+// the same trust anchors browsers/TLS use, and already shipped with
+// Electron's Node runtime, so no separate CA bundle needs to be
+// downloaded/maintained. Built once and memoized: parsing ~150 PEM
+// certificates on every single "Signatur prüfen" click would be wasteful.
+//
+// Explicitly NOT implemented: revocation checking (CRL/OSCP). That needs a
+// live network call per verification (an odd thing for a "verify this file
+// I have" action to silently do, especially offline), and node-forge's own
+// chain validator has revocation checking listed as a TODO too. A signature
+// can therefore still show as chain-trusted even if the certificate was
+// later revoked - same gap most desktop PDF viewers have without a
+// configured revocation service.
+let cachedCaStore = null
+function getTrustedCaStore() {
+  if (!cachedCaStore) {
+    const roots = []
+    for (const pem of tls.rootCertificates) {
+      try { roots.push(pki.certificateFromPem(pem)) } catch { /* skip anything forge can't parse */ }
+    }
+    cachedCaStore = pki.createCaStore(roots)
+  }
+  return cachedCaStore
+}
+
+// Orders embedded certificates into a leaf-to-root chain by walking
+// issuer/subject links, rather than trusting whatever order the signer's
+// software happened to embed them in - pki.verifyCertificateChain expects
+// chain[0] to be the end-entity certificate and each subsequent entry to be
+// its issuer. Stops once no further issuer is found among the embedded
+// certificates (or the certificate turns out to be self-signed); anything
+// beyond that is resolved against the trusted CA store by
+// verifyCertificateChain itself.
+function buildOrderedChain(leafCert, allCerts) {
+  const chain = [leafCert]
+  let current = leafCert
+  const remaining = allCerts.filter(c => c !== leafCert)
+  while (!current.isIssuer(current)) {
+    const idx = remaining.findIndex(c => current.isIssuer(c))
+    if (idx === -1) break
+    current = remaining[idx]
+    chain.push(current)
+    remaining.splice(idx, 1)
+  }
+  return chain
+}
+
+// Returns whether `cert` chains up to a trusted root, using any other
+// embedded certificates as intermediates. Never throws - a chain that
+// fails to validate is a normal, expected outcome here (self-signed
+// certs, expired intermediates, unknown issuers), not an exceptional one.
+// caStore is injectable (defaults to the real trusted-root bundle) purely
+// so tests can verify the "trusted" path without needing a private key for
+// one of ~150 real root CAs.
+function verifyTrustChain(cert, allCerts, caStore = getTrustedCaStore()) {
+  const chain = buildOrderedChain(cert, allCerts)
+  try {
+    pki.verifyCertificateChain(caStore, chain)
+    return { trusted: true, selfSigned: cert.isIssuer(cert) }
+  } catch (e) {
+    return {
+      trusted: false,
+      selfSigned: cert.isIssuer(cert),
+      reason: e?.message || 'Zertifikatskette konnte nicht bis zu einer vertrauenswürdigen Stelle zurückverfolgt werden',
+    }
+  }
+}
 
 const signerInfoValidator = {
   name: 'SignerInfo',
@@ -116,7 +191,15 @@ function toBinaryString(bytes) {
 // content with the /Contents placeholder itself excluded).
 function verifyDetachedSignature(cmsDerBytes, signedContentBytes) {
   try {
-    const contentInfoAsn1 = asn1.fromDer(forge.util.createBuffer(toBinaryString(cmsDerBytes)))
+    // A PDF signature's /Contents is a FIXED-SIZE hex string reserved before
+    // signing (so the byte offsets in /ByteRange don't shift once the real
+    // signature is patched in) - the actual CMS/DER content is followed by
+    // trailing zero-padding out to that reserved size. forge's DER parser
+    // is strict about trailing bytes by default (parseAllBytes), so without
+    // this option every real-world signed PDF (this app's own "Signatur
+    // erstellen" included - it reserves 8192+ bytes) would fail to parse
+    // here at all, never even reaching the crypto/chain checks below.
+    const contentInfoAsn1 = asn1.fromDer(forge.util.createBuffer(toBinaryString(cmsDerBytes)), { parseAllBytes: false })
 
     const ciCapture = {}
     if (!asn1.validate(contentInfoAsn1, forge.pkcs7.asn1.contentInfoValidator, ciCapture, [])) {
@@ -213,6 +296,8 @@ function verifyDetachedSignature(cmsDerBytes, signedContentBytes) {
       timestamp = parseEmbeddedTimestamp(siCapture.unauthenticatedAttributesAsn1) || undefined
     }
 
+    const chainTrust = verifyTrustChain(cert, certs)
+
     return {
       valid,
       supported: true,
@@ -223,6 +308,7 @@ function verifyDetachedSignature(cmsDerBytes, signedContentBytes) {
         notBefore: cert.validity.notBefore,
         notAfter:  cert.validity.notAfter,
       },
+      chainTrust,
       timestamp,
     }
   } catch (e) {
@@ -230,4 +316,4 @@ function verifyDetachedSignature(cmsDerBytes, signedContentBytes) {
   }
 }
 
-module.exports = { verifyDetachedSignature }
+module.exports = { verifyDetachedSignature, verifyTrustChain, buildOrderedChain, getTrustedCaStore }

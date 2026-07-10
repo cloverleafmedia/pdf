@@ -47,6 +47,8 @@ describe('formatCertificateInfo', () => {
 })
 
 describe('summarizeSignatureResult', () => {
+  const now = new Date('2026-06-01')
+
   it('returns "unsupported" for an unsupported algorithm regardless of other fields', () => {
     expect(summarizeSignatureResult({ supported: false, valid: true })).toBe('unsupported')
   })
@@ -59,23 +61,56 @@ describe('summarizeSignatureResult', () => {
     expect(summarizeSignatureResult({
       supported: true, valid: true,
       coverage: { coversToEnd: false },
-      certificate: { expired: false },
-    })).toBe('valid-but-modified-after')
+      certificate: { notAfter: '2027-01-01' },
+    }, now)).toBe('valid-but-modified-after')
   })
 
-  it('returns "valid-but-expired-cert" when the cert is expired but everything else checks out', () => {
+  // Regression: pkcs7Verify.js's real return shape only ever has
+  // certificate.notBefore/notAfter, never a pre-computed `.expired` boolean
+  // - this function used to check `certificate.expired` directly, which was
+  // always undefined for every real signature the app ever verified, so
+  // "valid-but-expired-cert" was permanently unreachable outside of a
+  // hand-crafted test fixture that assumed a field nothing ever set.
+  it('returns "valid-but-expired-cert" derived from notAfter, not a pre-computed flag', () => {
     expect(summarizeSignatureResult({
       supported: true, valid: true,
       coverage: { coversToEnd: true },
-      certificate: { expired: true },
-    })).toBe('valid-but-expired-cert')
+      certificate: { notBefore: '2020-01-01', notAfter: '2025-01-01' },
+    }, now)).toBe('valid-but-expired-cert')
   })
 
-  it('returns "valid" when everything checks out', () => {
+  it('returns "valid-untrusted-cert" when the chain does not resolve to a trusted root', () => {
     expect(summarizeSignatureResult({
       supported: true, valid: true,
       coverage: { coversToEnd: true },
-      certificate: { expired: false },
-    })).toBe('valid')
+      certificate: { notAfter: '2027-01-01' },
+      chainTrust: { trusted: false, selfSigned: true },
+    }, now)).toBe('valid-untrusted-cert')
+  })
+
+  it('prioritizes "expired" over "untrusted" when both apply', () => {
+    expect(summarizeSignatureResult({
+      supported: true, valid: true,
+      coverage: { coversToEnd: true },
+      certificate: { notBefore: '2020-01-01', notAfter: '2025-01-01' },
+      chainTrust: { trusted: false },
+    }, now)).toBe('valid-but-expired-cert')
+  })
+
+  it('treats a missing chainTrust as trusted, for callers/fixtures that predate chain checking', () => {
+    expect(summarizeSignatureResult({
+      supported: true, valid: true,
+      coverage: { coversToEnd: true },
+      certificate: { notAfter: '2027-01-01' },
+    }, now)).toBe('valid')
+  })
+
+  it('returns "valid" when everything checks out, including a trusted chain', () => {
+    expect(summarizeSignatureResult({
+      supported: true, valid: true,
+      coverage: { coversToEnd: true },
+      certificate: { notAfter: '2027-01-01' },
+      chainTrust: { trusted: true },
+    }, now)).toBe('valid')
   })
 })

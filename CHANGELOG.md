@@ -3,6 +3,16 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.18.0] – 2026-07-11
+
+Sicherheits-Audit: "Signatur prüfen" — der letzte noch offene Baustein des
+Audit-Zyklus.
+
+### Behoben
+- **Kritisch:** "Signatur prüfen" konnte praktisch keine real signierte PDF-Datei auswerten — auch keine mit der eigenen "Signatur erstellen"-Funktion signierte. Ursache: der Platz für die Signatur wird beim Signieren als fest reservierter Bereich angelegt (üblich bei jedem PDF-Signierwerkzeug) und danach nur teilweise mit den echten Signaturdaten befüllt, der Rest bleibt Null-Padding. Der DER-Parser hat dieses Padding bisher als Fehler gewertet und die Prüfung brach vorzeitig mit "Nicht unterstützter Algorithmus" ab, bevor die eigentliche kryptografische Prüfung überhaupt stattfand. Mit einer echten, über die App-eigene Signaturbibliothek erzeugten Signatur verifiziert (nicht nur mit synthetischen Test-Daten, die dieses reale Format nie hatten).
+- **Sicherheitsrelevant:** Selbst nachdem eine Signatur erfolgreich geprüft wurde, wurde nie kontrolliert, ob das verwendete Zertifikat überhaupt vertrauenswürdig ist — nur, ob die Signatur mathematisch zum (beliebigen, im PDF selbst mitgelieferten) Zertifikat passt. Jedes selbstsignierte Zertifikat mit einem frei erfundenen Namen (z. B. "Deutsche Bank AG") wurde als "Gültige Signatur" mit grünem Häkchen angezeigt. Prüft die Zertifikatskette jetzt gegen die von Node/Electron mitgelieferte Liste vertrauenswürdiger Stammzertifizierungsstellen (dieselbe Vertrauensbasis wie in Browsern) und kennzeichnet nicht zurückverfolgbare bzw. selbstsignierte Zertifikate deutlich als nicht vertrauenswürdig, statt sie wie geprüfte Signaturen aussehen zu lassen. Bewusst nicht enthalten: Sperrlisten-Prüfung (CRL/OCSP) — dafür wäre eine Netzwerkabfrage bei jeder Prüfung nötig, was für eine "prüfe diese lokale Datei"-Funktion ungewöhnlich wäre; im Hinweistext der Funktion jetzt explizit als Einschränkung genannt.
+- Die Statusanzeige "Zertifikat abgelaufen" konnte in der echten App nie ausgelöst werden — sie prüfte ein Feld, das die eigentliche Signaturprüfung nie befüllt hat (ein reiner Test-Fixture-Wert). Wird jetzt korrekt aus dem tatsächlichen Ablaufdatum des Zertifikats berechnet.
+
 ## [1.17.0] – 2026-07-10
 
 Stabilitäts-Audit, Fortsetzung: die verbleibenden, nicht sicherheitskritischen

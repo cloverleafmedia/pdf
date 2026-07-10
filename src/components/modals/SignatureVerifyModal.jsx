@@ -6,7 +6,8 @@ import { Modal } from './SettingsModal'
 import { formatCertificateInfo, summarizeSignatureResult } from '../../lib/signatureVerifyFormat'
 
 const STATUS_META = {
-  'valid':                   { icon: CheckCircle2, tone: 'good',    label: 'Gültige Signatur' },
+  'valid':                   { icon: CheckCircle2, tone: 'good',    label: 'Gültige Signatur, vertrauenswürdiges Zertifikat' },
+  'valid-untrusted-cert':    { icon: AlertTriangle, tone: 'warn',    label: 'Kryptografisch gültig — Aussteller nicht vertrauenswürdig' },
   'valid-but-expired-cert':  { icon: AlertTriangle, tone: 'warn',    label: 'Gültig, aber Zertifikat abgelaufen' },
   'valid-but-modified-after':{ icon: AlertTriangle, tone: 'warn',    label: 'Gültig zum Zeitpunkt der Signatur — Datei wurde danach verändert' },
   'invalid':                 { icon: XCircle,       tone: 'bad',     label: 'Ungültige Signatur' },
@@ -65,7 +66,9 @@ export default function SignatureVerifyModal() {
           <ShieldCheck size={14} className="flex-shrink-0 mt-0.5"/>
           <span>
             Prüft jede in diesem Dokument gefundene digitale Signatur: ob sie kryptografisch gültig ist,
-            ob die Datei seither verändert wurde, und Angaben zum Zertifikat des Unterzeichners.
+            ob die Datei seither verändert wurde, und ob das Zertifikat des Unterzeichners bis zu einer
+            vertrauenswürdigen Stelle zurückverfolgt werden kann. Nicht geprüft wird, ob ein Zertifikat
+            zwischenzeitlich zurückgezogen (widerrufen) wurde.
           </span>
         </div>
 
@@ -109,6 +112,15 @@ export default function SignatureVerifyModal() {
                       Zertifikat gültig: {fmtDate(cert.notBefore)} – {fmtDate(cert.notAfter)}
                       {cert.expired && <span className="text-amber-500"> (abgelaufen)</span>}
                       {cert.notYetValid && <span className="text-amber-500"> (noch nicht gültig)</span>}
+                    </div>
+                  )}
+                  {sig.chainTrust && (
+                    <div className={`text-xs ${sig.chainTrust.trusted ? (isDark ? 'text-zinc-500' : 'text-gray-500') : 'text-amber-500'}`}>
+                      {sig.chainTrust.trusted
+                        ? 'Zertifikatskette: bis zu einer vertrauenswürdigen Stelle zurückverfolgt'
+                        : sig.chainTrust.selfSigned
+                          ? '⚠ Selbstsigniertes Zertifikat — keine unabhängige Bestätigung der Identität'
+                          : '⚠ Aussteller nicht als vertrauenswürdig bekannt'}
                     </div>
                   )}
                   {sig.timestamp?.genTime && (
