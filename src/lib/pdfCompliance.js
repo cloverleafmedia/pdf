@@ -357,28 +357,71 @@ export function setImageAltText(doc, images) {
 // export cleanup, and the "contains JavaScript" detection badge in App.jsx -
 // previously each had its own (differently incomplete) check, so a document
 // could trip the warning badge while "Bereinigen" reported nothing found.
+// An action dict is JS if it says so directly (/S /JavaScript), or if any
+// action reachable through its /Next chain does - /Next lets a single
+// trigger run several chained actions, and PDF readers execute all of them,
+// so a non-JS front action with a JS action tucked into /Next is still a
+// live script from the reader's point of view. /Next may be one dict or an
+// array of them (spec-legal both ways).
+function isJavaScriptAction(actionDict, doc, seen = new Set()) {
+  if (!(actionDict instanceof PDFDict) || seen.has(actionDict)) return false
+  seen.add(actionDict)
+  if (actionDict.lookup(PDFName.of('S')) === PDFName.of('JavaScript')) return true
+  const next = actionDict.lookup(PDFName.of('Next'))
+  if (next instanceof PDFDict) return isJavaScriptAction(next, doc, seen)
+  if (next instanceof PDFArray) {
+    for (let i = 0; i < next.size(); i++) {
+      const dict = doc.context.lookup(next.get(i))
+      if (isJavaScriptAction(dict, doc, seen)) return true
+    }
+  }
+  return false
+}
+
+// An /AA (Additional Actions) dict maps trigger names (O, C, WC, K, ...) to
+// individual action dicts - only relevant here if at least one of them is
+// actually JavaScript (see isJavaScriptAction), not merely because /AA is
+// present (most of its trigger types are just as legal for GoTo/Named/URI
+// actions as they are for scripts).
+function aaHasJavaScript(aaDict, doc) {
+  if (!(aaDict instanceof PDFDict)) return false
+  for (const [, ref] of aaDict.entries()) {
+    if (isJavaScriptAction(doc.context.lookup(ref), doc)) return true
+  }
+  return false
+}
+
 export function findJavaScriptLocations(doc) {
   const AA = PDFName.of('AA')
+  const A = PDFName.of('A')
   const locations = []
 
   const namesDict = doc.catalog.lookup(PDFName.of('Names'))
   if (namesDict instanceof PDFDict && namesDict.lookup(PDFName.of('JavaScript'))) {
     locations.push({ kind: 'namesJavaScript' })
   }
-  if (doc.catalog.get(PDFName.of('OpenAction'))) {
+  const openAction = doc.catalog.lookup(PDFName.of('OpenAction'))
+  if (isJavaScriptAction(openAction, doc)) {
     locations.push({ kind: 'openAction' })
   }
-  if (doc.catalog.lookup(AA)) {
+  if (aaHasJavaScript(doc.catalog.lookup(AA), doc)) {
     locations.push({ kind: 'catalogAA' })
   }
   for (const page of doc.getPages()) {
-    if (page.node.lookup(AA)) locations.push({ kind: 'pageAA', page })
+    if (aaHasJavaScript(page.node.lookup(AA), doc)) locations.push({ kind: 'pageAA', page })
     const annots = page.node.Annots()
     if (annots instanceof PDFArray) {
       for (let i = 0; i < annots.size(); i++) {
         const annotDict = doc.context.lookup(annots.get(i))
-        if (annotDict instanceof PDFDict && annotDict.lookup(AA)) {
+        if (!(annotDict instanceof PDFDict)) continue
+        if (aaHasJavaScript(annotDict.lookup(AA), doc)) {
           locations.push({ kind: 'annotAA', dict: annotDict })
+        }
+        // /A is a single-shot action (e.g. a Link's "on click" or a push
+        // button's "on activate") - distinct from /AA and, for Link
+        // annotations especially, far more common than /AA in practice.
+        if (isJavaScriptAction(doc.context.lookup(annotDict.lookup(A)), doc)) {
+          locations.push({ kind: 'annotA', dict: annotDict })
         }
       }
     }
@@ -392,14 +435,16 @@ export function findJavaScriptLocations(doc) {
 export function removeJavaScript(doc) {
   const locations = findJavaScriptLocations(doc)
   const AA = PDFName.of('AA')
+  const A = PDFName.of('A')
 
   const namesDict = doc.catalog.lookup(PDFName.of('Names'))
   if (namesDict instanceof PDFDict) namesDict.delete(PDFName.of('JavaScript'))
-  doc.catalog.delete(PDFName.of('OpenAction'))
-  doc.catalog.delete(AA)
   for (const loc of locations) {
-    if (loc.kind === 'pageAA') loc.page.node.delete(AA)
+    if (loc.kind === 'openAction') doc.catalog.delete(PDFName.of('OpenAction'))
+    else if (loc.kind === 'catalogAA') doc.catalog.delete(AA)
+    else if (loc.kind === 'pageAA') loc.page.node.delete(AA)
     else if (loc.kind === 'annotAA') loc.dict.delete(AA)
+    else if (loc.kind === 'annotA') loc.dict.delete(A)
   }
 
   return locations.length > 0

@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
 import { ShieldCheck, CheckCircle2, MinusCircle } from 'lucide-react'
-import { PDFDocument, PDFName } from 'pdf-lib'
 import { useStore } from '../../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Modal } from './SettingsModal'
 import { reloadPdfDoc } from '../../lib/reloadPdfDoc'
-import { removeJavaScript } from '../../lib/pdfCompliance'
+import { sanitizePdf } from '../../lib/sanitizePdf'
 
 const OPTIONS = [
   { id: 'metadata',     label: 'Metadaten entfernen',            hint: 'Titel, Autor, Thema, Stichwörter, Programm' },
@@ -13,39 +12,6 @@ const OPTIONS = [
   { id: 'attachments',  label: 'Anhänge entfernen',              hint: 'Eingebettete Dateien im PDF' },
   { id: 'hiddenLayers', label: 'Ebenen-Konfiguration entfernen', hint: 'Optionale Inhalte werden dauerhaft sichtbar statt ausblendbar' },
 ]
-
-// Runs the checks/removals and returns a short report of what was actually
-// found & removed — so the user sees what the tool did, not just a spinner.
-async function sanitizePdf(pdfBytes, opts) {
-  const doc = await PDFDocument.load(pdfBytes)
-  const report = []
-
-  if (opts.metadata) {
-    const had = doc.getTitle() || doc.getAuthor() || doc.getSubject() || doc.getCreator() || doc.getProducer() || (doc.getKeywords() || '')
-    doc.setTitle(''); doc.setAuthor(''); doc.setSubject(''); doc.setKeywords([]); doc.setProducer(''); doc.setCreator('')
-    const hadXmp = !!doc.catalog.get(PDFName.of('Metadata'))
-    doc.catalog.delete(PDFName.of('Metadata'))
-    report.push(had || hadXmp ? 'Metadaten gefunden und entfernt' : 'Keine Metadaten gefunden')
-  }
-  if (opts.javascript) {
-    const hadJs = removeJavaScript(doc)
-    report.push(hadJs ? 'JavaScript gefunden und entfernt' : 'Kein JavaScript gefunden')
-  }
-  if (opts.attachments) {
-    const namesDict = doc.catalog.lookup(PDFName.of('Names'))
-    const hadAttachments = !!(namesDict && namesDict.lookup(PDFName.of('EmbeddedFiles')))
-    if (namesDict) namesDict.delete(PDFName.of('EmbeddedFiles'))
-    report.push(hadAttachments ? 'Anhänge gefunden und entfernt' : 'Keine Anhänge gefunden')
-  }
-  if (opts.hiddenLayers) {
-    const hadOCG = !!doc.catalog.get(PDFName.of('OCProperties'))
-    doc.catalog.delete(PDFName.of('OCProperties'))
-    report.push(hadOCG ? 'Ebenen-Konfiguration gefunden und entfernt' : 'Keine Ebenen-Konfiguration gefunden')
-  }
-
-  const bytes = await doc.save()
-  return { bytes, report }
-}
 
 export default function SanitizeModal() {
   const {

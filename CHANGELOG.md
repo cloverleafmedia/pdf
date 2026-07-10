@@ -3,6 +3,16 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.16.0] – 2026-07-10
+
+Fortsetzung des Stabilitäts-Audits: "Dokument bereinigen" — der letzte
+sicherheitsrelevante Bereich neben Schwärzen/Verschlüsseln.
+
+### Behoben
+- **Sicherheitsrelevant:** "Dokument bereinigen" entfernte JavaScript, Metadaten, Anhänge und Ebenen-Konfiguration bisher nur, indem die jeweilige *Referenz* im PDF gelöscht wurde — die tatsächlichen Daten (JS-Quelltext, XMP-Metadaten-Stream, angehängte Dateien samt Inhalt, Ebenen-Konfiguration) blieben als nicht mehr verlinktes, aber weiterhin vollständig vorhandenes Objekt in der gespeicherten Datei zurück und ließen sich mit jedem Werkzeug, das die rohe Objekttabelle statt nur den Dokumentbaum ausliest, wiederherstellen — obwohl die App "gefunden und entfernt" meldete. Wird jetzt vor dem Speichern durch einen generischen Aufräumdurchlauf behoben, der alles aus der Datei entfernt, was vom Dokumentbaum aus nicht mehr erreichbar ist.
+- **Sicherheitsrelevant:** "JavaScript entfernen" prüfte nur die "Zusätzliche Aktionen"-Einträge (/AA) von Katalog, Seiten und Anmerkungen — eine über die einfache Klick-Aktion (/A) einer Anmerkung ausgelöste JavaScript-Aktion (z. B. ein Link mit "JavaScript ausführen" statt eines Sprungziels — ein gängiges Muster) wurde weder erkannt noch entfernt. Gleichzeitig wurden Öffnen-Aktionen und Zusatzaktionen bisher pauschal als JavaScript gewertet und entfernt, auch wenn es sich z. B. um eine harmlose Sprung-zu-Seite-Aktion handelte — jetzt wird die tatsächliche Aktionsart (inkl. verketteter Folgeaktionen über /Next) geprüft, bevor etwas als Fund gemeldet oder entfernt wird.
+- "Anhänge entfernen" löschte nur den klassischen Namensbaum (Names/EmbeddedFiles) — beim modernen, von pdf-lib selbst verwendeten PDF/A-3-Verknüpfungseintrag (/AF auf Katalog- oder Seitenebene) blieb der Anhang samt Inhalt vollständig erreichbar und wurde fälschlich als entfernt gemeldet.
+
 ## [1.15.0] – 2026-07-10
 
 Fortsetzung des Stabilitäts-Audits, diesmal mit Fokus auf die sicherheitskritischen
