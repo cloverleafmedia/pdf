@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.15.0] – 2026-07-10
+
+Fortsetzung des Stabilitäts-Audits, diesmal mit Fokus auf die sicherheitskritischen
+Bereiche Schwärzen und Verschlüsseln.
+
+### Behoben
+- **Sicherheitsrelevant:** Schwärzen auf einer Seite mit nativer PDF-Rotation (z. B. viele Scans) platzierte die schwarze Box an der falschen Stelle und quetschte das gerasterte Seitenbild in ein falsches Seitenverhältnis — der geschwärzte Bereich deckte den sensiblen Inhalt dadurch teils nicht vollständig ab, obwohl die App "erfolgreich geschwärzt" meldete. Ursache: die Box-Koordinaten wurden ohne Rücksicht auf die Seitenrotation berechnet, während das Hintergrundbild mit einer anderen (ebenfalls unvollständigen) Rotationsannahme gerendert wurde. Mit Pixel-Stichprobe verifiziert, nicht nur über die (für diesen Fall nichtssagende) "kein Text mehr gefunden"-Prüfung.
+
+### Geprüft (kein Befund)
+- PDF verschlüsseln: Passwort-Erzwingung, Berechtigungs-Flags (Drucken/Kopieren/Bearbeiten) und der Eigentümer-Passwort-Fallback wurden erstmals über das gebündelte qpdf selbst funktional verifiziert (bisher nur "Modal öffnet/schließt")—keine Fehlfunktion gefunden, aber jetzt mit echten Regressionstests statt nur Codeaudit abgesichert.
+
 ## [1.14.0] – 2026-07-10
 
 Systematischer Stabilitäts-Audit (gezielte Code-Durchsicht + automatisierte

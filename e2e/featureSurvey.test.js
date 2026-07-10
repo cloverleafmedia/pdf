@@ -225,6 +225,67 @@ describe('Redaction workflow', () => {
       expect(await isVisibleByText(ctx.window, /\d+ Schwärzung\(en\) ausstehend/)).toBe(true)
     } finally { fs.unlinkSync(p) }
   })
+
+  // Regression: applying a redaction rasterized the page at the page's
+  // native rotation (or, before pageRotation.js existed, ignored native
+  // rotation entirely) while the box coordinates were computed assuming an
+  // unrotated page - on a natively-rotated page the black box landed in the
+  // wrong spot AND the rotated raster got squashed onto the raw (differently
+  // proportioned) page box. The worst possible failure mode for a
+  // "permanent redaction" feature: a box that looks applied but doesn't
+  // actually cover the sensitive content. Verified here by sampling actual
+  // rendered pixels, not just checking that redaction "succeeded".
+  it('a redaction box on a natively-rotated page covers the exact spot it was drawn over', async () => {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(StandardFonts.Helvetica)
+    const page = doc.addPage([300, 500])
+    page.drawText('SECRETWORD', { x: 20, y: 460, size: 20, font })
+    page.setRotation(degrees(90))
+    const p = tmpPdfPath('redact-rotated')
+    fs.writeFileSync(p, await doc.save())
+
+    try {
+      await openPdf(ctx.window, p)
+      await ctx.window.waitForTimeout(500)
+      await activateTool(ctx.window, 'Schwärzen')
+
+      const spanBox = await ctx.window.evaluate(() => {
+        const spans = Array.from(document.querySelectorAll('#page-1 .textLayer span'))
+        const target = spans.find(s => s.textContent?.includes('SECRETWORD'))
+        const r = target.getBoundingClientRect()
+        return { x: r.left, y: r.top, w: r.width, h: r.height }
+      })
+      expect(spanBox).toBeTruthy() // sanity: the fixture text actually renders where expected
+
+      await ctx.window.mouse.move(spanBox.x - 5, spanBox.y - 5)
+      await ctx.window.mouse.down()
+      await ctx.window.mouse.move(spanBox.x + spanBox.w + 5, spanBox.y + spanBox.h + 5)
+      await ctx.window.mouse.up()
+      await ctx.window.waitForTimeout(300)
+
+      await ctx.window.evaluate(() => window._applyRedactions())
+      await ctx.window.waitForTimeout(1000)
+
+      const pixels = await ctx.window.evaluate((box) => {
+        const c = document.querySelector('#page-1 canvas')
+        const rect = c.getBoundingClientRect()
+        const px = Math.round((box.x + box.w / 2 - rect.left) / rect.width * c.width)
+        const py = Math.round((box.y + box.h / 2 - rect.top) / rect.height * c.height)
+        const ctx2 = c.getContext('2d')
+        return { atBox: Array.from(ctx2.getImageData(px, py, 1, 1).data), corner: Array.from(ctx2.getImageData(5, 5, 1, 1).data) }
+      }, spanBox)
+      expect(pixels.atBox.slice(0, 3)).toEqual([0, 0, 0]) // black, where SECRETWORD was
+      expect(pixels.corner.slice(0, 3)).toEqual([255, 255, 255]) // untouched elsewhere
+
+      // The rebuilt page must match the ROTATED (landscape) visual
+      // dimensions, not the raw portrait MediaBox - otherwise the raster
+      // was squashed to fit the wrong aspect ratio.
+      await ctx.window.evaluate(() => window._savePDF())
+      const saved = await PDFDocument.load(fs.readFileSync(p))
+      const savedPage = saved.getPage(0)
+      expect(savedPage.getWidth()).toBeGreaterThan(savedPage.getHeight())
+    } finally { fs.unlinkSync(p) }
+  })
 })
 
 describe('Page rotation persistence', () => {

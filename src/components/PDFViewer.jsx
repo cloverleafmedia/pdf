@@ -11,7 +11,7 @@ import { sortFieldsReadingOrder } from '../lib/formFieldOrder'
 import { findEmptyRequiredFieldNames } from '../lib/formFieldValidation'
 import { DATE_FIELD_MARKER, SIGNATURE_FIELD_MARKER } from '../lib/formFieldMarkers'
 import { renderPageToCanvas } from '../lib/renderPage'
-import { rectToPdfPoints, pdfPointRectToRasterPixels, isTextContentEmpty } from '../lib/redactionRects'
+import { isTextContentEmpty } from '../lib/redactionRects'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 import { unrotateDelta } from '../lib/rotateVector'
 import { effectiveRotation } from '../lib/pageRotation'
@@ -243,8 +243,6 @@ export default function PDFViewer() {
   // through unchanged (so text/search/selection elsewhere is unaffected).
   // Known, accepted tradeoff: form fields/links on a redacted page are lost
   // along with the text (see the warning banner in Toolbar.jsx).
-  // Note: like the previous implementation, this does not account for
-  // pageRotations - a pre-existing gap, out of scope here.
   // Known, accepted tradeoff (document-wide, not just redacted pages): outDoc
   // is a fresh PDFDocument built via outDoc.copyPages(srcDoc, ...) once per
   // page, each call getting its own internal PDFObjectCopier - the source
@@ -262,7 +260,7 @@ export default function PDFViewer() {
   // release. Users are warned via the Toolbar.jsx banner instead.
   useEffect(() => {
     window._applyRedactions = async () => {
-      const { pendingRedactions: rects, pdfDoc: doc, pdfBytes: b, filePath: fp, fileName: fn, totalPages: n } = useStore.getState()
+      const { pendingRedactions: rects, pdfDoc: doc, pdfBytes: b, filePath: fp, fileName: fn, totalPages: n, pageRotations: rot } = useStore.getState()
       if (!rects.length) return
       try {
         setStatus('Schwärze …')
@@ -282,23 +280,44 @@ export default function PDFViewer() {
             outDoc.addPage(copied)
             continue
           }
-          const srcPage = srcDoc.getPage(pageNum - 1)
-          const { width: pw, height: ph } = srcPage.getSize()
 
-          const canvas = await renderPageToCanvas(doc, pageNum, scale)
+          // Rectangles were drawn in on-screen space at whatever the page's
+          // effective rotation (native /Rotate + in-session delta) was at the
+          // time - the raster canvas MUST be rendered at that exact same
+          // rotation, or the boxes land in the wrong place relative to the
+          // actual page content (previously this rendered at native rotation
+          // only via renderPageToCanvas's default, silently ignoring both the
+          // in-session delta AND, before pageRotation.js existed, native
+          // rotation entirely - either way a black box that doesn't actually
+          // cover the sensitive text is the worst possible failure mode for
+          // a "permanent redaction" feature).
+          const pdfjsPage = await doc.getPage(pageNum)
+          const rotation  = effectiveRotation(pdfjsPage.rotate, rot[pageNum])
+
+          const canvas = await renderPageToCanvas(doc, pageNum, scale, rotation)
           const ctx = canvas.getContext('2d')
           ctx.fillStyle = '#000'
           for (const rect of byPage.get(pageNum)) {
-            const pdfRect = rectToPdfPoints(rect, pw, ph)
-            const px = pdfPointRectToRasterPixels(pdfRect, ph, scale)
-            ctx.fillRect(px.x, px.y, px.width, px.height)
+            // Uniform scale from "on-screen CSS pixels at draw time" to "raster
+            // pixels at REDACTION_RASTER_DPI" - both canvases are the SAME
+            // rotation, so this is a plain scale, no rotation remap needed.
+            const f = canvas.width / rect.logicalW
+            ctx.fillRect(rect.x * f, rect.y * f, rect.w * f, rect.h * f)
           }
 
           const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
           const pngBytes = new Uint8Array(await blob.arrayBuffer())
           const pngImage = await outDoc.embedPng(pngBytes)
-          const newPage = outDoc.addPage([pw, ph])
-          newPage.drawImage(pngImage, { x: 0, y: 0, width: pw, height: ph })
+          // New page sized to the ROTATED (effective) visual dimensions, not
+          // the raw MediaBox - embedding the rotated raster at the raw box's
+          // (possibly swapped) width/height would stretch/squash it. The
+          // rebuilt page has no /Rotate of its own (defaults to 0), which is
+          // fine: it's a fresh flattened raster now, and 0-rotation at the
+          // already-rotated pixel dimensions displays identically to how the
+          // original rotated page looked.
+          const rotVp = pdfjsPage.getViewport({ scale: 1, rotation })
+          const newPage = outDoc.addPage([rotVp.width, rotVp.height])
+          newPage.drawImage(pngImage, { x: 0, y: 0, width: rotVp.width, height: rotVp.height })
         }
 
         const newB = await outDoc.save()
