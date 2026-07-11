@@ -92,4 +92,50 @@ describe('parseXfdf - round trip through buildXfdf', () => {
     expect(() => parseXfdf('<xfdf><annots><bogus>oops</bogus></annots></xfdf>', PAGE_DIMS)).not.toThrow()
     expect(parseXfdf('<xfdf><annots><bogus>oops</bogus></annots></xfdf>', PAGE_DIMS)).toEqual([])
   })
+
+  // The tests above all round-trip through this app's own buildXfdf (always
+  // well-formed) or use one hand-written but still complete snippet. The
+  // module's own doc comment says third-party XFDF may not parse correctly -
+  // these lock in the specific "skip it, don't crash" defensive paths that
+  // claim covers, rather than leaving them as an assumption.
+  it('skips a highlight with a missing rect attribute instead of throwing/producing NaNs', () => {
+    const xml = '<xfdf><annots><highlight page="0" color="#00ff00"><contents>x</contents></highlight></annots></xfdf>'
+    expect(() => parseXfdf(xml, PAGE_DIMS)).not.toThrow()
+    expect(parseXfdf(xml, PAGE_DIMS)).toEqual([])
+  })
+
+  it('skips a highlight with a malformed (non-numeric) rect', () => {
+    const xml = '<xfdf><annots><highlight page="0" rect="a,b,c,d"><contents>x</contents></highlight></annots></xfdf>'
+    expect(parseXfdf(xml, PAGE_DIMS)).toEqual([])
+  })
+
+  it('skips an annotation whose page index has no matching entry in the given pageDimensions', () => {
+    // page="5" but PAGE_DIMS only has one entry (index 0) - a plausible real
+    // case if an XFDF sidecar was exported against a since-trimmed PDF.
+    const xml = '<xfdf><annots><highlight page="5" rect="10,10,50,30"><contents>x</contents></highlight></annots></xfdf>'
+    expect(parseXfdf(xml, PAGE_DIMS)).toEqual([])
+  })
+
+  it('defaults to page 0 and the standard highlight color when those attributes are absent', () => {
+    const xml = '<xfdf><annots><highlight rect="10,10,50,30"><contents>x</contents></highlight></annots></xfdf>'
+    const parsed = parseXfdf(xml, PAGE_DIMS)
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0].page).toBe(1) // pageIndex 0 -> 1-based page
+    expect(parsed[0].color).toBe('#f59e0b')
+  })
+
+  it('skips an ink element with no <gesture> child', () => {
+    const xml = '<xfdf><annots><ink page="0"><contents>no gesture here</contents></ink></annots></xfdf>'
+    expect(parseXfdf(xml, PAGE_DIMS)).toEqual([])
+  })
+
+  it('skips an ink gesture with fewer than 2 points (a degenerate single-point stroke)', () => {
+    const xml = '<xfdf><annots><ink page="0"><gesture>10,10</gesture></ink></annots></xfdf>'
+    expect(parseXfdf(xml, PAGE_DIMS)).toEqual([])
+  })
+
+  it('skips a text/freetext element with no <contents> child', () => {
+    const xml = '<xfdf><annots><text page="0" rect="10,10,50,30"></text></annots></xfdf>'
+    expect(parseXfdf(xml, PAGE_DIMS)).toEqual([])
+  })
 })

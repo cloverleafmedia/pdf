@@ -57,6 +57,57 @@ describe('readJpegOrientation', () => {
     const bytes = new Uint8Array([0x89, 0x50, 0x4E, 0x47]) // PNG signature
     expect(readJpegOrientation(bytes)).toBe(1)
   })
+
+  // Regression: the two tests above are short enough (4 bytes) that
+  // `offset + 4 <= bytes.length` is already false on the first loop
+  // iteration - the segment-walking loop body never actually runs, so
+  // neither the marker-break nor the SOS-break branch was ever exercised.
+  it('stops at a bare Start-of-Scan marker once the loop body actually runs', () => {
+    const bytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x00])
+    expect(readJpegOrientation(bytes)).toBe(1)
+  })
+
+  it('returns 1 instead of crashing when a segment marker byte is corrupted/misaligned', () => {
+    const bytes = new Uint8Array([0xFF, 0xD8, 0x00, 0x00, 0x00, 0x00])
+    expect(readJpegOrientation(bytes)).toBe(1)
+  })
+
+  it('returns 1 when the APP1/EXIF segment has an IFD0 with no Orientation tag', () => {
+    const bytes = []
+    bytes.push(0xFF, 0xD8) // SOI
+    const tiff = [
+      0x49, 0x49, 0x2A, 0x00, // "II", 42
+      0x08, 0x00, 0x00, 0x00, // IFD0 offset = 8
+      0x01, 0x00, // 1 entry
+      0x1A, 0x01, // tag 0x011A (XResolution) - NOT Orientation
+      0x03, 0x00, // type SHORT
+      0x01, 0x00, 0x00, 0x00, // count 1
+      0x48, 0x00, 0x00, 0x00, // value
+      0x00, 0x00, 0x00, 0x00, // next IFD offset
+    ]
+    const exifPrefix = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00]
+    const segmentLength = 2 + exifPrefix.length + tiff.length
+    bytes.push(0xFF, 0xE1, (segmentLength >> 8) & 0xFF, segmentLength & 0xFF)
+    bytes.push(...exifPrefix, ...tiff)
+    bytes.push(0xFF, 0xDA)
+
+    expect(readJpegOrientation(new Uint8Array(bytes))).toBe(1)
+  })
+
+  it('skips a preceding non-EXIF segment (e.g. a JFIF APP0 header) before finding the real orientation tag', () => {
+    const bytes = []
+    bytes.push(0xFF, 0xD8) // SOI
+    // A minimal APP0/JFIF segment - present in the overwhelming majority of
+    // real-world JPEGs, always ahead of the EXIF APP1 segment.
+    const jfifPayload = [0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00]
+    const jfifLength = 2 + jfifPayload.length
+    bytes.push(0xFF, 0xE0, (jfifLength >> 8) & 0xFF, jfifLength & 0xFF, ...jfifPayload)
+
+    const jpeg = makeJpegWithOrientation(6)
+    bytes.push(...jpeg.slice(2)) // append everything after the first JPEG's own SOI
+
+    expect(readJpegOrientation(new Uint8Array(bytes))).toBe(6)
+  })
 })
 
 describe('exifCorrectedPlacement', () => {

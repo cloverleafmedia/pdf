@@ -48,10 +48,10 @@ function makeCertChain(overrides = {}) {
   return { root, intermediate, leaf }
 }
 
-function signDetached(contentBytes, cert, privateKey) {
+function signDetached(contentBytes, cert, privateKey, { includeCert = true } = {}) {
   const p7 = forge.pkcs7.createSignedData()
   p7.content = forge.util.createBuffer(Buffer.from(contentBytes).toString('binary'))
-  p7.addCertificate(cert)
+  if (includeCert) p7.addCertificate(cert)
   p7.addSigner({
     key: privateKey,
     certificate: cert,
@@ -64,6 +64,32 @@ function signDetached(contentBytes, cert, privateKey) {
   })
   p7.sign({ detached: true })
   return Buffer.from(forge.asn1.toDer(p7.toAsn1()).getBytes(), 'binary')
+}
+
+// Reaches into an otherwise-valid CMS blob and swaps one AlgorithmIdentifier's
+// OID (digestAlgorithm at SignerInfo field index 2, digestEncryptionAlgorithm
+// at index 4 - true whenever authenticatedAttributes is present, which
+// signDetached() above always sets) or the encryptedDigest bytes (index 5) -
+// used to exercise the "algorithm not supported" / "signature is malformed"
+// branches that a hand-crafted-from-scratch ASN.1 tree would be much more
+// work to reach, without ever touching the module under test's own logic.
+function patchSignerInfo(cmsDerBytes, fieldIndex, newValueAsn1) {
+  const { asn1 } = forge
+  const obj = asn1.fromDer(forge.util.createBuffer(cmsDerBytes.toString('binary')))
+  const ciCapture = {}
+  asn1.validate(obj, forge.pkcs7.asn1.contentInfoValidator, ciCapture, [])
+  const sdCapture = {}
+  asn1.validate(ciCapture.content.value[0], forge.pkcs7.asn1.signedDataValidator, sdCapture, [])
+  const signerInfo = sdCapture.signerInfos[0]
+  signerInfo.value[fieldIndex] = newValueAsn1
+  return Buffer.from(asn1.toDer(obj).getBytes(), 'binary')
+}
+
+function oidAlgorithmIdentifier(oid) {
+  const { asn1 } = forge
+  return asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
+    asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer(oid).getBytes()),
+  ])
 }
 
 describe('verifyDetachedSignature', () => {
@@ -131,6 +157,61 @@ describe('verifyDetachedSignature', () => {
     expect(result.valid).toBe(false)
     expect(result.supported).toBe(false)
     expect(result.reason).toBeTruthy()
+  })
+
+  it('reports unsupported for a digest algorithm forge has no hash implementation for', () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('content')
+    const cms = signDetached(content, cert, privateKey)
+    // An arbitrary made-up OID: pki.oids has no reverse mapping for it, so
+    // digestName comes back undefined - the same real-world shape as a PDF
+    // signed with a digest algorithm this app has never heard of.
+    const patched = patchSignerInfo(cms, 2, oidAlgorithmIdentifier('1.2.3.4.5.6'))
+
+    const result = verifyDetachedSignature(patched, content)
+    expect(result.supported).toBe(false)
+    expect(result.valid).toBe(false)
+    expect(result.reason).toMatch(/Hash-Algorithmus nicht unterstützt/)
+  })
+
+  it('reports unsupported for a non-RSA signature algorithm (e.g. ECDSA)', () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('content')
+    const cms = signDetached(content, cert, privateKey)
+    const patched = patchSignerInfo(cms, 4, oidAlgorithmIdentifier('1.2.840.10045.4.3.2')) // ecdsa-with-SHA256
+
+    const result = verifyDetachedSignature(patched, content)
+    expect(result.supported).toBe(false)
+    expect(result.valid).toBe(false)
+    expect(result.reason).toMatch(/Signaturalgorithmus nicht unterstützt/)
+  })
+
+  it("reports the signer's certificate as missing when it wasn't embedded in the CMS", () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('content')
+    const cms = signDetached(content, cert, privateKey, { includeCert: false })
+
+    const result = verifyDetachedSignature(cms, content)
+    expect(result.supported).toBe(true)
+    expect(result.valid).toBe(false)
+    expect(result.reason).toMatch(/nicht im Dokument gefunden/)
+  })
+
+  it('treats an undecryptable/malformed signature value as invalid instead of throwing', () => {
+    const { cert, privateKey } = makeSelfSignedCert()
+    const content = Buffer.from('content')
+    const cms = signDetached(content, cert, privateKey)
+    // A 3-byte "RSA signature" can't be a valid PKCS#1v1.5 block for a
+    // 1024-bit key - forge's rsa.decrypt throws on the length mismatch
+    // rather than returning false, which is exactly why verifyDetachedSignature
+    // wraps the verify() call in its own try/catch.
+    const { asn1 } = forge
+    const bogusSignature = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OCTETSTRING, false, '\x01\x02\x03')
+    const patched = patchSignerInfo(cms, 5, bogusSignature)
+
+    const result = verifyDetachedSignature(patched, content)
+    expect(result.supported).toBe(true)
+    expect(result.valid).toBe(false)
   })
 })
 

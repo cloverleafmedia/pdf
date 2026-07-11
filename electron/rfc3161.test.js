@@ -249,6 +249,17 @@ describe('parseEmbeddedTimestamp', () => {
     expect(parseEmbeddedTimestamp(null)).toBeNull()
   })
 
+  it('returns null instead of throwing when the token wraps content that is not valid TSTInfo DER', () => {
+    // makeFixtureTimeStampTokenAsn1() signs a plain dummy string, not a real
+    // TSTInfo structure - past the outer ContentInfo/SignedData shape checks,
+    // asn1.fromDer() on that eContent throws. Exercises the catch-all safety
+    // net so a TSA (or attacker) that embeds a malformed/foreign timestamp
+    // token degrades to "no timestamp" instead of crashing signature display.
+    const tokenAsn1 = makeFixtureTimeStampTokenAsn1()
+    const unauthAttrsAsn1 = wrapAsUnauthenticatedAttributes(tokenAsn1)
+    expect(parseEmbeddedTimestamp(unauthAttrsAsn1)).toBeNull()
+  })
+
   it('returns null when unauthenticatedAttributes is present but has no timestamp-token attribute', () => {
     const otherAttribute = asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, [
       asn1.create(asn1.Class.UNIVERSAL, asn1.Type.OID, false, asn1.oidToDer('1.2.3.4').getBytes()),

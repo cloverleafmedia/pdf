@@ -29,6 +29,11 @@ describe('groupTextItemsIntoRows', () => {
     expect(groupTextItemsIntoRows([])).toEqual([])
   })
 
+  it('returns an empty array for undefined/null items instead of throwing', () => {
+    expect(groupTextItemsIntoRows(undefined)).toEqual([])
+    expect(groupTextItemsIntoRows(null)).toEqual([])
+  })
+
   it('sorts rows top-to-bottom and items left-to-right within a row', () => {
     const rows = groupTextItemsIntoRows([
       item('row1b', 50, 100), item('row1a', 0, 100),
@@ -61,6 +66,25 @@ describe('splitRowIntoCells', () => {
 
   it('returns an empty array for an empty row', () => {
     expect(splitRowIntoCells([])).toEqual([])
+  })
+
+  it('treats a missing/undefined item width as 0 instead of producing NaN coordinates', () => {
+    const cells = splitRowIntoCells([
+      { str: 'A', transform: [1, 0, 0, 1, 0, 100] }, // no `width` at all
+      { str: 'B', transform: [1, 0, 0, 1, 50, 100] },
+    ])
+    expect(cells).toHaveLength(2)
+    expect(cells[0]).toMatchObject({ text: 'A', x0: 0, x1: 0 })
+    expect(cells[1]).toMatchObject({ text: 'B', x0: 50, x1: 50 })
+  })
+
+  it('joins overlapping/touching items (gap <= 0) without inserting a spurious space', () => {
+    const cells = splitRowIntoCells([
+      item('Hello', 0, 100, 30), // occupies x 0-30
+      item('World', 25, 100, 30), // starts before the previous item ends
+    ])
+    expect(cells).toHaveLength(1)
+    expect(cells[0].text).toBe('HelloWorld')
   })
 })
 
@@ -111,6 +135,13 @@ describe('detectTableRegions', () => {
     const regions = detectTableRegions(rows)
     expect(regions).toHaveLength(1)
     expect(regions[0]).toEqual({ startRow: 0, endRow: 2, columnCount: 3 })
+  })
+
+  it('does not create a region for an aligned run shorter than minRows', () => {
+    // 2 consecutive 3-column rows satisfy minColumns but not the default
+    // minRows=3 - must be skipped one row at a time, not just "not started".
+    const rows = makeRows(['table3', 'table3', 'prose'])
+    expect(detectTableRegions(rows)).toEqual([])
   })
 })
 

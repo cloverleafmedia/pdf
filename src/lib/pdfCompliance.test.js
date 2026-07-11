@@ -311,6 +311,24 @@ describe('listImagesForAltText', () => {
     expect(images[0].pages).toEqual([0])
   })
 
+  it('finds an image XObject represented as a real PDFStream, not just a bare dict', async () => {
+    // Every real image XObject (drawn by pdf-lib itself, or found in any
+    // real-world PDF) is a PDFStream, whose entries live on its .dict, not on
+    // the stream object itself - the earlier tests above build plain dicts
+    // via doc.context.obj({...}), which happens to also satisfy `instanceof
+    // PDFDict` and so never exercised the `obj.dict instanceof PDFDict`
+    // unwrap this function needs for the shape images actually have.
+    const doc = await makeDoc()
+    const imgStreamRef = doc.context.register(
+      doc.context.stream('fake-jpeg-bytes', { Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') })
+    )
+    doc.getPage(0).node.Resources().set(PDFName.of('XObject'), doc.context.obj({ Im1: imgStreamRef }))
+
+    const images = listImagesForAltText(doc)
+    expect(images).toHaveLength(1)
+    expect(images[0].ref.toString()).toBe(imgStreamRef.toString())
+  })
+
   it('does not recurse two levels deep into nested Form XObjects', async () => {
     const doc = await makeDoc()
     const imgRef = doc.context.register(doc.context.obj({ Type: PDFName.of('XObject'), Subtype: PDFName.of('Image') }))
@@ -459,6 +477,50 @@ describe('findJavaScriptLocations / removeJavaScript', () => {
   it('removeJavaScript reports false when there is nothing to remove', async () => {
     const doc = await makeDoc()
     expect(removeJavaScript(doc)).toBe(false)
+  })
+
+  // Regression (v1.16.0): a single trigger can run several chained actions via
+  // /Next, and PDF readers execute all of them - a non-JS front action with a
+  // JS action tucked into /Next used to slip past both the "contains
+  // JavaScript" badge and "JavaScript entfernen".
+  it('detects JavaScript reachable only through a single /Next action, not the front action itself', async () => {
+    const doc = await makeDoc()
+    const jsActionRef = doc.context.register(doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('app.alert(1)') }))
+    const frontActionRef = doc.context.register(doc.context.obj({ S: PDFName.of('GoTo'), Next: jsActionRef }))
+    doc.catalog.set(PDFName.of('OpenAction'), frontActionRef)
+
+    expect(findJavaScriptLocations(doc).map(l => l.kind)).toEqual(['openAction'])
+    expect(removeJavaScript(doc)).toBe(true)
+    expect(doc.catalog.lookup(PDFName.of('OpenAction'))).toBeUndefined()
+  })
+
+  it('detects JavaScript reachable through an array of /Next actions (spec allows either shape)', async () => {
+    const doc = await makeDoc()
+    const harmlessRef = doc.context.register(doc.context.obj({ S: PDFName.of('GoTo') }))
+    const jsActionRef = doc.context.register(doc.context.obj({ S: PDFName.of('JavaScript'), JS: PDFString.of('app.alert(1)') }))
+    const frontActionRef = doc.context.register(doc.context.obj({
+      S: PDFName.of('GoTo'),
+      Next: doc.context.obj([harmlessRef, jsActionRef]),
+    }))
+    doc.catalog.set(PDFName.of('OpenAction'), frontActionRef)
+
+    expect(findJavaScriptLocations(doc).map(l => l.kind)).toEqual(['openAction'])
+  })
+
+  it('does not flag an action chain that never leads to JavaScript', async () => {
+    const doc = await makeDoc()
+    const nextRef = doc.context.register(doc.context.obj({ S: PDFName.of('GoTo') }))
+    const frontActionRef = doc.context.register(doc.context.obj({ S: PDFName.of('GoTo'), Next: nextRef }))
+    doc.catalog.set(PDFName.of('OpenAction'), frontActionRef)
+    expect(findJavaScriptLocations(doc)).toEqual([])
+  })
+
+  it('does not infinite-loop on a cyclical /Next chain (a malformed/malicious PDF)', async () => {
+    const doc = await makeDoc()
+    const actionRef = doc.context.nextRef()
+    doc.context.assign(actionRef, doc.context.obj({ S: PDFName.of('GoTo'), Next: actionRef }))
+    doc.catalog.set(PDFName.of('OpenAction'), actionRef)
+    expect(findJavaScriptLocations(doc)).toEqual([])
   })
 })
 

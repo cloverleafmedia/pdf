@@ -130,6 +130,22 @@ describe('sanitizePdf', () => {
     expect(countReachableObjects(out)).toBe(beforeCount)
   })
 
+  // Regression: every existing "metadata found" case above sets an explicit
+  // Title/Author, which short-circuits the had-detection at the very first
+  // field - never exercising the later Subject/Creator/Producer/Keywords
+  // checks at all. A document with none of those explicitly set still isn't
+  // "clean": pdf-lib's own PDFDocument.create()/load() unconditionally
+  // stamps Producer (see the "clean document" test below), so the very last
+  // fallback in the chain must still catch it.
+  it('reports metadata found based on the auto-stamped Producer alone, with no Title/Author/Subject/Creator ever set', async () => {
+    const doc = await PDFDocument.create()
+    doc.addPage([200, 200])
+    const bytes = await doc.save()
+
+    const { report } = await sanitizePdf(bytes, { metadata: true, javascript: false, attachments: false, hiddenLayers: false })
+    expect(report).toEqual(['Metadaten gefunden und entfernt'])
+  })
+
   it('only removes the options the user actually selected', async () => {
     const bytes = await buildDirtyPdf()
     const { report } = await sanitizePdf(bytes, { metadata: false, javascript: true, attachments: false, hiddenLayers: false })
