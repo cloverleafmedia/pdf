@@ -4,6 +4,7 @@ import { PDFDocument } from 'pdf-lib'
 import { useStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import MagnifierLens from './MagnifierLens'
+import SelectionToolbar from './SelectionToolbar'
 import { flattenAnnotations } from '../lib/annotationFlatten'
 import { findPIIRedactions, findTextRedactions } from '../lib/piiDetection'
 import { chunk } from '../lib/chunk'
@@ -14,6 +15,7 @@ import { renderPageToCanvas } from '../lib/renderPage'
 import { isTextContentEmpty } from '../lib/redactionRects'
 import { reloadPdfDoc } from '../lib/reloadPdfDoc'
 import { unrotateDelta } from '../lib/rotateVector'
+import { NOTE_ICON_HALF } from '../lib/annotationBounds'
 import { effectiveRotation } from '../lib/pageRotation'
 import { saveAsNewFile } from '../lib/saveAsNewFile'
 import { useEraserTool } from './pdf-tools/useEraserTool'
@@ -32,6 +34,10 @@ const REDACTION_RASTER_DPI = 300
 const HIGHLIGHT_TOOLS = ['highlight', 'underline', 'strikethrough']
 const DRAW_TOOLS = ['draw', 'note', 'text', 'redact', 'eraser', 'newfield', 'shape', 'stamp']
 const STAMP_DEFAULT_W = 150
+
+// Movement threshold (px) below which a marker mousedown+mouseup counts as a
+// click (select/toggle) rather than a drag - see startAnnotDrag in PDFPage.
+const CLICK_MOVE_THRESHOLD = 4
 
 // Opacity for freehand-drawn/highlight annotation strokes when rendered and
 // when flattened into the saved PDF. No settings UI exposes this - it is a
@@ -76,6 +82,11 @@ export default function PDFViewer() {
 
   const containerRef = useRef(null)
   const isDark = theme === 'dark'
+  // DOM nodes of currently-rendered note/text/stamp markers, keyed by
+  // annotation id - populated by PDFPage via the domRef prop on
+  // DraggableAnnotationMarker. Used by SelectionToolbar to measure text-box
+  // bounds and to position itself relative to the live selection.
+  const markerRefs = useRef(new Map())
 
   // ── Fit helpers ──────────────────────────────────────────────────────────
   const fitWidth = useCallback(async () => {
@@ -396,25 +407,26 @@ export default function PDFViewer() {
         <div className="flex flex-col items-center py-8 gap-8">
           {chunk(pages, 2).map((pair, i) => (
             <div key={i} className="flex gap-6 items-start">
-              {pair.map(n => <PDFPage key={n} pageNum={n} />)}
+              {pair.map(n => <PDFPage key={n} pageNum={n} markerRefs={markerRefs} />)}
             </div>
           ))}
         </div>
       ) : (
         <div className="flex flex-col items-center py-8 gap-8">
-          {pages.map(n => <PDFPage key={n} pageNum={n} />)}
+          {pages.map(n => <PDFPage key={n} pageNum={n} markerRefs={markerRefs} />)}
         </div>
       )}
       <MagnifierLens containerRef={containerRef} />
+      <SelectionToolbar containerRef={containerRef} markerRefs={markerRefs} />
     </div>
   )
 }
 
 // ── Single PDF page ────────────────────────────────────────────────────────
-function PDFPage({ pageNum }) {
+function PDFPage({ pageNum, markerRefs }) {
   const {
-    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, textFontSize, textBold, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, seedFormValues, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, textFontSize: state.textFontSize, textBold: state.textBold, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, seedFormValues: state.seedFormValues, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId })))
+    pdfDoc, zoom, pageRotations, theme, activeTool, nightMode, drawColor, drawWidth, textFontSize, textBold, annotations, pendingRedactions, addAnnotation, addRedaction, removeAnnotation, updateAnnotation, formValues, setFormValue, seedFormValues, pendingFormFields, newFieldType, addFormFieldDraft, updateFormFieldDraft, removeFormFieldDraft, shapeType, pendingStampConfig, setPendingStampConfig, setActiveTool, setNewFieldType, setActiveRadioGroupId, selectedAnnotationIds, setSelectedAnnotationIds,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, zoom: state.zoom, pageRotations: state.pageRotations, theme: state.theme, activeTool: state.activeTool, nightMode: state.nightMode, drawColor: state.drawColor, drawWidth: state.drawWidth, textFontSize: state.textFontSize, textBold: state.textBold, annotations: state.annotations, pendingRedactions: state.pendingRedactions, addAnnotation: state.addAnnotation, addRedaction: state.addRedaction, removeAnnotation: state.removeAnnotation, updateAnnotation: state.updateAnnotation, formValues: state.formValues, setFormValue: state.setFormValue, seedFormValues: state.seedFormValues, pendingFormFields: state.pendingFormFields, newFieldType: state.newFieldType, addFormFieldDraft: state.addFormFieldDraft, updateFormFieldDraft: state.updateFormFieldDraft, removeFormFieldDraft: state.removeFormFieldDraft, shapeType: state.shapeType, pendingStampConfig: state.pendingStampConfig, setPendingStampConfig: state.setPendingStampConfig, setActiveTool: state.setActiveTool, setNewFieldType: state.setNewFieldType, setActiveRadioGroupId: state.setActiveRadioGroupId, selectedAnnotationIds: state.selectedAnnotationIds, setSelectedAnnotationIds: state.setSelectedAnnotationIds })))
 
   const canvasRef     = useRef(null)
   const textLayerRef  = useRef(null)
@@ -424,8 +436,11 @@ function PDFPage({ pageNum }) {
 
   const [size, setSize]           = useState({ w: 0, h: 0 })
   const [inlineInput, setInline]  = useState(null)
-  // Dragging a placed annotation (hand tool)
-  const [annotDrag, setAnnotDrag] = useState(null) // { id, sx, sy, ox, oy }
+  // Dragging one or more placed annotations (hand tool). `items` covers the
+  // whole active selection (filtered to this page) so a multi-select drag
+  // moves every selected item together; a plain single-item drag is just
+  // `items.length === 1`, unchanged from before selection existed.
+  const [annotDrag, setAnnotDrag] = useState(null) // { sx, sy, items: [{id,ox,oy}] }
   // Resizing a placed stamp annotation (hand tool) - other annotation types
   // either have no explicit w/h (note/text are content-sized) or weren't
   // asked to support resize (shapes)
@@ -480,19 +495,59 @@ function PDFPage({ pageNum }) {
     }).catch(() => {})
   }, [pdfDoc, pageNum, activeTool, seedFormValues])
 
+  // Decides selection (click vs. extend vs. group-drag) immediately on
+  // mousedown for a note/text/stamp marker, then arms the drag effect below
+  // with every currently-selected item on the same page so a multi-select
+  // drag moves them together. Shift/Ctrl-clicking an already-selected item
+  // doesn't deselect it here - that's deferred to mouseup (see onUp) so a
+  // shift-drag of an already-selected item still works; only a genuine click
+  // (no movement) toggles it off.
+  const startAnnotDrag = (e, a) => {
+    const already = selectedAnnotationIds.includes(a.id)
+    const extend = e.shiftKey || e.ctrlKey || e.metaKey
+    let nextSelection = selectedAnnotationIds
+    let pendingDeselect = null
+    if (extend) {
+      if (already) pendingDeselect = a.id
+      else nextSelection = [...selectedAnnotationIds, a.id]
+    } else if (!already || selectedAnnotationIds.length === 1) {
+      nextSelection = [a.id]
+    } // else: a is part of an existing multi-selection - keep it, drag the whole group
+    if (nextSelection !== selectedAnnotationIds) setSelectedAnnotationIds(nextSelection)
+    const items = nextSelection
+      .map(id => annotations.find(x => x.id === id))
+      .filter(x => x && x.page === a.page)
+      .map(x => ({ id: x.id, ox: x.x, oy: x.y }))
+    setAnnotDrag({ sx: e.clientX, sy: e.clientY, items, pendingDeselect })
+  }
+
+  // Registers/unregisters a marker's live DOM node in the shared markerRefs
+  // map (SelectionToolbar reads it to measure text-box bounds and to
+  // position itself relative to the current selection).
+  const setMarkerRef = (id) => (el) => {
+    if (el) markerRefs.current.set(id, el)
+    else markerRefs.current.delete(id)
+  }
+
   // ── Annotation drag (hand tool) ─────────────────────────────────────────
   useEffect(() => {
     if (!annotDrag) return
     const onMove = (e) => {
       const dx = e.clientX - annotDrag.sx
       const dy = e.clientY - annotDrag.sy
-      updateAnnotation(annotDrag.id, { x: annotDrag.ox + dx, y: annotDrag.oy + dy })
+      for (const it of annotDrag.items) updateAnnotation(it.id, { x: it.ox + dx, y: it.oy + dy })
     }
-    const onUp = () => setAnnotDrag(null)
+    const onUp = (e) => {
+      const moved = Math.hypot(e.clientX - annotDrag.sx, e.clientY - annotDrag.sy) > CLICK_MOVE_THRESHOLD
+      if (!moved && annotDrag.pendingDeselect != null) {
+        setSelectedAnnotationIds(useStore.getState().selectedAnnotationIds.filter(id => id !== annotDrag.pendingDeselect))
+      }
+      setAnnotDrag(null)
+    }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
-  }, [annotDrag, updateAnnotation])
+  }, [annotDrag, updateAnnotation, setSelectedAnnotationIds])
 
   // ── Stamp resize (hand tool) ─────────────────────────────────────────────
   useEffect(() => {
@@ -505,13 +560,50 @@ function PDFPage({ pageNum }) {
       // below) - so a raw screen-space mouse delta no longer lines up with
       // the box's own width/height axes once rotated.
       const { dx: ldx, dy: ldy } = unrotateDelta(dx, dy, annotResize.rotation)
-      updateAnnotation(annotResize.id, { w: Math.max(20, annotResize.ow + ldx), h: Math.max(14, annotResize.oh + ldy) })
+      const newW = Math.max(20, annotResize.ow + ldx)
+      let newH
+      if (e.shiftKey) {
+        // Aspect-ratio lock: ratio fixed at drag-start (not recomputed per
+        // tick) so it doesn't drift from accumulated rounding.
+        const ratio = annotResize.oh / annotResize.ow
+        newH = Math.max(14, newW * ratio)
+      } else {
+        newH = Math.max(14, annotResize.oh + ldy)
+      }
+      updateAnnotation(annotResize.id, { w: newW, h: newH })
     }
     const onUp = () => setAnnotResize(null)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup',   onUp)
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [annotResize, updateAnnotation])
+
+  // ── Stamp rotate (hand tool) ─────────────────────────────────────────────
+  // { id, cx, cy, startRotation, startAngle } - cx/cy are the stamp div's own
+  // screen-space center, read once at drag-start via getBoundingClientRect().
+  // CSS rotation around the default transform-origin (50% 50%) never moves an
+  // element's own center, so that center stays valid as a pivot for the whole
+  // drag without needing to re-measure on every mousemove.
+  const [annotRotate, setAnnotRotate] = useState(null)
+  useEffect(() => {
+    if (!annotRotate) return
+    const onMove = (e) => {
+      const angle = Math.atan2(e.clientY - annotRotate.cy, e.clientX - annotRotate.cx) * 180 / Math.PI
+      const delta = angle - annotRotate.startAngle
+      // The stamp's CSS preview transform is `rotate(${-a.rotation}deg)`
+      // (negated - see the stamp overlay below), so the screen-space
+      // clockwise delta from atan2 is subtracted, not added, to keep the
+      // live preview tracking the mouse direction.
+      let next = annotRotate.startRotation - delta
+      if (!e.shiftKey) next = Math.round(next / 15) * 15 // default: snap to 15° (matches RotationPresetButtons)
+      next = ((next + 180) % 360 + 360) % 360 - 180 // normalize to (-180, 180]
+      updateAnnotation(annotRotate.id, { rotation: next })
+    }
+    const onUp = () => setAnnotRotate(null)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [annotRotate, updateAnnotation])
 
   // ── New-field draft drag (hand tool) ─────────────────────────────────────
   useEffect(() => {
@@ -846,6 +938,12 @@ function PDFPage({ pageNum }) {
       data-page={pageNum}
       className="pdf-page-wrap relative flex-shrink-0 rounded overflow-visible"
       style={{ width: size.w || 600, height: size.h || 800 }}
+      onMouseDown={() => {
+        // Markers/handles call stopPropagation on their own mousedown, so
+        // this only fires for a click that missed every annotation - i.e.
+        // an empty-area click, which should clear the current selection.
+        if (activeTool === 'hand' && selectedAnnotationIds.length) setSelectedAnnotationIds([])
+      }}
     >
       {/* 1. PDF canvas */}
       <canvas ref={canvasRef} className="block" style={{ display: 'block' }} />
@@ -888,12 +986,14 @@ function PDFPage({ pageNum }) {
       {/* 5. Sticky note icons */}
       {annotations.filter(a => a.page === pageNum && a.type === 'note').map(a => (
         <DraggableAnnotationMarker key={a.id} activeTool={activeTool}
-          className={`absolute text-xl select-none z-10
-            ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
-          style={{ left: a.x - 10, top: a.y - 10, userSelect: 'none' }}
+          className={`absolute text-xl select-none z-10 rounded
+            ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}
+            ${selectedAnnotationIds.includes(a.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+          style={{ left: a.x - NOTE_ICON_HALF, top: a.y - NOTE_ICON_HALF, userSelect: 'none' }}
           title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : a.text}
-          onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
-          onRemove={() => removeAnnotation(a.id)}>
+          onDragStart={(e) => startAnnotDrag(e, a)}
+          onRemove={() => removeAnnotation(a.id)}
+          domRef={setMarkerRef(a.id)}>
           📌
         </DraggableAnnotationMarker>
       ))}
@@ -904,11 +1004,13 @@ function PDFPage({ pageNum }) {
           className={`absolute px-2.5 py-1.5 rounded border shadow-sm max-w-[260px] min-w-[60px] break-words leading-relaxed z-10
             ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none select-none'}
             ${isDark ? 'bg-zinc-800/95 border-zinc-500' : 'bg-white border-gray-400'}
-            ${a.color ? '' : (isDark ? 'text-zinc-100' : 'text-gray-900')}`}
+            ${a.color ? '' : (isDark ? 'text-zinc-100' : 'text-gray-900')}
+            ${selectedAnnotationIds.includes(a.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
           style={{ left: a.x, top: a.y, userSelect: 'none', fontSize: a.fontSize || 12, color: a.color || undefined, fontWeight: a.bold ? 'bold' : undefined }}
           title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : undefined}
-          onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
-          onRemove={() => removeAnnotation(a.id)}>
+          onDragStart={(e) => startAnnotDrag(e, a)}
+          onRemove={() => removeAnnotation(a.id)}
+          domRef={setMarkerRef(a.id)}>
           {a.text}
         </DraggableAnnotationMarker>
       ))}
@@ -916,27 +1018,47 @@ function PDFPage({ pageNum }) {
       {/* 6b. Stamp overlays */}
       {annotations.filter(a => a.page === pageNum && a.type === 'stamp').map(a => (
         <DraggableAnnotationMarker key={a.id} activeTool={activeTool}
-          className={`absolute select-none z-10 flex items-center justify-center overflow-hidden
-            ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
+          className={`absolute select-none z-10
+            ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}
+            ${selectedAnnotationIds.includes(a.id) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
           style={{
             left: a.x, top: a.y, width: a.w, height: a.h, userSelect: 'none',
             transform: a.rotation ? `rotate(${-a.rotation}deg)` : undefined,
-            ...(a.kind !== 'custom' ? {
+          }}
+          title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : (a.text || undefined)}
+          onDragStart={(e) => startAnnotDrag(e, a)}
+          onRemove={() => removeAnnotation(a.id)}
+          domRef={setMarkerRef(a.id)}>
+          {/* Content lives in its own overflow-hidden wrapper (rather than on
+              the marker root) so the resize/rotate handles below, which sit
+              partially or fully outside the box's own bounds, aren't clipped. */}
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden"
+            style={a.kind !== 'custom' ? {
               border: `3px solid ${a.color}`, borderRadius: 4,
               color: a.color, fontWeight: 'bold', letterSpacing: 1,
               fontSize: Math.max(10, a.h * 0.32),
-            } : {}),
-          }}
-          title={activeTool === 'hand' ? 'Ziehen zum Verschieben · Rechtsklick zum Löschen' : (a.text || undefined)}
-          onDragStart={(e) => setAnnotDrag({ id: a.id, sx: e.clientX, sy: e.clientY, ox: a.x, oy: a.y })}
-          onRemove={() => removeAnnotation(a.id)}>
-          {a.kind === 'custom'
-            ? <img src={a.imageUrl} alt="Stempel" className="w-full h-full object-contain pointer-events-none" draggable={false}/>
-            : a.text}
+            } : undefined}>
+            {a.kind === 'custom'
+              ? <img src={a.imageUrl} alt="Stempel" className="w-full h-full object-contain pointer-events-none" draggable={false}/>
+              : a.text}
+          </div>
           {activeTool === 'hand' && (
             <div
               onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setAnnotResize({ id: a.id, sx: e.clientX, sy: e.clientY, ow: a.w, oh: a.h, rotation: a.rotation || 0 }) }}
               className="absolute -right-1.5 -bottom-1.5 w-3 h-3 rounded-sm bg-blue-500 cursor-nwse-resize pointer-events-auto"
+            />
+          )}
+          {activeTool === 'hand' && (
+            <div
+              title="Ziehen zum Drehen · Umschalt für freie Rotation"
+              onMouseDown={(e) => {
+                e.preventDefault(); e.stopPropagation()
+                const rect = e.currentTarget.parentElement.getBoundingClientRect()
+                const cx = (rect.left + rect.right) / 2, cy = (rect.top + rect.bottom) / 2
+                const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI
+                setAnnotRotate({ id: a.id, cx, cy, startRotation: a.rotation || 0, startAngle })
+              }}
+              className="absolute -top-4 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-blue-500 cursor-grab pointer-events-auto"
             />
           )}
         </DraggableAnnotationMarker>
@@ -1130,9 +1252,9 @@ function PDFPage({ pageNum }) {
 
 // Shared drag-to-move / right-click-to-delete wrapper for sticky notes and
 // text boxes — both only ever differ in their own className/style/content.
-function DraggableAnnotationMarker({ activeTool, className, style, title, onDragStart, onRemove, children }) {
+function DraggableAnnotationMarker({ activeTool, className, style, title, onDragStart, onRemove, domRef, children }) {
   return (
-    <div className={className} style={style} title={title}
+    <div ref={domRef} className={className} style={style} title={title}
       onMouseDown={activeTool === 'hand' ? (e) => {
         e.preventDefault(); e.stopPropagation()
         onDragStart(e)

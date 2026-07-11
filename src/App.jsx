@@ -46,6 +46,7 @@ const SignatureVerifyModal        = lazy(() => import('./components/modals/Signa
 const TableExtractModal           = lazy(() => import('./components/modals/TableExtractModal'))
 const CommentsSummaryModal        = lazy(() => import('./components/modals/CommentsSummaryModal'))
 const StampModal                  = lazy(() => import('./components/modals/StampModal'))
+const ApplyStampToPagesModal      = lazy(() => import('./components/modals/ApplyStampToPagesModal'))
 const AttachmentsModal            = lazy(() => import('./components/modals/AttachmentsModal'))
 const PresentationMode            = lazy(() => import('./components/PresentationMode'))
 const CompareView                 = lazy(() => import('./components/CompareView'))
@@ -59,8 +60,8 @@ const SIDEBAR_WIDTH = 264
 
 export default function App() {
   const {
-    pdfDoc, pdfBytes, theme, sidebarOpen, settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen, compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen, sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen, encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen, tableExtractOpen, commentsSummaryOpen, stampOpen, attachmentsOpen, presentationMode, updateAvailable, updateDownloaded, openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus, setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels, toggleCommandPalette, openShortcuts, setHasSignatures, setHasJavaScriptActions,
-  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, theme: state.theme, sidebarOpen: state.sidebarOpen, settingsOpen: state.settingsOpen, propertiesOpen: state.propertiesOpen, passwordOpen: state.passwordOpen, splitOpen: state.splitOpen, ocrOpen: state.ocrOpen, watermarkOpen: state.watermarkOpen, signatureOpen: state.signatureOpen, headerFooterOpen: state.headerFooterOpen, compressOpen: state.compressOpen, exportImagesOpen: state.exportImagesOpen, qrCodeOpen: state.qrCodeOpen, cropOpen: state.cropOpen, batchOpen: state.batchOpen, compareOpen: state.compareOpen, shortcutsOpen: state.shortcutsOpen, printDialogOpen: state.printDialogOpen, sanitizeOpen: state.sanitizeOpen, mailMergeOpen: state.mailMergeOpen, pdfaOpen: state.pdfaOpen, a11yOpen: state.a11yOpen, libraryOpen: state.libraryOpen, encryptOpen: state.encryptOpen, imagesToPdfOpen: state.imagesToPdfOpen, altTextOpen: state.altTextOpen, signatureVerifyOpen: state.signatureVerifyOpen, tableExtractOpen: state.tableExtractOpen, commentsSummaryOpen: state.commentsSummaryOpen, stampOpen: state.stampOpen, attachmentsOpen: state.attachmentsOpen, presentationMode: state.presentationMode, updateAvailable: state.updateAvailable, updateDownloaded: state.updateDownloaded, openDocument: state.openDocument, openTab: state.openTab, addRecentFile: state.addRecentFile, setRecentFiles: state.setRecentFiles, setTheme: state.setTheme, setLanguage: state.setLanguage, setStatus: state.setStatus, setUpdateAvailable: state.setUpdateAvailable, setUpdateDownloaded: state.setUpdateDownloaded, togglePresentation: state.togglePresentation, setToolbarLabels: state.setToolbarLabels, toggleCommandPalette: state.toggleCommandPalette, openShortcuts: state.openShortcuts, setHasSignatures: state.setHasSignatures, setHasJavaScriptActions: state.setHasJavaScriptActions })))
+    pdfDoc, pdfBytes, theme, sidebarOpen, settingsOpen, propertiesOpen, passwordOpen, splitOpen, ocrOpen, watermarkOpen, signatureOpen, headerFooterOpen, compressOpen, exportImagesOpen, qrCodeOpen, cropOpen, batchOpen, compareOpen, shortcutsOpen, printDialogOpen, sanitizeOpen, mailMergeOpen, pdfaOpen, a11yOpen, libraryOpen, encryptOpen, imagesToPdfOpen, altTextOpen, signatureVerifyOpen, tableExtractOpen, commentsSummaryOpen, stampOpen, applyStampOpen, attachmentsOpen, presentationMode, updateAvailable, updateDownloaded, openDocument, openTab, addRecentFile, setRecentFiles, setTheme, setLanguage, setStatus, setUpdateAvailable, setUpdateDownloaded, togglePresentation, setToolbarLabels, toggleCommandPalette, openShortcuts, setHasSignatures, setHasJavaScriptActions,
+  } = useStore(useShallow(state => ({ pdfDoc: state.pdfDoc, pdfBytes: state.pdfBytes, theme: state.theme, sidebarOpen: state.sidebarOpen, settingsOpen: state.settingsOpen, propertiesOpen: state.propertiesOpen, passwordOpen: state.passwordOpen, splitOpen: state.splitOpen, ocrOpen: state.ocrOpen, watermarkOpen: state.watermarkOpen, signatureOpen: state.signatureOpen, headerFooterOpen: state.headerFooterOpen, compressOpen: state.compressOpen, exportImagesOpen: state.exportImagesOpen, qrCodeOpen: state.qrCodeOpen, cropOpen: state.cropOpen, batchOpen: state.batchOpen, compareOpen: state.compareOpen, shortcutsOpen: state.shortcutsOpen, printDialogOpen: state.printDialogOpen, sanitizeOpen: state.sanitizeOpen, mailMergeOpen: state.mailMergeOpen, pdfaOpen: state.pdfaOpen, a11yOpen: state.a11yOpen, libraryOpen: state.libraryOpen, encryptOpen: state.encryptOpen, imagesToPdfOpen: state.imagesToPdfOpen, altTextOpen: state.altTextOpen, signatureVerifyOpen: state.signatureVerifyOpen, tableExtractOpen: state.tableExtractOpen, commentsSummaryOpen: state.commentsSummaryOpen, stampOpen: state.stampOpen, applyStampOpen: state.applyStampOpen, attachmentsOpen: state.attachmentsOpen, presentationMode: state.presentationMode, updateAvailable: state.updateAvailable, updateDownloaded: state.updateDownloaded, openDocument: state.openDocument, openTab: state.openTab, addRecentFile: state.addRecentFile, setRecentFiles: state.setRecentFiles, setTheme: state.setTheme, setLanguage: state.setLanguage, setStatus: state.setStatus, setUpdateAvailable: state.setUpdateAvailable, setUpdateDownloaded: state.setUpdateDownloaded, togglePresentation: state.togglePresentation, setToolbarLabels: state.setToolbarLabels, toggleCommandPalette: state.toggleCommandPalette, openShortcuts: state.openShortcuts, setHasSignatures: state.setHasSignatures, setHasJavaScriptActions: state.setHasJavaScriptActions })))
 
   const [isDragging, setIsDragging] = useState(false)
 
@@ -312,6 +313,7 @@ export default function App() {
           case 'y': e.preventDefault(); s.redoAnnotation?.(); break
           case 'k': e.preventDefault(); s.toggleCommandPalette?.(); break
           case 'F5': case 'f5': e.preventDefault(); if (s.pdfDoc) s.togglePresentation?.(); break
+          case 'd': e.preventDefault(); if (s.selectedAnnotationIds?.length) s.duplicateAnnotations(s.selectedAnnotationIds); break
         }
       } else {
         switch (e.key) {
@@ -321,9 +323,13 @@ export default function App() {
           case 'End':  s.setCurrentPage(s.totalPages); break
           case 'F5':   e.preventDefault(); if (s.pdfDoc) s.togglePresentation?.(); break
           case '?':    s.openShortcuts?.(); break
+          case 'Delete': case 'Backspace':
+            if (s.selectedAnnotationIds?.length) { e.preventDefault(); s.removeAnnotations(s.selectedAnnotationIds) }
+            break
           case 'Escape':
             if (s.commandPaletteOpen) { s.closeCommandPalette?.(); break }
             if (s.presentationMode) { s.togglePresentation?.(); break }
+            if (s.selectedAnnotationIds?.length) { s.setSelectedAnnotationIds([]); break }
             if (s.activeTool !== 'hand') s.setActiveTool('hand'); break
         }
       }
@@ -411,6 +417,7 @@ export default function App() {
         {tableExtractOpen  && <TableExtractModal />}
         {commentsSummaryOpen && <CommentsSummaryModal />}
         {stampOpen         && <StampModal />}
+        {applyStampOpen    && <ApplyStampToPagesModal />}
         {attachmentsOpen   && <AttachmentsModal />}
       </Suspense>
       <CommandPalette />

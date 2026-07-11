@@ -3,6 +3,20 @@
 Alle nennenswerten Änderungen an CloverleafPDF werden hier festgehalten.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
+## [1.19.0] – 2026-07-11
+
+Stempel-Werkzeug: Drehen/Sperren beim Skalieren, Tastatur-Bedienung sowie drei
+neue Möglichkeiten, Stempel zu gestalten und mehrfach einzusetzen. Bringt
+außerdem eine neue Mehrfachauswahl für Notizen/Textfelder/Stempel mit.
+
+### Hinzugefügt
+- **Stempel drehen:** neuer Dreh-Griff oberhalb eines platzierten Stempels (Hand-Werkzeug) – rastet standardmäßig in 15°-Schritten ein (wie die bestehenden Winkel-Vorgaben im Stempel-Dialog), Umschalt-Taste gedrückt halten für freie Drehung.
+- **Seitenverhältnis beim Skalieren sperren:** Umschalt-Taste beim Ziehen am Skalier-Griff eines Stempels gedrückt halten, um Breite/Höhe im ursprünglichen Verhältnis zu halten – verhindert verzerrte Logo-/Bild-Stempel.
+- **Mehrfachauswahl für Notizen, Textfelder und Stempel:** Umschalt-/Strg-Klick erweitert die Auswahl, Ziehen bewegt alle ausgewählten Elemente gemeinsam, Klick auf eine leere Stelle hebt die Auswahl auf. Eine schwebende Werkzeugleiste über der Auswahl bietet Duplizieren, Löschen sowie – ab zwei Elementen auf derselben Seite – sechs Ausrichten-Buttons (links/rechts/oben/unten/horizontal/vertikal zentrieren).
+- **Entf-Taste löscht die aktuelle Auswahl**, **Strg+D dupliziert sie** (mit kleinem Versatz, sofort weiterziehbar) – zusätzlich zum bisherigen Rechtsklick-Löschen einzelner Elemente.
+- **Freier Text-Stempel:** dritter Modus im Stempel-Dialog neben Vorlage/Eigenes Bild – eigener Text mit wählbarer Farbe statt nur der drei festen Vorlagen (Genehmigt/Entwurf/Vertraulich). Unterstützt die Platzhalter `{datum}`/`{uhrzeit}`, die beim Platzieren einmalig durch das aktuelle Datum/die aktuelle Uhrzeit ersetzt werden; gespeicherte Vorlagen behalten die Platzhalter roh, damit ein späteres erneutes Platzieren das dann aktuelle Datum einsetzt.
+- **Stempel auf mehrere/alle Seiten anwenden:** neue Aktion in der Auswahl-Werkzeugleiste (bei genau einem ausgewählten Stempel) – repliziert Position, Größe und Drehung des Stempels auf einen Seitenbereich oder alle Seiten, jede Kopie bleibt danach einzeln bearbeitbar. Setzt gleiche Seitengröße wie die Quellseite voraus; bei Dokumenten mit gemischten Seitengrößen kann die Position auf einzelnen Zielseiten abweichen.
+
 ## [1.18.0] – 2026-07-11
 
 Sicherheits-Audit: "Signatur prüfen" — der letzte noch offene Baustein des

@@ -32,6 +32,11 @@ export const useStore = create((set, get) => ({
   annotations:        [],
   annotationHistory:  [],
   annotationFuture:   [],
+  // Currently marked note/text/stamp annotations (hand tool) - a flat array
+  // of ids, deliberately not scoped per-page since all pages are mounted at
+  // once and a shift-click selection can span pages. Group-drag/align/delete
+  // consumers restrict themselves to same-page subsets where that matters.
+  selectedAnnotationIds: [],
 
   // ── Redactions (pending, not yet applied) ───────────────────────────────
   pendingRedactions: [],
@@ -125,6 +130,8 @@ export const useStore = create((set, get) => ({
   tableExtractOpen:    false,
   commentsSummaryOpen: false,
   stampOpen:           false,
+  applyStampOpen:      false,
+  applyStampSourceId:  null, // annotation id of the stamp being replicated across pages
   attachmentsOpen:     false,
 
   // ── Document library (folders watched for PDFs, tags per file path) ──────
@@ -143,6 +150,7 @@ export const useStore = create((set, get) => ({
     annotations: [],
     annotationHistory: [],
     annotationFuture: [],
+    selectedAnnotationIds: [],
     pendingRedactions: [],
     pendingFormFields: [],
     formValues: {},
@@ -154,7 +162,7 @@ export const useStore = create((set, get) => ({
 
   closeDocument: () => set({
     pdfDoc: null, pdfBytes: null, filePath: null, fileName: null, fileSize: 0,
-    currentPage: 1, totalPages: 0, annotations: [], pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
+    currentPage: 1, totalPages: 0, annotations: [], selectedAnnotationIds: [], pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
   }),
 
   setPdfBytes:  (b) => set({ pdfBytes: b, isDirty: true }),
@@ -184,6 +192,10 @@ export const useStore = create((set, get) => ({
   setActiveTool: (t) => set(s => ({
     activeTool: t,
     lastAnnotateTool: ANNOTATE_TOOL_IDS.includes(t) ? t : s.lastAnnotateTool,
+    // Annotation selection (drag/resize/rotate/align) only makes sense under
+    // the hand tool - switching away from it would otherwise leave a stale
+    // selection that no longer has any visible affordance to act on it.
+    selectedAnnotationIds: t === 'hand' ? s.selectedAnnotationIds : [],
   })),
   setDrawColor:  (c) => set({ drawColor: c }),
   setDrawWidth:  (w) => set({ drawWidth: w }),
@@ -191,6 +203,7 @@ export const useStore = create((set, get) => ({
   setTextBold: (b) => set({ textBold: b }),
   setPendingStampConfig: (cfg) => set({ pendingStampConfig: cfg }),
   setActiveRadioGroupId: (id) => set({ activeRadioGroupId: id }),
+  setSelectedAnnotationIds: (ids) => set({ selectedAnnotationIds: ids }),
 
   // ── Actions: annotations ────────────────────────────────────────────────
   addAnnotation: (a) => {
@@ -202,10 +215,39 @@ export const useStore = create((set, get) => ({
       isDirty: true,
     })
   },
+  // Batch counterpart of addAnnotation - one history push for the whole
+  // list (e.g. "apply stamp to 50 pages"), so a single Ctrl+Z undoes the
+  // entire batch instead of one page at a time.
+  addAnnotations: (list) => {
+    const prev = get().annotations
+    const copies = list.map(a => ({ ...a, id: Date.now() + Math.random() }))
+    set({
+      annotations: [...prev, ...copies],
+      annotationHistory: [...get().annotationHistory.slice(-29), prev],
+      annotationFuture: [],
+      isDirty: true,
+    })
+  },
   updateAnnotation: (id, updates) => set(s => ({
     annotations: s.annotations.map(a => a.id === id ? { ...a, ...updates } : a),
     isDirty: true,
   })),
+  // Batch counterpart of updateAnnotation - one history push for the whole
+  // set of updates (e.g. an "Align Left" click moving several annotations
+  // at once), unlike updateAnnotation itself which stays history-less since
+  // it's also used for continuous drag/resize (see the annotDrag/annotResize
+  // effects in PDFViewer.jsx), where every intermediate tick must NOT be its
+  // own undo step.
+  updateAnnotationsBatch: (updates) => {
+    const prev = get().annotations
+    const byId = new Map(updates.map(u => [u.id, u]))
+    set({
+      annotations: prev.map(a => byId.has(a.id) ? { ...a, ...byId.get(a.id) } : a),
+      annotationHistory: [...get().annotationHistory.slice(-29), prev],
+      annotationFuture: [],
+      isDirty: true,
+    })
+  },
 
   removeAnnotation: (id) => {
     const prev = get().annotations
@@ -213,6 +255,37 @@ export const useStore = create((set, get) => ({
       annotations: prev.filter(a => a.id !== id),
       annotationHistory: [...get().annotationHistory.slice(-29), prev],
       annotationFuture: [],
+      isDirty: true,
+    })
+  },
+
+  // Plural counterparts for the selection-driven keyboard/toolbar actions
+  // (Entf/Strg+D, and the SelectionToolbar's own buttons) - handle 1..N ids
+  // uniformly in a single undo step, unlike removeAnnotation/addAnnotation
+  // above which stay untouched for the existing single-item call sites
+  // (right-click delete, StampModal placement, etc).
+  removeAnnotations: (ids) => {
+    const prev = get().annotations
+    set({
+      annotations: prev.filter(a => !ids.includes(a.id)),
+      annotationHistory: [...get().annotationHistory.slice(-29), prev],
+      annotationFuture: [],
+      selectedAnnotationIds: [],
+      isDirty: true,
+    })
+  },
+  duplicateAnnotations: (ids) => {
+    const prev = get().annotations
+    const DUPLICATE_OFFSET = 16
+    const copies = prev.filter(a => ids.includes(a.id))
+      .map(a => ({ ...a, id: Date.now() + Math.random(), x: a.x + DUPLICATE_OFFSET, y: a.y + DUPLICATE_OFFSET }))
+    if (!copies.length) return
+    set({
+      annotations: [...prev, ...copies],
+      annotationHistory: [...get().annotationHistory.slice(-29), prev],
+      annotationFuture: [],
+      // The new copies become the selection, ready to be dragged into place.
+      selectedAnnotationIds: copies.map(c => c.id),
       isDirty: true,
     })
   },
@@ -232,22 +305,26 @@ export const useStore = create((set, get) => ({
     isDirty: true,
   })),
   undoAnnotation: () => {
-    const { annotationHistory, annotations, annotationFuture } = get()
+    const { annotationHistory, annotations, annotationFuture, selectedAnnotationIds } = get()
     if (!annotationHistory.length) return
     const prev = annotationHistory[annotationHistory.length - 1]
     set({
       annotations: prev,
       annotationHistory: annotationHistory.slice(0, -1),
       annotationFuture: [annotations, ...annotationFuture.slice(0, 29)],
+      // Prune ids that no longer exist in the restored snapshot (e.g.
+      // undoing a delete-selection) so no UI keeps referencing ghost ids.
+      selectedAnnotationIds: selectedAnnotationIds.filter(id => prev.some(a => a.id === id)),
       isDirty: true,
     })
   },
   redoAnnotation: () => {
-    const { annotationFuture, annotations, annotationHistory } = get()
+    const { annotationFuture, annotations, annotationHistory, selectedAnnotationIds } = get()
     if (!annotationFuture.length) return
     const next = annotationFuture[0]
     set({
       annotations: next,
+      selectedAnnotationIds: selectedAnnotationIds.filter(id => next.some(a => a.id === id)),
       annotationHistory: [...annotationHistory.slice(-29), annotations],
       annotationFuture: annotationFuture.slice(1),
       isDirty: true,
@@ -442,6 +519,8 @@ export const useStore = create((set, get) => ({
   closeCommentsSummary: () => set({ commentsSummaryOpen: false }),
   openStamp:            () => set({ stampOpen: true }),
   closeStamp:           () => set({ stampOpen: false }),
+  openApplyStamp:       (id) => set({ applyStampOpen: true, applyStampSourceId: id }),
+  closeApplyStamp:      () => set({ applyStampOpen: false, applyStampSourceId: null }),
   openAttachments:      () => set({ attachmentsOpen: true }),
   closeAttachments:     () => set({ attachmentsOpen: false }),
 
@@ -490,7 +569,7 @@ export const useStore = create((set, get) => ({
       activeTabId: newId,
       pdfDoc, pdfBytes, filePath, fileName, fileSize,
       currentPage: 1, totalPages: pdfDoc.numPages,
-      annotations: [], annotationHistory: [], annotationFuture: [],
+      annotations: [], annotationHistory: [], annotationFuture: [], selectedAnnotationIds: [],
       pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
       zoom: get().defaultZoom,
     })
@@ -507,7 +586,7 @@ export const useStore = create((set, get) => ({
       fileName: target.fileName, fileSize: target.fileSize, isDirty: target.isDirty,
       currentPage: target.currentPage, totalPages: target.totalPages,
       annotations: target.annotations, annotationHistory: target.annotationHistory,
-      annotationFuture: target.annotationFuture, pendingRedactions: target.pendingRedactions,
+      annotationFuture: target.annotationFuture, selectedAnnotationIds: [], pendingRedactions: target.pendingRedactions,
       formValues: target.formValues || {}, pendingFormFields: target.pendingFormFields || [],
       pageRotations: target.pageRotations, zoom: target.zoom,
     })
@@ -526,7 +605,7 @@ export const useStore = create((set, get) => ({
           fileName: prev.fileName, fileSize: prev.fileSize, isDirty: prev.isDirty,
           currentPage: prev.currentPage, totalPages: prev.totalPages,
           annotations: prev.annotations, annotationHistory: prev.annotationHistory,
-          annotationFuture: prev.annotationFuture, pendingRedactions: prev.pendingRedactions,
+          annotationFuture: prev.annotationFuture, selectedAnnotationIds: [], pendingRedactions: prev.pendingRedactions,
           formValues: prev.formValues || {}, pendingFormFields: prev.pendingFormFields || [],
           pageRotations: prev.pageRotations, zoom: prev.zoom,
         })
@@ -534,7 +613,7 @@ export const useStore = create((set, get) => ({
         set({
           tabs: [], activeTabId: null,
           pdfDoc: null, pdfBytes: null, filePath: null, fileName: null, fileSize: 0,
-          currentPage: 1, totalPages: 0, annotations: [], pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
+          currentPage: 1, totalPages: 0, annotations: [], selectedAnnotationIds: [], pendingRedactions: [], pendingFormFields: [], formValues: {}, pageRotations: {}, isDirty: false,
         })
       }
     } else {

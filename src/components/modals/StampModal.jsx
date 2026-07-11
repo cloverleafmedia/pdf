@@ -14,6 +14,24 @@ const PRESETS = [
   { id: 'confidential', label: 'Vertraulich', text: 'VERTRAULICH',  color: '#ef4444' },
 ]
 
+const FREETEXT_COLORS = [
+  { hex: '#111111', label: 'Schwarz' },
+  { hex: '#cc0000', label: 'Rot' },
+  { hex: '#0044cc', label: 'Blau' },
+  { hex: '#10b981', label: 'Grün' },
+]
+
+// {datum}/{uhrzeit} are resolved once, at placement time (see place() below)
+// - not at save/flatten time like {n}/{total} in HeaderFooterModal, since a
+// stamp is a single one-off placement rather than something re-applied to
+// every page on save.
+function resolvePlaceholders(text) {
+  const now = new Date()
+  return text
+    .replace(/\{datum\}/gi, now.toLocaleDateString('de-DE'))
+    .replace(/\{uhrzeit\}/gi, now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
+}
+
 export default function StampModal() {
   const {
     pdfDoc, theme, closeStamp, setActiveTool, setPendingStampConfig, stampTemplates, saveStampTemplate, deleteStampTemplate,
@@ -22,8 +40,10 @@ export default function StampModal() {
 
   const [preset, setPreset] = useState('approved')
   const [customImage, setCustomImage] = useState(null) // { bytes, ext, aspect, previewUrl }
-  const [mode, setMode] = useState('preset') // 'preset' | 'custom'
+  const [mode, setMode] = useState('preset') // 'preset' | 'custom' | 'freetext'
   const [rotation, setRotation] = useState(0)
+  const [freeText, setFreeText] = useState('')
+  const [freeColor, setFreeColor] = useState('#111111')
   const [error, setError] = useState('')
 
   const pickImage = async () => {
@@ -57,11 +77,21 @@ export default function StampModal() {
   // Object URLs aren't persistable across sessions, so a saved template's
   // image (kept as base64, see src/lib/base64.js) gets a fresh one built
   // each time it's loaded, exactly like when an image is first picked.
+  // A freetext template has no imageBase64 - detected by its presence/
+  // absence rather than a separate stored template "kind" field.
   const loadStampTemplate = (config) => {
-    const bytes = base64ToBytes(config.imageBase64)
-    const previewUrl = URL.createObjectURL(new Blob([bytes], { type: config.imageExt === 'jpg' ? 'image/jpeg' : 'image/png' }))
-    setCustomImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return { bytes, ext: config.imageExt, aspect: config.aspect, previewUrl } })
-    setMode('custom')
+    if (config.imageBase64) {
+      const bytes = base64ToBytes(config.imageBase64)
+      const previewUrl = URL.createObjectURL(new Blob([bytes], { type: config.imageExt === 'jpg' ? 'image/jpeg' : 'image/png' }))
+      setCustomImage(prev => { if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl); return { bytes, ext: config.imageExt, aspect: config.aspect, previewUrl } })
+      setMode('custom')
+    } else {
+      // Placeholder tokens are stored raw (not pre-resolved) so re-placing
+      // this template later picks up the current date/time again.
+      setFreeText(config.text ?? '')
+      setFreeColor(config.color ?? '#111111')
+      setMode('freetext')
+    }
     setRotation(config.rotation ?? 0)
     setError('')
   }
@@ -70,6 +100,9 @@ export default function StampModal() {
     if (mode === 'custom') {
       if (!customImage) { setError('Bitte zuerst ein Bild wählen.'); return }
       setPendingStampConfig({ kind: 'custom', imageBytes: customImage.bytes, imageExt: customImage.ext, imageUrl: customImage.previewUrl, aspect: customImage.aspect, rotation })
+    } else if (mode === 'freetext') {
+      if (!freeText.trim()) { setError('Bitte zuerst Text eingeben.'); return }
+      setPendingStampConfig({ kind: 'text', text: resolvePlaceholders(freeText), color: freeColor, rotation })
     } else {
       const p = PRESETS.find(p => p.id === preset)
       setPendingStampConfig({ kind: p.id, text: p.text, color: p.color, rotation })
@@ -87,7 +120,7 @@ export default function StampModal() {
         </div>
 
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? '#3f3f46' : '#e5e7eb' }}>
-          {[{ id: 'preset', l: 'Vorlage' }, { id: 'custom', l: 'Eigenes Bild' }].map(t => (
+          {[{ id: 'preset', l: 'Vorlage' }, { id: 'custom', l: 'Eigenes Bild' }, { id: 'freetext', l: 'Freitext' }].map(t => (
             <button key={t.id} onClick={() => setMode(t.id)}
               className={`flex-1 py-2 text-sm transition-colors
                 ${mode === t.id ? 'bg-clover-600 text-white' : isDark ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
@@ -142,6 +175,40 @@ export default function StampModal() {
           </div>
         )}
 
+        {mode === 'freetext' && (
+          <div className="space-y-2">
+            <TemplateBar
+              isDark={isDark}
+              templates={stampTemplates}
+              onLoad={loadStampTemplate}
+              onSave={(name) => freeText.trim() && saveStampTemplate(name, { text: freeText, color: freeColor, rotation })}
+              onDelete={deleteStampTemplate}
+            />
+            <textarea
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              rows={2}
+              placeholder="z. B.  GEPRÜFT am {datum}"
+              className={`w-full px-3 py-2 text-sm rounded-lg border outline-none focus:border-clover-500 transition-colors resize-none
+                ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-600' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}/>
+            <div className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+              Platzhalter: <code className="font-mono">{'{datum}'}</code> = heutiges Datum &nbsp;·&nbsp;
+              <code className="font-mono">{'{uhrzeit}'}</code> = aktuelle Uhrzeit
+            </div>
+            <div className="flex items-center gap-2">
+              {FREETEXT_COLORS.map(c => (
+                <button key={c.hex} onClick={() => setFreeColor(c.hex)} title={c.label}
+                  className={`w-7 h-7 rounded-full border-2 transition-all
+                    ${freeColor === c.hex ? 'border-clover-400 scale-110' : 'border-transparent hover:border-zinc-400'}`}
+                  style={{ backgroundColor: c.hex }} />
+              ))}
+              <input type="color" value={freeColor} onChange={(e) => setFreeColor(e.target.value)}
+                className="w-7 h-7 rounded cursor-pointer p-0 border-0 bg-transparent" title="Benutzerdefiniert" />
+            </div>
+            {error && <div className="text-xs text-red-400">{error}</div>}
+          </div>
+        )}
+
         <div>
           <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Winkel</label>
           <RotationPresetButtons
@@ -155,7 +222,7 @@ export default function StampModal() {
           className={`px-4 py-1.5 rounded-lg text-sm ${isDark ? 'text-zinc-400 hover:bg-zinc-700' : 'text-gray-600 hover:bg-gray-100'}`}>
           Abbrechen
         </button>
-        <button onClick={place} disabled={!pdfDoc || (mode === 'custom' && !customImage)}
+        <button onClick={place} disabled={!pdfDoc || (mode === 'custom' && !customImage) || (mode === 'freetext' && !freeText.trim())}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-clover-600 hover:bg-clover-700 text-white transition-colors disabled:opacity-50 disabled:cursor-default">
           <Award size={14}/> Platzieren
         </button>

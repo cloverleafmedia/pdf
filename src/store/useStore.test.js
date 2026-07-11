@@ -65,6 +65,98 @@ describe('annotation undo/redo stack', () => {
   })
 })
 
+describe('selection-driven batch annotation actions', () => {
+  it('addAnnotations adds a list in one undo step', () => {
+    useStore.getState().addAnnotations([
+      { type: 'stamp', page: 1, x: 0, y: 0, w: 10, h: 10 },
+      { type: 'stamp', page: 2, x: 0, y: 0, w: 10, h: 10 },
+    ])
+    expect(useStore.getState().annotations).toHaveLength(2)
+    expect(useStore.getState().annotationHistory).toHaveLength(1)
+
+    useStore.getState().undoAnnotation()
+    expect(useStore.getState().annotations).toHaveLength(0)
+  })
+
+  it('removeAnnotations removes several ids in one undo step and clears the selection', () => {
+    useStore.getState().addAnnotation({ type: 'note', page: 1 })
+    useStore.getState().addAnnotation({ type: 'note', page: 1 })
+    const ids = useStore.getState().annotations.map(a => a.id)
+    useStore.getState().setSelectedAnnotationIds(ids)
+
+    useStore.getState().removeAnnotations(ids)
+    expect(useStore.getState().annotations).toHaveLength(0)
+    expect(useStore.getState().selectedAnnotationIds).toEqual([])
+
+    useStore.getState().undoAnnotation()
+    expect(useStore.getState().annotations).toHaveLength(2)
+  })
+
+  it('duplicateAnnotations copies with a pixel offset and selects the copies', () => {
+    useStore.getState().addAnnotation({ type: 'stamp', page: 1, x: 100, y: 100, w: 50, h: 20 })
+    const id = useStore.getState().annotations[0].id
+
+    useStore.getState().duplicateAnnotations([id])
+    const all = useStore.getState().annotations
+    expect(all).toHaveLength(2)
+    const copy = all.find(a => a.id !== id)
+    expect(copy.x).toBe(116)
+    expect(copy.y).toBe(116)
+    expect(useStore.getState().selectedAnnotationIds).toEqual([copy.id])
+
+    useStore.getState().undoAnnotation()
+    expect(useStore.getState().annotations).toHaveLength(1)
+  })
+
+  it('duplicateAnnotations is a no-op for an empty/unmatched id list', () => {
+    useStore.getState().duplicateAnnotations([])
+    expect(useStore.getState().annotations).toHaveLength(0)
+    expect(useStore.getState().annotationHistory).toHaveLength(0)
+  })
+
+  it('updateAnnotationsBatch applies several updates in one undo step', () => {
+    useStore.getState().addAnnotation({ type: 'stamp', page: 1, x: 0, y: 0, w: 10, h: 10 })
+    useStore.getState().addAnnotation({ type: 'stamp', page: 1, x: 5, y: 5, w: 10, h: 10 })
+    const [a, b] = useStore.getState().annotations
+
+    useStore.getState().updateAnnotationsBatch([{ id: a.id, x: 42 }, { id: b.id, x: 42 }])
+    expect(useStore.getState().annotations.map(x => x.x)).toEqual([42, 42])
+
+    useStore.getState().undoAnnotation()
+    expect(useStore.getState().annotations.map(x => x.x)).toEqual([0, 5])
+  })
+
+  it('undoAnnotation/redoAnnotation prune selectedAnnotationIds to ids still present', () => {
+    useStore.getState().addAnnotation({ type: 'note', page: 1 })
+    const id = useStore.getState().annotations[0].id
+    useStore.getState().setSelectedAnnotationIds([id])
+
+    useStore.getState().removeAnnotation(id)
+    expect(useStore.getState().selectedAnnotationIds).toEqual([id]) // untouched by the singular action
+
+    useStore.getState().undoAnnotation()
+    // the id is back, so it should NOT have been pruned
+    expect(useStore.getState().selectedAnnotationIds).toEqual([id])
+
+    useStore.getState().redoAnnotation()
+    // removed again - a stale reference to it must be pruned
+    expect(useStore.getState().selectedAnnotationIds).toEqual([])
+  })
+
+  it('setActiveTool clears the selection when switching away from the hand tool', () => {
+    useStore.getState().addAnnotation({ type: 'note', page: 1 })
+    const id = useStore.getState().annotations[0].id
+    useStore.getState().setSelectedAnnotationIds([id])
+
+    useStore.getState().setActiveTool('draw')
+    expect(useStore.getState().selectedAnnotationIds).toEqual([])
+
+    useStore.getState().setSelectedAnnotationIds([id])
+    useStore.getState().setActiveTool('hand')
+    expect(useStore.getState().selectedAnnotationIds).toEqual([id])
+  })
+})
+
 describe('reply threads are excluded from undo/redo', () => {
   it('addReply/deleteReply do not push onto annotationHistory', () => {
     useStore.getState().addAnnotation({ type: 'note', page: 1 })
